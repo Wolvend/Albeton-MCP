@@ -18,6 +18,8 @@ Ableton MCP is read-only by default.
 - Downloads disabled by default.
 - Ableton write/control disabled by default.
 - UI control disabled by default.
+- Background bridge commands are serialized to avoid overlapping LiveAPI operations.
+- Foreground UI/mouse control is a separate fallback, not the default control path.
 - Imported samples require license metadata and attribution sidecars.
 
 ## Feature Gates
@@ -37,6 +39,7 @@ Set a gate to `1` only for the specific workflow that requires it.
 - Read-only response cache for idempotent closed-world tools only.
 - MCP response-size limit with pagination guidance.
 - Bridge response-size limit and fixed action-id validation.
+- Bridge command queue with timeout.
 - Remote API JSON response-size limit.
 - Runtime metrics available through `ableton_mcp_get_runtime_report`.
 - Security posture available through `ableton_mcp_security_report`.

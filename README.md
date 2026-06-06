@@ -54,9 +54,17 @@ The Ableton install root is read-only. Broad user folders, broad AppData, browse
 
 ## Ableton Bridge
 
-The MCP server uses stdio for Codex. Live control is routed through a future Max for Live bridge on `127.0.0.1:17364`. Until Ableton Live is open and the bridge device is loaded, bridge tools return actionable connection errors.
+The MCP server uses stdio for Codex. Live control is routed through the Max for Live bridge on `127.0.0.1:17364`. Until Ableton Live is open and the bridge device is loaded, bridge tools return actionable connection errors.
 
 Bridge source and contract docs are under `bridge/max-for-live`.
+
+## Control Modes
+
+Default control is background bridge mode: MCP tool calls go to the Max for Live bridge, use fixed action IDs, and are serialized through one local command queue. This mode does not focus Ableton or touch the cursor.
+
+Foreground UI/mouse control is a fallback mode for workflows that cannot be expressed through LiveAPI yet. It is disabled by default, requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`, and still needs an explicit external UI operator at action time. Do not run foreground UI automation while bridge write commands are active.
+
+Use `ableton_control_mode_status` and `ableton_bridge_status` to see the active policy and queue state.
 
 ## Sample Policy
 

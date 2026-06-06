@@ -16,6 +16,7 @@ npm run inspect
 Primary groups:
 
 - Environment and setup
+- Control mode and bridge status
 - Library and cache
 - Live Set analysis
 - Fast live session view
@@ -25,6 +26,11 @@ Primary groups:
 - Composition helpers
 - Developer/evaluation tools
 - Runtime/security tools
+
+Control-mode tools:
+
+- `ableton_control_mode_status`: reports background bridge default, UI fallback gate, and overlap policy.
+- `ableton_bridge_status`: reports loopback host/port, serialized queue state, and last bridge action.
 
 Additional MCP context:
 

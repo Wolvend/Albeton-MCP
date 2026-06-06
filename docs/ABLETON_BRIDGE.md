@@ -20,4 +20,8 @@ Load the `.maxpat` in a Max for Live device with both JS files in the same folde
 
 The bridge currently covers broad read visibility plus common write-gated operations: track/return/master summaries, scenes, clip slots, clips, devices, parameters, mixer volume/pan, clip creation/launch/stop/loop/rename, scene creation, track creation, track arm/mute/solo/rename, tempo, and transport.
 
+MCP bridge calls are queued locally before they reach the loopback bridge. This prevents overlapping background commands when Codex or another MCP client issues concurrent tool calls.
+
+Foreground UI/mouse automation is not the default bridge. It is a separate fallback for UI-only workflows, requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`, and should not be run at the same time as bridge write commands.
+
 AbletonOSC remains a fallback/reference only. It has broad Live Object Model coverage, but the custom bridge is preferred for request IDs, diff snapshots, and tighter safety gates.

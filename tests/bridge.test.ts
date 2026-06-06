@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bridgeAction } from "../src/bridge.js";
+import { bridgeAction, getBridgeRuntimeState } from "../src/bridge.js";
 
 describe("bridge mock contract", () => {
   it("uses request id plus action payload shape", () => {
@@ -10,5 +10,12 @@ describe("bridge mock contract", () => {
 
   it("rejects user-derived bridge action suffixes before network I/O", async () => {
     await expect(bridgeAction("list_devices:selected;unsafe")).rejects.toThrow(/allowlist/i);
+  });
+
+  it("reports serialized bridge queue state", () => {
+    const state = getBridgeRuntimeState();
+    expect(state.host).toBe("127.0.0.1");
+    expect(state.serialized).toBe(true);
+    expect(state.queueTimeoutMs).toBeGreaterThan(0);
   });
 });

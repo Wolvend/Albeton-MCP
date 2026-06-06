@@ -3,7 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { analyzeAbletonSet, analyzeAudioFile } from "./analysis.js";
-import { bridgeAction, getBridgeSnapshot, pingBridge } from "./bridge.js";
+import { bridgeAction, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { environmentSnapshot } from "./environment.js";
 import { requireFlag } from "./errors.js";
@@ -49,8 +49,39 @@ async function bridgeWrite(action: string, args: any) {
 
 async function uiWrite(action: string, args: any) {
   requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", action);
-  if (args.dry_run !== false) return { ok: true, dry_run: true, action, nextStep: "Set dry_run=false to send this UI action." };
-  return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
+  if (args.dry_run !== false) return { ok: true, dry_run: true, action, nextStep: "Set dry_run=false only when an external UI operator is attached and you intentionally want mouse/keyboard control." };
+  return {
+    ok: false,
+    code: "UI_OPERATOR_NOT_ATTACHED",
+    action,
+    requested: args,
+    mode: "foreground_ui_fallback",
+    nextSteps: [
+      "Use background bridge tools when possible; they do not touch the cursor.",
+      "For mouse-driving fallback, attach an external UI operator such as Codex Computer Use at action time.",
+      "Keep ABLETON_MCP_ENABLE_UI_CONTROL=1 only for sessions where foreground Ableton automation is expected."
+    ]
+  };
+}
+
+function controlModeStatus() {
+  return {
+    defaultMode: "background_bridge",
+    activeBridge: getBridgeRuntimeState(),
+    uiFallback: {
+      availableAsPolicy: true,
+      enabled: FLAGS.uiControl,
+      defaultEnabled: false,
+      operatorAttached: false,
+      reason: "MCP stdio tools cannot directly own the desktop cursor. Foreground control is an explicit external operator path, not the default bridge path."
+    },
+    conflictPolicy: {
+      bridgeCommandsSerialized: true,
+      uiControlRequiresExplicitFlag: "ABLETON_MCP_ENABLE_UI_CONTROL=1",
+      writesRequireExplicitFlag: "ABLETON_MCP_ENABLE_WRITE=1",
+      avoidOverlap: "Do not run foreground UI automation while bridge write commands are active."
+    }
+  };
 }
 
 const toolDefs: ToolDef[] = [
@@ -67,6 +98,8 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_live_status", description: "Detect whether Ableton Live is running.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, status: { liveRunning: (await environmentSnapshot()).liveRunning, processes: (await environmentSnapshot()).abletonProcesses } }) },
   { name: "ableton_bridge_install_instructions", description: "Return Max for Live bridge setup steps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: { type: "max-for-live", path: redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), files: ["ableton-mcp-bridge.maxpat", "ableton-mcp-http.js", "ableton-mcp-liveapi.js"], steps: ["Open Ableton Live.", "Create or open a Live Set.", "Create a MIDI track and add a Max MIDI Effect device.", "Open the device in Max and load bridge/max-for-live/ableton-mcp-bridge.maxpat, keeping the two JS files in the same folder.", "Confirm the Max console says: Ableton MCP HTTP bridge listening on 127.0.0.1:17364.", "Run ableton_bridge_ping."] } }) },
   { name: "ableton_bridge_ping", description: "Ping the loopback Max for Live bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: await pingBridge() as any }) },
+  { name: "ableton_bridge_status", description: "Report loopback bridge host, port, queue, and last command state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeStatus: getBridgeRuntimeState() }) },
+  { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
   { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
     const dir = path.join(LOCAL_PATHS.diagnostics, "reports");
     await fs.mkdir(dir, { recursive: true });
@@ -195,6 +228,12 @@ toolDefs.push(
       symlinkEscapeRejected: true,
       broadAppDataRejected: true,
       credentialFoldersRejected: true
+    },
+    controlPolicy: {
+      backgroundBridgeDefault: true,
+      bridgeCommandsSerialized: true,
+      uiFallbackRequiresExplicitFlag: true,
+      uiFallbackOperatorAttached: false
     }
   } }) },
   { name: "ableton_mcp_run_self_test", description: "Run lightweight self-tests.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, selfTest: { environment: await environmentSnapshot(), capabilities: toolDefs.length } }) },

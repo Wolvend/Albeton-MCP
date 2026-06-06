@@ -13,6 +13,11 @@ const bridgePort = Number.isInteger(configuredBridgePort) && configuredBridgePor
   : 17364;
 const MAX_BRIDGE_RESPONSE_BYTES = 128_000;
 const allowedActionPattern = /^[a-z][a-z0-9_]{0,63}$/;
+const BRIDGE_QUEUE_TIMEOUT_MS = 30_000;
+let queuedBridgeWork: Promise<unknown> = Promise.resolve();
+let bridgeQueueDepth = 0;
+let bridgeRequestSequence = 0;
+let lastBridgeAction: { action: string; at: string; durationMs: number; ok: boolean } | null = null;
 
 function assertSafeBridgeAction(action: string) {
   if (!allowedActionPattern.test(action)) {
@@ -67,14 +72,53 @@ function bridgeCall<T>(request: BridgeRequest, timeoutMs = 2_500): Promise<T> {
   });
 }
 
+async function enqueueBridgeCall<T>(request: BridgeRequest, timeoutMs?: number): Promise<T> {
+  assertSafeBridgeAction(request.action);
+  bridgeRequestSequence += 1;
+  bridgeQueueDepth += 1;
+  const startedAt = Date.now();
+  const run = async () => {
+    const waitedMs = Date.now() - startedAt;
+    if (waitedMs > BRIDGE_QUEUE_TIMEOUT_MS) {
+      throw new AbletonMcpError("Ableton bridge command waited too long in the local queue.", "BRIDGE_QUEUE_TIMEOUT", ["Retry after the active Ableton command finishes.", "Use ableton_control_mode_status to inspect queue state."]);
+    }
+    const actionStartedAt = Date.now();
+    try {
+      const result = await bridgeCall<T>(request, timeoutMs);
+      lastBridgeAction = { action: request.action, at: new Date().toISOString(), durationMs: Date.now() - actionStartedAt, ok: true };
+      return result;
+    } catch (error) {
+      lastBridgeAction = { action: request.action, at: new Date().toISOString(), durationMs: Date.now() - actionStartedAt, ok: false };
+      throw error;
+    } finally {
+      bridgeQueueDepth = Math.max(0, bridgeQueueDepth - 1);
+    }
+  };
+  const next = queuedBridgeWork.then(run, run);
+  queuedBridgeWork = next.catch(() => undefined);
+  return next;
+}
+
 export async function pingBridge() {
-  return bridgeCall({ action: "ping" });
+  return enqueueBridgeCall({ action: "ping" });
 }
 
 export async function getBridgeSnapshot(diff = false) {
-  return bridgeCall({ action: diff ? "snapshot_diff" : "full_snapshot" });
+  return enqueueBridgeCall({ action: diff ? "snapshot_diff" : "full_snapshot" });
 }
 
 export async function bridgeAction(action: string, payload: Record<string, unknown> = {}) {
-  return bridgeCall({ action, payload });
+  return enqueueBridgeCall({ action, payload });
+}
+
+export function getBridgeRuntimeState() {
+  return {
+    host: bridgeHost,
+    port: bridgePort,
+    queueDepth: bridgeQueueDepth,
+    serialized: true,
+    queueTimeoutMs: BRIDGE_QUEUE_TIMEOUT_MS,
+    requestSequence: bridgeRequestSequence,
+    lastBridgeAction
+  };
 }
