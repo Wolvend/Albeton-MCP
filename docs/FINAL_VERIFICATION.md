@@ -57,4 +57,4 @@ Result: succeeded. The verifier listed 104 tools, 3 resources, and 2 prompts; ca
 - File operations enforce explicit allowed roots, realpath checks, and sensitive-path rejection.
 - Sample downloads reject arbitrary URLs and allow only HTTPS Freesound/Internet Archive hosts.
 - Scanner, `.als` parser, audio metadata, license policy, schema/tool catalog, and bridge mock tests are covered.
-- The Max for Live bridge source currently provides the bridge contract and placeholder device source; full LiveAPI snapshot/control handlers still need Ableton-side implementation and manual loading in Live.
+- The Max for Live bridge source now includes a Node-for-Max HTTP server and a LiveAPI handler for ping, snapshots, live-state reads, track/scene/clip/device listing, selected objects, tempo/transport, basic track creation, track arm/mute/solo, and track rename. It still requires manual loading in Ableton Live for runtime bridge verification.

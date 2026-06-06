@@ -65,7 +65,7 @@ const toolDefs: ToolDef[] = [
     return { ok: true, pid: child.pid ?? null };
   } },
   { name: "ableton_live_status", description: "Detect whether Ableton Live is running.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, status: { liveRunning: (await environmentSnapshot()).liveRunning, processes: (await environmentSnapshot()).abletonProcesses } }) },
-  { name: "ableton_bridge_install_instructions", description: "Return Max for Live bridge setup steps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: { type: "max-for-live", path: redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), steps: ["Open Ableton Live.", "Create or open a Live Set.", "Load bridge/max-for-live/ableton-mcp-bridge.maxpat as a Max for Live device.", "Run ableton_bridge_ping."] } }) },
+  { name: "ableton_bridge_install_instructions", description: "Return Max for Live bridge setup steps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: { type: "max-for-live", path: redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), files: ["ableton-mcp-bridge.maxpat", "ableton-mcp-http.js", "ableton-mcp-liveapi.js"], steps: ["Open Ableton Live.", "Create or open a Live Set.", "Create a MIDI track and add a Max MIDI Effect device.", "Open the device in Max and load bridge/max-for-live/ableton-mcp-bridge.maxpat, keeping the two JS files in the same folder.", "Confirm the Max console says: Ableton MCP HTTP bridge listening on 127.0.0.1:17364.", "Run ableton_bridge_ping."] } }) },
   { name: "ableton_bridge_ping", description: "Ping the loopback Max for Live bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: await pingBridge() as any }) },
   { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
     const dir = path.join(LOCAL_PATHS.diagnostics, "reports");
@@ -194,7 +194,7 @@ toolDefs.push(
     }
   } }) },
   { name: "ableton_mcp_run_self_test", description: "Run lightweight self-tests.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, selfTest: { environment: await environmentSnapshot(), capabilities: toolDefs.length } }) },
-  { name: "ableton_mcp_run_bridge_mock_test", description: "Run bridge mock contract check.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeMock: { requestShape: { id: "uuid", action: "ping" }, responseShape: { ok: true, heartbeat: "iso-date" } } }) },
+  { name: "ableton_mcp_run_bridge_mock_test", description: "Run bridge mock contract check.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeMock: { requestShape: { id: "uuid", action: "ping", payload: {} }, responseShape: { id: "uuid", ok: true, data: { heartbeat: "iso-date" } }, loopback: "127.0.0.1:17364" } }) },
   { name: "ableton_mcp_run_path_security_test", description: "Run path security rejection checks.", inputSchema: Empty, annotations: ro, handler: async () => {
     const rejected = [];
     for (const candidate of ["C:\\", "C:\\Users\\LIZ", "C:\\Users\\LIZ\\.ssh", "C:\\Users\\LIZ\\AppData\\Roaming"]) {
