@@ -19,9 +19,12 @@ No full library scan runs at startup.
 FastMCP’s middleware model applies shared behavior around tools without duplicating logic in each tool. This server mirrors that pattern in TypeScript:
 
 - `runTool` wraps every MCP tool.
+- Tool arguments are size-bounded before handlers run.
 - Read-only, idempotent, closed-world tools get a short response cache.
 - Every tool records call count, failures, cache hits, and duration.
 - Rate limits are stricter for write-capable tools.
 - Oversized responses are rejected with pagination guidance.
+- Bridge calls use fixed action identifiers and size-bounded responses.
+- Remote sample metadata/search responses are size-bounded.
 
 Runtime state is available through `ableton_mcp_get_runtime_report` and the `ableton://runtime` MCP resource.

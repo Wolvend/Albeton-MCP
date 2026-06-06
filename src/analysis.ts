@@ -4,6 +4,7 @@ import zlib from "node:zlib";
 import { promisify } from "node:util";
 import toneMidi from "@tonejs/midi";
 import { resolveSafePath, redactPath } from "./security.js";
+import { TOOL_PATHS } from "./config.js";
 import { AbletonMcpError } from "./errors.js";
 
 const execFileAsync = promisify(execFile);
@@ -12,13 +13,13 @@ const { Midi } = toneMidi;
 
 export async function analyzeAudioFile(filePath: string) {
   const safe = await resolveSafePath(filePath, { mustExist: true });
-  const { stdout } = await execFileAsync("C:\\ffmpeg_latest\\ffprobe.exe", [
+  const { stdout } = await execFileAsync(TOOL_PATHS.ffprobe, [
     "-v", "error",
     "-show_format",
     "-show_streams",
     "-print_format", "json",
     safe.real
-  ], { timeout: 15_000, env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
+  ], { timeout: 15_000, env: { SystemRoot: process.env.SystemRoot } });
   return { path: redactPath(safe.real), ffprobe: JSON.parse(stdout) };
 }
 

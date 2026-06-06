@@ -13,7 +13,7 @@ Supported sources:
 
 Downloads are disabled unless `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
 
-Even when downloads are enabled, URLs must be HTTPS and must belong to approved Freesound or Internet Archive hosts. Localhost, private IPs, raw IP URLs, embedded credentials, and arbitrary third-party hosts are rejected.
+Even when downloads are enabled, URLs must be HTTPS and must belong to approved Freesound or Internet Archive hosts. Localhost, private IPs, raw IP URLs, embedded credentials, redirects, and arbitrary third-party hosts are rejected.
 
 Staging path:
 

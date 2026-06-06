@@ -34,6 +34,7 @@ const metrics = new Map<string, ToolMetric>();
 const readCache = new Map<string, CacheEntry>();
 const callBuckets = new Map<string, number[]>();
 const MAX_RESPONSE_BYTES = 256_000;
+const MAX_ARGUMENT_BYTES = 64_000;
 const CACHE_TTL_MS = 5_000;
 const RATE_WINDOW_MS = 10_000;
 const DEFAULT_RATE_LIMIT = 80;
@@ -82,6 +83,17 @@ function enforceResponseLimit(tool: RuntimeTool, result: Record<string, unknown>
   }
 }
 
+function enforceArgumentLimit(tool: RuntimeTool, args: unknown) {
+  const bytes = Buffer.byteLength(JSON.stringify(args ?? {}));
+  if (bytes > MAX_ARGUMENT_BYTES) {
+    throw new AbletonMcpError(
+      `${tool.name} received ${bytes} bytes of arguments, exceeding the ${MAX_ARGUMENT_BYTES} byte MCP argument limit.`,
+      "ARGUMENTS_TOO_LARGE",
+      ["Use smaller payloads, narrower filters, or staged files under allowed roots."]
+    );
+  }
+}
+
 export async function runTool(tool: RuntimeTool, args: any) {
   const metric = metricFor(tool.name);
   const started = performance.now();
@@ -89,6 +101,7 @@ export async function runTool(tool: RuntimeTool, args: any) {
   metric.lastCalledAt = new Date().toISOString();
   try {
     assertRateLimit(tool);
+    enforceArgumentLimit(tool, args);
     const key = cacheKey(tool, args);
     if (isCacheable(tool)) {
       const cached = readCache.get(key);
@@ -124,6 +137,7 @@ export function getRuntimeReport() {
     ],
     limits: {
       maxResponseBytes: MAX_RESPONSE_BYTES,
+      maxArgumentBytes: MAX_ARGUMENT_BYTES,
       cacheTtlMs: CACHE_TTL_MS,
       rateWindowMs: RATE_WINDOW_MS,
       defaultReadCallsPerWindow: DEFAULT_RATE_LIMIT,

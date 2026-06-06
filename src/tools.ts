@@ -16,7 +16,7 @@ import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
 
 const Empty = {};
 const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) };
-const Query = { query: z.string().default(""), ...Page };
+const Query = { query: z.string().max(200).default(""), ...Page };
 const PathArg = { path: z.string().min(1) };
 const DryRun = { dry_run: z.boolean().default(true) };
 
@@ -37,8 +37,8 @@ async function librarySearch(args: any, kind?: string) {
   return { ok: true, ...paginate(rows.map((row) => ({ ...row, path: redactPath(String(row.path)) })), args.page, args.pageSize) };
 }
 
-async function bridgeRead(action: string) {
-  return { ok: true, bridge: await bridgeAction(action) as Record<string, unknown> };
+async function bridgeRead(action: string, payload: Record<string, unknown> = {}) {
+  return { ok: true, bridge: await bridgeAction(action, payload) as Record<string, unknown> };
 }
 
 async function bridgeWrite(action: string, args: any) {
@@ -114,8 +114,8 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_list_tracks", description: "List live tracks via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_tracks") },
   { name: "ableton_list_scenes", description: "List live scenes via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_scenes") },
   { name: "ableton_list_clips", description: "List live clips via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_clips") },
-  { name: "ableton_list_devices", description: "List live devices via bridge.", inputSchema: { track_id: z.string().optional() }, annotations: ro, handler: async (args) => bridgeRead(`list_devices:${args.track_id ?? "selected"}`) },
-  { name: "ableton_list_device_parameters", description: "List automatable device parameters via bridge.", inputSchema: { device_id: z.string().optional() }, annotations: ro, handler: async (args) => bridgeRead(`list_device_parameters:${args.device_id ?? "selected"}`) },
+  { name: "ableton_list_devices", description: "List live devices via bridge.", inputSchema: { track_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => bridgeRead("list_devices", { track_id: args.track_id ?? "selected" }) },
+  { name: "ableton_list_device_parameters", description: "List automatable device parameters via bridge.", inputSchema: { device_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => bridgeRead("list_device_parameters", { device_id: args.device_id ?? "selected" }) },
   { name: "ableton_get_selected_track", description: "Get selected track via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_track") },
   { name: "ableton_get_selected_device", description: "Get selected device via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_device") },
   { name: "ableton_get_tempo", description: "Get tempo via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("tempo") },
@@ -150,9 +150,9 @@ toolDefs.push(
   { name: "ableton_click_coordinates", description: "Click explicit coordinates when UI control is enabled.", inputSchema: { x: z.number(), y: z.number(), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_coordinates", args) },
   { name: "ableton_type_text", description: "Type text into Ableton when UI control is enabled.", inputSchema: { text: z.string().max(500), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("type_text", args) },
 
-  { name: "ableton_search_freesound", description: "Search Freesound for licensed sample metadata.", inputSchema: { query: z.string().min(1), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchFreesound(args.query, args.page, args.pageSize) }) },
-  { name: "ableton_search_internet_archive_audio", description: "Search Internet Archive public audio metadata.", inputSchema: { query: z.string().min(1), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchInternetArchiveAudio(args.query, args.page, args.pageSize) }) },
-  { name: "ableton_get_remote_sample_metadata", description: "Get Internet Archive item metadata by identifier.", inputSchema: { source: z.enum(["internet_archive"]).default("internet_archive"), identifier: z.string().min(1) }, annotations: webro, handler: async (args) => ({ ok: true, metadata: await getInternetArchiveMetadata(args.identifier) as any }) },
+  { name: "ableton_search_freesound", description: "Search Freesound for licensed sample metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchFreesound(args.query, args.page, args.pageSize) }) },
+  { name: "ableton_search_internet_archive_audio", description: "Search Internet Archive public audio metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchInternetArchiveAudio(args.query, args.page, args.pageSize) }) },
+  { name: "ableton_get_remote_sample_metadata", description: "Get Internet Archive item metadata by identifier.", inputSchema: { source: z.enum(["internet_archive"]).default("internet_archive"), identifier: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_.-]+$/) }, annotations: webro, handler: async (args) => ({ ok: true, metadata: await getInternetArchiveMetadata(args.identifier) as any }) },
   { name: "ableton_preview_remote_sample", description: "Return preview metadata only; never downloads.", inputSchema: { url: z.string().url(), license: z.string().optional() }, annotations: webro, handler: async (args) => ({ ok: true, preview: { url: args.url, license: normalizeLicense(args.license), downloadEnabled: FLAGS.downloads } }) },
   { name: "ableton_download_sample", description: "Download an allowed licensed sample into staging when downloads are enabled.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, download: await downloadSample(args.url, args.destinationName, args.metadata) }) },
   { name: "ableton_analyze_audio_file", description: "Analyze allowed local audio file with ffprobe.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAudioFile(args.path) }) },
@@ -163,7 +163,7 @@ toolDefs.push(
   { name: "ableton_build_sample_pack", description: "Plan a sample pack from allowed local samples.", inputSchema: { query: z.string().default(""), name: z.string().default("Codex Sample Pack"), ...Page }, annotations: ro, handler: async (args) => ({ ok: true, pack: { name: args.name, samples: (await librarySearch(args, "sample")).items } }) },
   { name: "ableton_generate_attribution_report", description: "Generate attribution report from imported sample sidecars.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, report: { importsRoot: redactPath(LOCAL_PATHS.imports), note: "Attribution sidecars are written as .attribution.json during imports.", ...paginate([], args.page, args.pageSize) } }) },
 
-  { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },
+  { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1).max(2000) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },
   { name: "ableton_generate_midi_clip_plan", description: "Generate a MIDI clip plan.", inputSchema: { key: z.string().default("C minor"), bars: z.number().int().min(1).max(64).default(8), style: z.string().default("electronic") }, annotations: ro, handler: async (args) => ({ ok: true, midiClipPlan: args }) },
   { name: "ableton_generate_drum_rack_plan", description: "Generate a drum rack plan.", inputSchema: { style: z.string().default("house") }, annotations: ro, handler: async (args) => ({ ok: true, drumRackPlan: { style: args.style, pads: ["kick", "snare", "closed_hat", "open_hat", "clap", "perc"] } }) },
   { name: "ableton_suggest_instrument_chain", description: "Suggest Ableton-native instrument chain.", inputSchema: { role: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, chain: { role: args.role, devices: ["Instrument Rack", "EQ Eight", "Compressor"] } }) },

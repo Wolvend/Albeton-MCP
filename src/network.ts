@@ -56,3 +56,40 @@ export function assertAllowedSampleUrl(input: string) {
   }
   return parsed.toString();
 }
+
+export async function fetchAllowedSampleUrl(input: string, init: RequestInit = {}) {
+  const safeUrl = assertAllowedSampleUrl(input);
+  const response = await fetch(safeUrl, { ...init, redirect: "manual" });
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get("location");
+    if (!location) {
+      throw new AbletonMcpError("Sample download redirect did not include a Location header.", "URL_REDIRECT_REJECTED");
+    }
+    const redirected = new URL(location, safeUrl).toString();
+    assertAllowedSampleUrl(redirected);
+    throw new AbletonMcpError("Sample download redirects are rejected by default.", "URL_REDIRECT_REJECTED", ["Use the final approved Freesound or Internet Archive HTTPS URL directly."]);
+  }
+  return response;
+}
+
+export async function readJsonBounded(response: Response, maxBytes = 512_000) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new AbletonMcpError("Remote response did not include a readable body.", "REMOTE_BODY_MISSING");
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new AbletonMcpError("Remote JSON response exceeded size limit.", "REMOTE_RESPONSE_TOO_LARGE", ["Use a narrower query or smaller page size."]);
+    }
+    chunks.push(value);
+  }
+  const merged = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+  return JSON.parse(merged.toString("utf8")) as unknown;
+}

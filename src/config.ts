@@ -25,21 +25,36 @@ export const LOCAL_PATHS = {
   diagnostics: path.join(PROJECT_ROOT, "diagnostics")
 } as const;
 
+export const TOOL_PATHS = {
+  node: "C:\\Program Files\\nodejs\\node.exe",
+  npm: "C:\\Program Files\\nodejs\\npm.cmd",
+  git: "C:\\Program Files\\Git\\cmd\\git.exe",
+  ffmpeg: "C:\\ffmpeg_latest\\ffmpeg.exe",
+  ffprobe: "C:\\ffmpeg_latest\\ffprobe.exe",
+  powershell: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+} as const;
+
 export type AllowedRoot = {
   path: string;
   mode: "readwrite" | "readonly";
 };
 
 export function getAllowedRoots(): AllowedRoot[] {
-  const explicit = process.env.ABLETON_MCP_ALLOWED_ROOTS;
-  const roots = explicit?.split(";").map((value) => value.trim()).filter(Boolean) ?? [
+  const baseline = [
     LOCAL_PATHS.projectRoot,
     "C:\\Users\\LIZ\\Documents\\Ableton",
     LOCAL_PATHS.liveInstall
+  ].map((root) => path.resolve(root));
+  const explicit = process.env.ABLETON_MCP_ALLOWED_ROOTS;
+  const roots = explicit?.split(";").map((value) => value.trim()).filter(Boolean) ?? [
+    ...baseline
   ];
-  return roots.map((root) => ({
-    path: path.resolve(root),
-    mode: path.resolve(root).toLowerCase() === path.resolve(LOCAL_PATHS.liveInstall).toLowerCase()
+  return roots.map((root) => path.resolve(root)).filter((root) => {
+    const lower = root.toLowerCase();
+    return baseline.some((allowed) => lower === allowed.toLowerCase());
+  }).map((root) => ({
+    path: root,
+    mode: root.toLowerCase() === path.resolve(LOCAL_PATHS.liveInstall).toLowerCase()
       ? "readonly"
       : "readwrite"
   }));

@@ -7,9 +7,21 @@ export type BridgeRequest = {
 };
 
 const bridgeHost = "127.0.0.1";
-const bridgePort = Number(process.env.ABLETON_MCP_BRIDGE_PORT ?? "17364");
+const configuredBridgePort = Number(process.env.ABLETON_MCP_BRIDGE_PORT ?? "17364");
+const bridgePort = Number.isInteger(configuredBridgePort) && configuredBridgePort > 0 && configuredBridgePort <= 65535
+  ? configuredBridgePort
+  : 17364;
+const MAX_BRIDGE_RESPONSE_BYTES = 128_000;
+const allowedActionPattern = /^[a-z][a-z0-9_]{0,63}$/;
+
+function assertSafeBridgeAction(action: string) {
+  if (!allowedActionPattern.test(action)) {
+    throw new AbletonMcpError("Bridge action rejected by allowlist pattern.", "BRIDGE_ACTION_REJECTED", ["Use a fixed bridge action id registered by the MCP server."]);
+  }
+}
 
 function bridgeCall<T>(request: BridgeRequest, timeoutMs = 2_500): Promise<T> {
+  assertSafeBridgeAction(request.action);
   const body = JSON.stringify({ id: crypto.randomUUID(), ...request });
   return new Promise((resolve, reject) => {
     const req = http.request({
@@ -24,7 +36,15 @@ function bridgeCall<T>(request: BridgeRequest, timeoutMs = 2_500): Promise<T> {
       }
     }, (res) => {
       const chunks: Buffer[] = [];
-      res.on("data", (chunk: Buffer) => chunks.push(chunk));
+      let bytes = 0;
+      res.on("data", (chunk: Buffer) => {
+        bytes += chunk.length;
+        if (bytes > MAX_BRIDGE_RESPONSE_BYTES) {
+          req.destroy(new AbletonMcpError("Ableton bridge response exceeded size limit.", "BRIDGE_RESPONSE_TOO_LARGE", ["Request a narrower snapshot or bridge operation."]));
+          return;
+        }
+        chunks.push(chunk);
+      });
       res.on("end", () => {
         const text = Buffer.concat(chunks).toString("utf8");
         if ((res.statusCode ?? 500) >= 400) {

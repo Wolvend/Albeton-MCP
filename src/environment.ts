@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import { promisify } from "node:util";
-import { LOCAL_PATHS, FLAGS, getAllowedRoots } from "./config.js";
+import { LOCAL_PATHS, FLAGS, getAllowedRoots, TOOL_PATHS } from "./config.js";
 import { rootsForReport } from "./security.js";
 
 const execFileAsync = promisify(execFile);
@@ -17,7 +17,7 @@ async function exists(filePath: string) {
 
 async function commandVersion(command: string, args: string[]) {
   try {
-    const { stdout, stderr } = await execFileAsync(command, args, { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
+    const { stdout, stderr } = await execFileAsync(command, args, { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot } });
     return { ok: true, output: `${stdout}${stderr}`.split(/\r?\n/).find(Boolean) ?? "" };
   } catch (error) {
     return { ok: false, output: error instanceof Error ? error.message : String(error) };
@@ -25,11 +25,11 @@ async function commandVersion(command: string, args: string[]) {
 }
 
 export async function getLiveProcesses() {
-  const { stdout } = await execFileAsync("powershell.exe", [
+  const { stdout } = await execFileAsync(TOOL_PATHS.powershell, [
     "-NoProfile",
     "-Command",
     "Get-Process | Where-Object { $_.ProcessName -like '*Ableton*' -or $_.Path -like '*Ableton Live*' } | Select-Object ProcessName,Id,Path | ConvertTo-Json -Compress"
-  ], { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
+  ], { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot } });
   if (!stdout.trim()) return [];
   const parsed = JSON.parse(stdout);
   return Array.isArray(parsed) ? parsed : [parsed];
@@ -43,11 +43,11 @@ export async function environmentSnapshot() {
     liveRunning: processes.some((proc) => String(proc.ProcessName ?? "").toLowerCase().includes("ableton live")),
     abletonProcesses: processes,
     tools: {
-      node: await commandVersion("node", ["--version"]),
-      npm: await commandVersion("npm.cmd", ["--version"]),
-      git: await commandVersion("git", ["--version"]),
-      ffmpeg: await commandVersion("C:\\ffmpeg_latest\\ffmpeg.exe", ["-version"]),
-      ffprobe: await commandVersion("C:\\ffmpeg_latest\\ffprobe.exe", ["-version"])
+      node: await commandVersion(TOOL_PATHS.node, ["--version"]),
+      npm: await commandVersion(TOOL_PATHS.npm, ["--version"]),
+      git: await commandVersion(TOOL_PATHS.git, ["--version"]),
+      ffmpeg: await commandVersion(TOOL_PATHS.ffmpeg, ["-version"]),
+      ffprobe: await commandVersion(TOOL_PATHS.ffprobe, ["-version"])
     },
     flags: {
       write: FLAGS.write,
