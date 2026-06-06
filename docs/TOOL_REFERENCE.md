@@ -31,6 +31,8 @@ Control-mode tools:
 
 - `ableton_control_mode_status`: reports background bridge default, UI fallback gate, and overlap policy.
 - `ableton_bridge_status`: reports loopback host/port, serialized queue state, and last bridge action.
+- `ableton_ui_driver_status`: reports the ChromeDriver-style Ableton UI driver endpoint and queue state.
+- `ableton_ui_driver_ping`: pings the UI driver when UI control is enabled.
 
 Additional MCP context:
 

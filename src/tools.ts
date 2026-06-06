@@ -13,6 +13,7 @@ import { getScanStatus, scanLibrary } from "./scanner.js";
 import { queryLibrary } from "./cache.js";
 import { downloadSample, getInternetArchiveMetadata, importSampleToLibrary, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
 import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
+import { getUiDriverRuntimeState, pingUiDriver, uiDriverAction } from "./ui-driver.js";
 
 const Empty = {};
 const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) };
@@ -49,19 +50,8 @@ async function bridgeWrite(action: string, args: any) {
 
 async function uiWrite(action: string, args: any) {
   requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", action);
-  if (args.dry_run !== false) return { ok: true, dry_run: true, action, nextStep: "Set dry_run=false only when an external UI operator is attached and you intentionally want mouse/keyboard control." };
-  return {
-    ok: false,
-    code: "UI_OPERATOR_NOT_ATTACHED",
-    action,
-    requested: args,
-    mode: "foreground_ui_fallback",
-    nextSteps: [
-      "Use background bridge tools when possible; they do not touch the cursor.",
-      "For mouse-driving fallback, attach an external UI operator such as Codex Computer Use at action time.",
-      "Keep ABLETON_MCP_ENABLE_UI_CONTROL=1 only for sessions where foreground Ableton automation is expected."
-    ]
-  };
+  if (args.dry_run !== false) return { ok: true, dry_run: true, action, uiDriver: getUiDriverRuntimeState(), nextStep: "Set dry_run=false only when the Ableton UI driver is attached and you intentionally want mouse/keyboard control." };
+  return { ok: true, uiDriver: await uiDriverAction(action, args) as Record<string, unknown> };
 }
 
 function controlModeStatus() {
@@ -72,8 +62,8 @@ function controlModeStatus() {
       availableAsPolicy: true,
       enabled: FLAGS.uiControl,
       defaultEnabled: false,
-      operatorAttached: false,
-      reason: "MCP stdio tools cannot directly own the desktop cursor. Foreground control is an explicit external operator path, not the default bridge path."
+      driver: getUiDriverRuntimeState(),
+      reason: "Foreground control is routed through a loopback Ableton UI Driver, similar to ChromeDriver, instead of ad hoc chat-side cursor control."
     },
     conflictPolicy: {
       bridgeCommandsSerialized: true,
@@ -99,6 +89,11 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_bridge_install_instructions", description: "Return Max for Live bridge setup steps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: { type: "max-for-live", path: redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), files: ["ableton-mcp-bridge.maxpat", "ableton-mcp-http.js", "ableton-mcp-liveapi.js"], steps: ["Open Ableton Live.", "Create or open a Live Set.", "Create a MIDI track and add a Max MIDI Effect device.", "Open the device in Max and load bridge/max-for-live/ableton-mcp-bridge.maxpat, keeping the two JS files in the same folder.", "Confirm the Max console says: Ableton MCP HTTP bridge listening on 127.0.0.1:17364.", "Run ableton_bridge_ping."] } }) },
   { name: "ableton_bridge_ping", description: "Ping the loopback Max for Live bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: await pingBridge() as any }) },
   { name: "ableton_bridge_status", description: "Report loopback bridge host, port, queue, and last command state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeStatus: getBridgeRuntimeState() }) },
+  { name: "ableton_ui_driver_status", description: "Report ChromeDriver-style Ableton UI driver host, port, queue, and last action state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiDriverStatus: getUiDriverRuntimeState() }) },
+  { name: "ableton_ui_driver_ping", description: "Ping the loopback Ableton UI driver when UI control is enabled.", inputSchema: Empty, annotations: ro, handler: async () => {
+    requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", "Ableton UI driver ping");
+    return { ok: true, uiDriver: await pingUiDriver() as any };
+  } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
   { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
     const dir = path.join(LOCAL_PATHS.diagnostics, "reports");
@@ -173,10 +168,18 @@ for (const name of writeToolNames) {
 }
 
 toolDefs.push(
-  { name: "ableton_window_status", description: "Report Ableton window status from bridge/UI layer.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("window_status") },
+  { name: "ableton_window_status", description: "Report Ableton window status from bridge/UI layer.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiDriverStatus: getUiDriverRuntimeState(), bridge: await bridgeAction("window_status") as any }) },
   { name: "ableton_focus_window", description: "Focus Ableton window when UI control is enabled.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => uiWrite("focus_window", args) },
-  { name: "ableton_capture_screenshot", description: "Capture Ableton-window screenshot to diagnostics.", inputSchema: { ...DryRun }, annotations: ro, handler: async () => ({ ok: false, code: "SCREENSHOT_NEEDS_WINDOW_ENUMERATION", nextSteps: ["Open Ableton Live.", "Use ableton_window_status to confirm a window.", "Run screenshot verification after bridge/window integration is active."] }) },
-  { name: "ableton_capture_region", description: "Capture an explicit Ableton-window region.", inputSchema: { x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive(), ...DryRun }, annotations: ro, handler: async (args) => ({ ok: false, requested: args, code: "SCREENSHOT_REGION_NOT_ACTIVE", nextSteps: ["Open Ableton Live and confirm window bounds first."] }) },
+  { name: "ableton_capture_screenshot", description: "Capture Ableton-window screenshot through the UI driver.", inputSchema: { ...DryRun }, annotations: ro, handler: async (args) => {
+    requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", "Ableton screenshot capture");
+    if (args.dry_run !== false) return { ok: true, dry_run: true, uiDriver: getUiDriverRuntimeState() };
+    return { ok: true, uiDriver: await uiDriverAction("capture_screenshot", args) as Record<string, unknown> };
+  } },
+  { name: "ableton_capture_region", description: "Capture an explicit Ableton-window region through the UI driver.", inputSchema: { x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive(), ...DryRun }, annotations: ro, handler: async (args) => {
+    requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", "Ableton region capture");
+    if (args.dry_run !== false) return { ok: true, dry_run: true, requested: args, uiDriver: getUiDriverRuntimeState() };
+    return { ok: true, uiDriver: await uiDriverAction("capture_region", args) as Record<string, unknown> };
+  } },
   { name: "ableton_get_ui_overview", description: "Get safe UI overview from bridge or screenshot layer.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("ui_overview") },
   { name: "ableton_compare_screenshots", description: "Compare two diagnostics screenshots.", inputSchema: { left: z.string(), right: z.string() }, annotations: ro, handler: async (args) => {
     const left = await resolveSafePath(args.left, { mustExist: true });
@@ -233,7 +236,7 @@ toolDefs.push(
       backgroundBridgeDefault: true,
       bridgeCommandsSerialized: true,
       uiFallbackRequiresExplicitFlag: true,
-      uiFallbackOperatorAttached: false
+      uiFallbackDriver: getUiDriverRuntimeState()
     }
   } }) },
   { name: "ableton_mcp_run_self_test", description: "Run lightweight self-tests.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, selfTest: { environment: await environmentSnapshot(), capabilities: toolDefs.length } }) },

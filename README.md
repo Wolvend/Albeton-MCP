@@ -62,9 +62,11 @@ Bridge source and contract docs are under `bridge/max-for-live`.
 
 Default control is background bridge mode: MCP tool calls go to the Max for Live bridge, use fixed action IDs, and are serialized through one local command queue. This mode does not focus Ableton or touch the cursor.
 
-Foreground UI/mouse control is a fallback mode for workflows that cannot be expressed through LiveAPI yet. It is disabled by default, requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`, and still needs an explicit external UI operator at action time. Do not run foreground UI automation while bridge write commands are active.
+Foreground UI/mouse control is a fallback mode for workflows that cannot be expressed through LiveAPI yet. It is disabled by default, requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`, and is routed through a ChromeDriver-style loopback UI driver on `127.0.0.1:17365`. Do not run foreground UI automation while bridge write commands are active.
 
 Use `ableton_control_mode_status` and `ableton_bridge_status` to see the active policy and queue state.
+
+UI driver contract docs are under `docs/ABLETON_UI_DRIVER.md`.
 
 ## Sample Policy
 

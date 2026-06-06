@@ -22,6 +22,6 @@ The bridge currently covers broad read visibility plus common write-gated operat
 
 MCP bridge calls are queued locally before they reach the loopback bridge. This prevents overlapping background commands when Codex or another MCP client issues concurrent tool calls.
 
-Foreground UI/mouse automation is not the default bridge. It is a separate fallback for UI-only workflows, requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`, and should not be run at the same time as bridge write commands.
+Foreground UI/mouse automation is not the default bridge. It is a separate fallback for UI-only workflows, runs through the Ableton UI Driver on `127.0.0.1:17365`, requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`, and should not be run at the same time as bridge write commands.
 
 AbletonOSC remains a fallback/reference only. It has broad Live Object Model coverage, but the custom bridge is preferred for request IDs, diff snapshots, and tighter safety gates.
