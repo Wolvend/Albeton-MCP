@@ -2,6 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerTools } from "./tools.js";
+import { registerPrompts, registerResources } from "./resources.js";
 
 const server = new McpServer({
   name: "ableton-mcp",
@@ -9,6 +10,8 @@ const server = new McpServer({
 });
 
 registerTools(server);
+registerResources(server);
+registerPrompts(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);

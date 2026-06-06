@@ -38,7 +38,7 @@ Result: succeeded. MCP Inspector listed the stdio server tools.
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier listed 102 tools, called path-security checks, called bridge mock check, and returned Internet Archive sample metadata without downloading.
+Result: succeeded. The verifier listed 104 tools, 3 resources, and 2 prompts; called path-security, runtime report, security report, and bridge mock checks; and returned Internet Archive sample metadata without downloading.
 
 ## Runtime Checks
 
@@ -52,6 +52,9 @@ Result: succeeded. The verifier listed 102 tools, called path-security checks, c
 ## Current Implementation Notes
 
 - All requested MCP tool names are registered.
+- FastMCP-inspired runtime middleware wraps every tool with error handling, timing metrics, per-tool rate limiting, short read-only cache, and response-size limits.
+- MCP resources and prompts are registered for environment, runtime, scan status, safe production planning, and security review.
 - File operations enforce explicit allowed roots, realpath checks, and sensitive-path rejection.
+- Sample downloads reject arbitrary URLs and allow only HTTPS Freesound/Internet Archive hosts.
 - Scanner, `.als` parser, audio metadata, license policy, schema/tool catalog, and bridge mock tests are covered.
 - The Max for Live bridge source currently provides the bridge contract and placeholder device source; full LiveAPI snapshot/control handlers still need Ableton-side implementation and manual loading in Live.

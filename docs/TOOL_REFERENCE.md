@@ -24,5 +24,11 @@ Primary groups:
 - Legal sample discovery/import
 - Composition helpers
 - Developer/evaluation tools
+- Runtime/security tools
+
+Additional MCP context:
+
+- Resources: `ableton://environment`, `ableton://runtime`, `ableton://scan-status`
+- Prompts: `ableton-safe-production-session`, `ableton-security-review`
 
 All file tools enforce allowed roots and reject broad or sensitive paths.

@@ -4,6 +4,7 @@ import path from "node:path";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
 import { analyzeAudioFile } from "./analysis.js";
+import { assertAllowedSampleUrl } from "./network.js";
 import { isImportTarget, redactPath, resolveSafePath } from "./security.js";
 
 const allowedLicenses = ["CC0", "Creative Commons 0", "CC BY", "Attribution", "Public Domain", "Public Domain Mark"];
@@ -57,6 +58,7 @@ export async function getInternetArchiveMetadata(identifier: string) {
 
 export async function downloadSample(url: string, destinationName: string, metadata: Record<string, unknown>) {
   requireFlag(FLAGS.downloads, "ABLETON_MCP_ENABLE_DOWNLOADS", "Sample download");
+  const safeUrl = assertAllowedSampleUrl(url);
   const license = normalizeLicense(String(metadata.license ?? metadata.licenseurl ?? ""));
   if (!license.allowed) {
     throw new AbletonMcpError(`Sample license is not allowed by default policy: ${license.license}`, "LICENSE_REJECTED", ["Use CC0, public domain, or clear CC BY material only."]);
@@ -65,7 +67,7 @@ export async function downloadSample(url: string, destinationName: string, metad
   const safeName = destinationName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const target = path.join(LOCAL_PATHS.staging, safeName);
   await resolveSafePath(target, { mustExist: false, forWrite: true });
-  const response = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+  const response = await fetch(safeUrl, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok || !response.body) throw new AbletonMcpError(`Download failed with HTTP ${response.status}.`, "DOWNLOAD_ERROR");
   const bytes = Buffer.from(await response.arrayBuffer());
   await fs.writeFile(target, bytes, { flag: "wx" });

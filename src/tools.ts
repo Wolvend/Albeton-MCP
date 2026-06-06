@@ -7,7 +7,8 @@ import { bridgeAction, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { environmentSnapshot } from "./environment.js";
 import { requireFlag } from "./errors.js";
-import { fail, ok, paginate } from "./response.js";
+import { paginate } from "./response.js";
+import { getRuntimeReport, runTool, type RuntimeTool, type ToolAnnotations } from "./runtime.js";
 import { getScanStatus, scanLibrary } from "./scanner.js";
 import { queryLibrary } from "./cache.js";
 import { downloadSample, getInternetArchiveMetadata, importSampleToLibrary, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
@@ -23,7 +24,7 @@ type ToolDef = {
   name: string;
   description: string;
   inputSchema: Record<string, z.ZodTypeAny>;
-  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: boolean };
+  annotations: ToolAnnotations;
   handler: (args: any) => Promise<Record<string, unknown>>;
 };
 
@@ -173,6 +174,25 @@ toolDefs.push(
 
   { name: "ableton_mcp_health", description: "Health check for the MCP server.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, health: { started: true, roots: rootsForReport(), scan: getScanStatus() } }) },
   { name: "ableton_mcp_list_capabilities", description: "List registered MCP tool capabilities.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, toolCount: toolDefs.length, tools: toolDefs.map((tool) => ({ name: tool.name, annotations: tool.annotations })) }) },
+  { name: "ableton_mcp_get_runtime_report", description: "Report FastMCP-inspired middleware, limits, cache, rate-limit, and timing metrics.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, runtimeReport: getRuntimeReport() }) },
+  { name: "ableton_mcp_security_report", description: "Report active security controls and feature gates.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, security: {
+    readOnlyByDefault: !FLAGS.write,
+    uiControlDisabledByDefault: !FLAGS.uiControl,
+    downloadsDisabledByDefault: !FLAGS.downloads,
+    allowedRoots: rootsForReport(),
+    networkPolicy: {
+      sampleDownloadsRequireHttps: true,
+      approvedSampleHostsOnly: true,
+      arbitraryUrlFetch: false,
+      privateAndLocalHostsRejected: true
+    },
+    filesystemPolicy: {
+      realpathResolution: true,
+      symlinkEscapeRejected: true,
+      broadAppDataRejected: true,
+      credentialFoldersRejected: true
+    }
+  } }) },
   { name: "ableton_mcp_run_self_test", description: "Run lightweight self-tests.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, selfTest: { environment: await environmentSnapshot(), capabilities: toolDefs.length } }) },
   { name: "ableton_mcp_run_bridge_mock_test", description: "Run bridge mock contract check.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeMock: { requestShape: { id: "uuid", action: "ping" }, responseShape: { ok: true, heartbeat: "iso-date" } } }) },
   { name: "ableton_mcp_run_path_security_test", description: "Run path security rejection checks.", inputSchema: Empty, annotations: ro, handler: async () => {
@@ -188,17 +208,14 @@ toolDefs.push(
 
 export function registerTools(server: McpServer) {
   for (const tool of toolDefs) {
+    const runtimeTool: RuntimeTool = tool;
     server.registerTool(tool.name, {
       title: tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema,
       annotations: tool.annotations
     }, async (args) => {
-      try {
-        return ok(await tool.handler(args), tool.description);
-      } catch (error) {
-        return fail(error);
-      }
+      return runTool(runtimeTool, args);
     });
   }
 }

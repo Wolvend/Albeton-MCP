@@ -2,7 +2,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const PROJECT_ROOT = path.resolve(here, "..");
+function detectProjectRoot() {
+  const parent = path.basename(path.dirname(here)).toLowerCase();
+  if (parent === "dist") return path.resolve(here, "..", "..");
+  return path.resolve(here, "..");
+}
+
+export const PROJECT_ROOT = detectProjectRoot();
 
 export const LOCAL_PATHS = {
   projectRoot: PROJECT_ROOT,
