@@ -23,4 +23,25 @@ describe("Max for Live bridge source", () => {
     await execFileAsync("C:\\Program Files\\nodejs\\node.exe", ["--check", httpScript], { timeout: 10_000 });
     await execFileAsync("C:\\Program Files\\nodejs\\node.exe", ["--check", liveApiScript], { timeout: 10_000 });
   });
+
+  it("documents implemented LiveAPI bridge actions in source", async () => {
+    const liveApiScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-liveapi.js");
+    const source = await fs.readFile(liveApiScript, "utf8");
+    for (const action of [
+      "list_return_tracks",
+      "master_track",
+      "track_mixer",
+      "list_clip_slots",
+      "ableton_create_scene",
+      "ableton_create_clip",
+      "ableton_fire_clip",
+      "ableton_stop_clip",
+      "ableton_set_track_volume",
+      "ableton_set_track_pan",
+      "ableton_set_device_parameter",
+      "ableton_rename_clip"
+    ]) {
+      expect(source).toContain(action);
+    }
+  });
 });

@@ -18,4 +18,6 @@ The v1 bridge is implemented as:
 
 Load the `.maxpat` in a Max for Live device with both JS files in the same folder, then run `ableton_bridge_ping`.
 
+The bridge currently covers broad read visibility plus common write-gated operations: track/return/master summaries, scenes, clip slots, clips, devices, parameters, mixer volume/pan, clip creation/launch/stop/loop/rename, scene creation, track creation, track arm/mute/solo/rename, tempo, and transport.
+
 AbletonOSC remains a fallback/reference only. It has broad Live Object Model coverage, but the custom bridge is preferred for request IDs, diff snapshots, and tighter safety gates.

@@ -147,6 +147,56 @@ function summarizeTrack(trackIndex, includeDevices, includeClips) {
   };
 }
 
+function summarizeReturnTrack(returnIndex, includeDevices) {
+  var trackApi = liveObject("live_set return_tracks " + returnIndex);
+  var deviceCount = childCount(trackApi, "devices");
+  var devices = [];
+  if (includeDevices) {
+    for (var i = 0; i < deviceCount; i += 1) {
+      devices.push(summarizeDevice(liveObject("live_set return_tracks " + returnIndex + " devices " + i), i));
+    }
+  }
+  return {
+    id: objectId(trackApi),
+    index: returnIndex,
+    name: safeGet(trackApi, "name", ""),
+    color: safeGet(trackApi, "color", null),
+    mute: safeGet(trackApi, "mute", null),
+    solo: safeGet(trackApi, "solo", null),
+    device_count: deviceCount,
+    devices: devices
+  };
+}
+
+function summarizeMasterTrack(includeDevices) {
+  var trackApi = liveObject("live_set master_track");
+  var deviceCount = childCount(trackApi, "devices");
+  var devices = [];
+  if (includeDevices) {
+    for (var i = 0; i < deviceCount; i += 1) {
+      devices.push(summarizeDevice(liveObject("live_set master_track devices " + i), i));
+    }
+  }
+  return {
+    id: objectId(trackApi),
+    name: safeGet(trackApi, "name", "Master"),
+    color: safeGet(trackApi, "color", null),
+    device_count: deviceCount,
+    devices: devices,
+    mixer: mixerSummary("live_set master_track")
+  };
+}
+
+function mixerSummary(trackPath) {
+  var mixerPath = trackPath + " mixer_device";
+  var volume = liveObject(mixerPath + " volume");
+  var panning = liveObject(mixerPath + " panning");
+  return {
+    volume: summarizeParameter(volume, 0),
+    panning: summarizeParameter(panning, 1)
+  };
+}
+
 function summarizeScene(sceneIndex) {
   var sceneApi = liveObject("live_set scenes " + sceneIndex);
   return {
@@ -185,6 +235,16 @@ function listTracks(includeDevices, includeClips) {
   var tracks = [];
   for (var i = 0; i < count; i += 1) {
     tracks.push(summarizeTrack(i, includeDevices, includeClips));
+  }
+  return tracks;
+}
+
+function listReturnTracks(includeDevices) {
+  var song = liveObject("live_set");
+  var count = childCount(song, "return_tracks");
+  var tracks = [];
+  for (var i = 0; i < count; i += 1) {
+    tracks.push(summarizeReturnTrack(i, includeDevices));
   }
   return tracks;
 }
@@ -253,6 +313,24 @@ function listDeviceParameters(payload) {
   return { track_index: trackIndex, device_index: deviceIndex, parameters: parameters };
 }
 
+function listClipSlots(payload) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackApi = liveObject("live_set tracks " + trackIndex);
+  var count = childCount(trackApi, "clip_slots");
+  var slots = [];
+  for (var i = 0; i < count; i += 1) {
+    slots.push(summarizeClipSlot(trackIndex, i));
+  }
+  return { track_index: trackIndex, clip_slots: slots };
+}
+
+function getTrackMixer(payload) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  return { track_index: trackIndex, mixer: mixerSummary("live_set tracks " + trackIndex) };
+}
+
 function fullSnapshot() {
   return {
     state: liveState(),
@@ -315,6 +393,103 @@ function createTrack(kind) {
   throw new Error("Unsupported track kind.");
 }
 
+function createScene() {
+  return safeCall(liveObject("live_set"), "create_scene", [-1]);
+}
+
+function clipSlotFromPayload(payload) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var slotIndex = parseIndex(payload, "slot_index");
+  if (slotIndex === null) slotIndex = 0;
+  return {
+    track_index: trackIndex,
+    slot_index: slotIndex,
+    slot: liveObject("live_set tracks " + trackIndex + " clip_slots " + slotIndex),
+    clip_path: "live_set tracks " + trackIndex + " clip_slots " + slotIndex + " clip"
+  };
+}
+
+function createClip(payload) {
+  var target = clipSlotFromPayload(payload);
+  if (Number(safeGet(target.slot, "has_clip", 0)) === 1) throw new Error("Clip slot already contains a clip.");
+  var length = Number(payload && payload.length ? payload.length : 4);
+  if (!isFinite(length) || length <= 0 || length > 1024) throw new Error("Clip length must be between 0 and 1024 beats.");
+  var result = safeCall(target.slot, "create_clip", [length]);
+  return { track_index: target.track_index, slot_index: target.slot_index, length: length, result: result };
+}
+
+function fireClip(payload) {
+  var target = clipSlotFromPayload(payload);
+  return { track_index: target.track_index, slot_index: target.slot_index, result: safeCall(target.slot, "fire") };
+}
+
+function stopClip(payload) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var slotIndex = parseIndex(payload, "slot_index");
+  if (slotIndex === null) {
+    return { track_index: trackIndex, result: safeCall(liveObject("live_set tracks " + trackIndex), "stop_all_clips") };
+  }
+  var slot = liveObject("live_set tracks " + trackIndex + " clip_slots " + slotIndex);
+  return { track_index: trackIndex, slot_index: slotIndex, result: safeCall(slot, "stop") };
+}
+
+function setClipLoop(payload) {
+  var target = clipSlotFromPayload(payload);
+  var clip = liveObject(target.clip_path);
+  if (payload.looping !== undefined) clip.set("looping", payload.looping ? 1 : 0);
+  if (payload.loop_start !== undefined) clip.set("loop_start", Number(payload.loop_start));
+  if (payload.loop_end !== undefined) clip.set("loop_end", Number(payload.loop_end));
+  return {
+    track_index: target.track_index,
+    slot_index: target.slot_index,
+    loop_start: safeGet(clip, "loop_start", null),
+    loop_end: safeGet(clip, "loop_end", null),
+    looping: safeGet(clip, "looping", null)
+  };
+}
+
+function renameClip(payload) {
+  var target = clipSlotFromPayload(payload);
+  var clip = liveObject(target.clip_path);
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  if (!name) throw new Error("Clip name is required.");
+  clip.set("name", name);
+  return { track_index: target.track_index, slot_index: target.slot_index, name: name };
+}
+
+function setMixerParameter(payload, parameterName, minValue, maxValue) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var value = Number(payload && payload.value);
+  if (!isFinite(value) || value < minValue || value > maxValue) {
+    throw new Error(parameterName + " value must be between " + minValue + " and " + maxValue + ".");
+  }
+  var parameter = liveObject("live_set tracks " + trackIndex + " mixer_device " + parameterName);
+  parameter.set("value", value);
+  return { track_index: trackIndex, parameter: parameterName, value: safeGet(parameter, "value", null) };
+}
+
+function setDeviceParameter(payload) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var deviceIndex = parseIndex(payload, "device_id");
+  if (deviceIndex === null) deviceIndex = 0;
+  var parameterIndex = parseIndex(payload, "parameter_id");
+  if (parameterIndex === null) throw new Error("parameter_id is required.");
+  var value = Number(payload && payload.value);
+  if (!isFinite(value)) throw new Error("Parameter value must be numeric.");
+  var parameter = liveObject("live_set tracks " + trackIndex + " devices " + deviceIndex + " parameters " + parameterIndex);
+  parameter.set("value", value);
+  return {
+    track_index: trackIndex,
+    device_index: deviceIndex,
+    parameter_index: parameterIndex,
+    parameter: summarizeParameter(parameter, parameterIndex)
+  };
+}
+
 function dispatch(action, payload) {
   if (action === "ping") return { heartbeat: new Date().toISOString(), bridge: "ableton-mcp-liveapi", version: 1 };
   if (action === "live_state") return liveState();
@@ -323,8 +498,12 @@ function dispatch(action, payload) {
   if (action === "full_snapshot") return fullSnapshot();
   if (action === "snapshot_diff") return snapshotDiff();
   if (action === "list_tracks") return { tracks: listTracks(false, false) };
+  if (action === "list_return_tracks") return { return_tracks: listReturnTracks(false) };
+  if (action === "master_track") return { master_track: summarizeMasterTrack(false) };
+  if (action === "track_mixer") return getTrackMixer(payload);
   if (action === "list_scenes") return { scenes: listScenes() };
   if (action === "list_clips") return { clips: listClips() };
+  if (action === "list_clip_slots") return listClipSlots(payload);
   if (action === "list_devices") return listDevices(payload);
   if (action === "list_device_parameters") return listDeviceParameters(payload);
   if (action === "selected_track") return { track: summarizeTrack(selectedTrackIndex(), false, false) };
@@ -334,10 +513,19 @@ function dispatch(action, payload) {
   if (action === "ableton_create_audio_track") return createTrack("audio");
   if (action === "ableton_create_midi_track") return createTrack("midi");
   if (action === "ableton_create_return_track") return createTrack("return");
+  if (action === "ableton_create_scene") return createScene();
+  if (action === "ableton_create_clip" || action === "ableton_create_midi_clip") return createClip(payload);
+  if (action === "ableton_set_clip_loop") return setClipLoop(payload);
+  if (action === "ableton_fire_clip") return fireClip(payload);
+  if (action === "ableton_stop_clip") return stopClip(payload);
   if (action === "ableton_arm_track") return setTrackBoolean(payload, "arm");
   if (action === "ableton_mute_track") return setTrackBoolean(payload, "mute");
   if (action === "ableton_solo_track") return setTrackBoolean(payload, "solo");
+  if (action === "ableton_set_track_volume") return setMixerParameter(payload, "volume", 0, 1);
+  if (action === "ableton_set_track_pan") return setMixerParameter(payload, "panning", -1, 1);
+  if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);
+  if (action === "ableton_rename_clip") return renameClip(payload);
   return { unsupported: true, action: action, message: "Action is registered on the MCP side but not implemented in the v1 LiveAPI bridge yet." };
 }
 

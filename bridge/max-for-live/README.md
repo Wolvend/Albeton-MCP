@@ -46,8 +46,12 @@ Response:
 - `full_snapshot`
 - `snapshot_diff`
 - `list_tracks`
+- `list_return_tracks`
+- `master_track`
+- `track_mixer`
 - `list_scenes`
 - `list_clips`
+- `list_clip_slots`
 - `list_devices`
 - `list_device_parameters`
 - `selected_track`
@@ -57,9 +61,19 @@ Response:
 - `ableton_create_audio_track`
 - `ableton_create_midi_track`
 - `ableton_create_return_track`
+- `ableton_create_scene`
+- `ableton_create_clip`
+- `ableton_create_midi_clip`
+- `ableton_set_clip_loop`
+- `ableton_fire_clip`
+- `ableton_stop_clip`
 - `ableton_arm_track`
 - `ableton_mute_track`
 - `ableton_solo_track`
+- `ableton_set_track_volume`
+- `ableton_set_track_pan`
+- `ableton_set_device_parameter`
 - `ableton_rename_track`
+- `ableton_rename_clip`
 
 Other MCP write tools remain gated and return a structured unsupported-action response until mapped to LiveAPI.
