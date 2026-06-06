@@ -168,7 +168,10 @@ for (const name of writeToolNames) {
 }
 
 toolDefs.push(
-  { name: "ableton_window_status", description: "Report Ableton window status from bridge/UI layer.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiDriverStatus: getUiDriverRuntimeState(), bridge: await bridgeAction("window_status") as any }) },
+  { name: "ableton_window_status", description: "Report Ableton window status from the ChromeDriver-style UI driver.", inputSchema: Empty, annotations: ro, handler: async () => {
+    if (!FLAGS.uiControl) return { ok: true, uiDriverStatus: getUiDriverRuntimeState(), note: "Set ABLETON_MCP_ENABLE_UI_CONTROL=1 and start the UI driver to query live Ableton windows." };
+    return { ok: true, uiDriver: await uiDriverAction("window_status") as Record<string, unknown> };
+  } },
   { name: "ableton_focus_window", description: "Focus Ableton window when UI control is enabled.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => uiWrite("focus_window", args) },
   { name: "ableton_capture_screenshot", description: "Capture Ableton-window screenshot through the UI driver.", inputSchema: { ...DryRun }, annotations: ro, handler: async (args) => {
     requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", "Ableton screenshot capture");
