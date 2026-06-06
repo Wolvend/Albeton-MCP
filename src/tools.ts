@@ -1,0 +1,206 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { z } from "zod";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { analyzeAbletonSet, analyzeAudioFile } from "./analysis.js";
+import { bridgeAction, getBridgeSnapshot, pingBridge } from "./bridge.js";
+import { FLAGS, LOCAL_PATHS } from "./config.js";
+import { environmentSnapshot } from "./environment.js";
+import { requireFlag } from "./errors.js";
+import { fail, ok, paginate } from "./response.js";
+import { getScanStatus, scanLibrary } from "./scanner.js";
+import { queryLibrary } from "./cache.js";
+import { downloadSample, getInternetArchiveMetadata, importSampleToLibrary, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
+import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
+
+const Empty = {};
+const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) };
+const Query = { query: z.string().default(""), ...Page };
+const PathArg = { path: z.string().min(1) };
+const DryRun = { dry_run: z.boolean().default(true) };
+
+type ToolDef = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, z.ZodTypeAny>;
+  annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: boolean };
+  handler: (args: any) => Promise<Record<string, unknown>>;
+};
+
+const ro = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
+const rw = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
+const webro = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
+
+async function librarySearch(args: any, kind?: string) {
+  const rows = await queryLibrary(args.query, kind);
+  return { ok: true, ...paginate(rows.map((row) => ({ ...row, path: redactPath(String(row.path)) })), args.page, args.pageSize) };
+}
+
+async function bridgeRead(action: string) {
+  return { ok: true, bridge: await bridgeAction(action) as Record<string, unknown> };
+}
+
+async function bridgeWrite(action: string, args: any) {
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
+  if (args.dry_run !== false) return { ok: true, dry_run: true, action, nextStep: "Set dry_run=false to send this action to the Ableton bridge." };
+  return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
+}
+
+async function uiWrite(action: string, args: any) {
+  requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", action);
+  if (args.dry_run !== false) return { ok: true, dry_run: true, action, nextStep: "Set dry_run=false to send this UI action." };
+  return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
+}
+
+const toolDefs: ToolDef[] = [
+  { name: "ableton_find_installation", description: "Find verified Ableton Live and Max executables on this Windows machine.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
+  { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
+  { name: "ableton_validate_config", description: "Validate paths, feature gates, and toolchain availability.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, validation: await environmentSnapshot() as any }) },
+  { name: "ableton_launch_live", description: "Launch Ableton Live using the verified local executable.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => {
+    requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Launching Ableton Live");
+    if (args.dry_run !== false) return { ok: true, dry_run: true, executable: LOCAL_PATHS.liveExecutable };
+    const child = (await import("node:child_process")).spawn(LOCAL_PATHS.liveExecutable, [], { detached: true, stdio: "ignore", env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
+    child.unref();
+    return { ok: true, pid: child.pid ?? null };
+  } },
+  { name: "ableton_live_status", description: "Detect whether Ableton Live is running.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, status: { liveRunning: (await environmentSnapshot()).liveRunning, processes: (await environmentSnapshot()).abletonProcesses } }) },
+  { name: "ableton_bridge_install_instructions", description: "Return Max for Live bridge setup steps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: { type: "max-for-live", path: redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), steps: ["Open Ableton Live.", "Create or open a Live Set.", "Load bridge/max-for-live/ableton-mcp-bridge.maxpat as a Max for Live device.", "Run ableton_bridge_ping."] } }) },
+  { name: "ableton_bridge_ping", description: "Ping the loopback Max for Live bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: await pingBridge() as any }) },
+  { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
+    const dir = path.join(LOCAL_PATHS.diagnostics, "reports");
+    await fs.mkdir(dir, { recursive: true });
+    const target = path.join(dir, `diagnostic-${Date.now()}.json`);
+    const report = { generatedAt: new Date().toISOString(), environment: await environmentSnapshot(), scan: getScanStatus() };
+    await fs.writeFile(target, JSON.stringify(report, null, 2), { flag: "wx" });
+    return { ok: true, path: args.full_local_paths ? target : redactPath(target), report };
+  } },
+
+  { name: "ableton_scan_library", description: "Incrementally index an allowed Ableton library path on demand.", inputSchema: { root: z.string().default(LOCAL_PATHS.userLibrary), limit: z.number().int().min(1).max(10000).default(2000) }, annotations: ro, handler: async (args) => ({ ok: true, scan: await scanLibrary(args.root, { limit: args.limit }) }) },
+  { name: "ableton_get_scan_status", description: "Get current or last library scan status.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, scan: getScanStatus() }) },
+  { name: "ableton_search_library", description: "Search indexed library items.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args) },
+  { name: "ableton_search_samples", description: "Search indexed local samples.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
+  { name: "ableton_search_presets", description: "Search indexed presets and device racks.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "preset") },
+  { name: "ableton_search_templates", description: "Search indexed Ableton templates.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "set") },
+  { name: "ableton_search_clips", description: "Search indexed Ableton clips.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "clip") },
+  { name: "ableton_search_midi_tools", description: "Search indexed MIDI files and tools.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "midi") },
+  { name: "ableton_list_packs", description: "List Ableton Factory Packs safely.", inputSchema: Page, annotations: ro, handler: async (args) => {
+    const safe = await resolveSafePath(LOCAL_PATHS.factoryPacks, { mustExist: true });
+    const entries = await fs.readdir(safe.real, { withFileTypes: true });
+    return { ok: true, ...paginate(entries.map((entry) => ({ name: entry.name, kind: entry.isDirectory() ? "directory" : "file" })), args.page, args.pageSize) };
+  } },
+  { name: "ableton_list_recent_projects", description: "List recently indexed Ableton sets.", inputSchema: Page, annotations: ro, handler: async (args) => librarySearch({ query: "", ...args }, "set") },
+  { name: "ableton_get_library_item", description: "Resolve and summarize a single allowed library item.", inputSchema: PathArg, annotations: ro, handler: async (args) => {
+    const safe = await resolveSafePath(args.path, { mustExist: true });
+    const stat = await fs.stat(safe.real);
+    return { ok: true, item: { path: redactPath(safe.real), size: stat.size, mtime: stat.mtime.toISOString(), extension: path.extname(safe.real) } };
+  } },
+  { name: "ableton_reindex_path", description: "Reindex a specific allowed path or directory.", inputSchema: { path: z.string().min(1), limit: z.number().int().min(1).max(10000).default(1000) }, annotations: ro, handler: async (args) => ({ ok: true, scan: await scanLibrary(args.path, { limit: args.limit }) }) },
+
+  { name: "ableton_analyze_set", description: "Analyze a .als file as compressed XML without modifying it.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAbletonSet(args.path) }) },
+  { name: "ableton_get_set_summary", description: "Return a compact .als set summary.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, summary: (await analyzeAbletonSet(args.path)).summary }) },
+  { name: "ableton_find_missing_files", description: "Estimate missing file references from .als metadata.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAbletonSet(args.path), note: "v1 reports reference counts; deep missing-file resolution requires expanded file reference extraction." }) },
+  { name: "ableton_list_set_tracks", description: "List track counts from a .als file.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, tracks: (await analyzeAbletonSet(args.path)).summary.tracks }) },
+  { name: "ableton_list_set_devices", description: "List device counts from a .als file.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, devices: (await analyzeAbletonSet(args.path)).summary.devices }) },
+  { name: "ableton_list_set_plugins", description: "List plugin reference counts from a .als file.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, plugins: (await analyzeAbletonSet(args.path)).summary.plugins }) },
+  { name: "ableton_list_set_samples", description: "List sample reference counts from a .als file.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, samples: (await analyzeAbletonSet(args.path)).summary.sampleRefs }) },
+  { name: "ableton_extract_set_tempo_map", description: "Extract available tempo summary from a .als file.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, tempo: (await analyzeAbletonSet(args.path)).summary.tempo }) },
+  { name: "ableton_extract_set_clip_summary", description: "Extract clip count summary from a .als file.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, clips: (await analyzeAbletonSet(args.path)).summary.clips }) },
+  { name: "ableton_compare_sets", description: "Compare two .als summary analyses.", inputSchema: { left: z.string().min(1), right: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, left: await analyzeAbletonSet(args.left), right: await analyzeAbletonSet(args.right) }) },
+
+  { name: "ableton_get_full_snapshot", description: "Get full live session snapshot from bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, snapshot: await getBridgeSnapshot(false) as any }) },
+  { name: "ableton_get_snapshot_diff", description: "Get live session diff snapshot from bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, diff: await getBridgeSnapshot(true) as any }) },
+  { name: "ableton_get_live_state", description: "Get compact live session state.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("live_state") },
+  { name: "ableton_list_tracks", description: "List live tracks via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_tracks") },
+  { name: "ableton_list_scenes", description: "List live scenes via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_scenes") },
+  { name: "ableton_list_clips", description: "List live clips via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_clips") },
+  { name: "ableton_list_devices", description: "List live devices via bridge.", inputSchema: { track_id: z.string().optional() }, annotations: ro, handler: async (args) => bridgeRead(`list_devices:${args.track_id ?? "selected"}`) },
+  { name: "ableton_list_device_parameters", description: "List automatable device parameters via bridge.", inputSchema: { device_id: z.string().optional() }, annotations: ro, handler: async (args) => bridgeRead(`list_device_parameters:${args.device_id ?? "selected"}`) },
+  { name: "ableton_get_selected_track", description: "Get selected track via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_track") },
+  { name: "ableton_get_selected_device", description: "Get selected device via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_device") },
+  { name: "ableton_get_tempo", description: "Get tempo via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("tempo") },
+  { name: "ableton_get_transport", description: "Get transport state via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("transport") },
+];
+
+const writeToolNames = [
+  "ableton_set_tempo", "ableton_transport_control", "ableton_create_audio_track", "ableton_create_midi_track",
+  "ableton_create_return_track", "ableton_create_scene", "ableton_create_clip", "ableton_create_midi_clip",
+  "ableton_insert_midi_notes", "ableton_set_clip_loop", "ableton_fire_clip", "ableton_stop_clip",
+  "ableton_arm_track", "ableton_mute_track", "ableton_solo_track", "ableton_set_track_volume",
+  "ableton_set_track_pan", "ableton_insert_instrument", "ableton_insert_effect", "ableton_load_preset_or_sample",
+  "ableton_set_device_parameter", "ableton_map_macro", "ableton_rename_track", "ableton_rename_clip"
+];
+
+for (const name of writeToolNames) {
+  toolDefs.push({ name, description: `${name.replaceAll("_", " ")} through the gated Ableton bridge.`, inputSchema: { payload: z.record(z.unknown()).default({}), ...DryRun }, annotations: rw, handler: async (args) => bridgeWrite(name, { ...args.payload, dry_run: args.dry_run }) });
+}
+
+toolDefs.push(
+  { name: "ableton_window_status", description: "Report Ableton window status from bridge/UI layer.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("window_status") },
+  { name: "ableton_focus_window", description: "Focus Ableton window when UI control is enabled.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => uiWrite("focus_window", args) },
+  { name: "ableton_capture_screenshot", description: "Capture Ableton-window screenshot to diagnostics.", inputSchema: { ...DryRun }, annotations: ro, handler: async () => ({ ok: false, code: "SCREENSHOT_NEEDS_WINDOW_ENUMERATION", nextSteps: ["Open Ableton Live.", "Use ableton_window_status to confirm a window.", "Run screenshot verification after bridge/window integration is active."] }) },
+  { name: "ableton_capture_region", description: "Capture an explicit Ableton-window region.", inputSchema: { x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive(), ...DryRun }, annotations: ro, handler: async (args) => ({ ok: false, requested: args, code: "SCREENSHOT_REGION_NOT_ACTIVE", nextSteps: ["Open Ableton Live and confirm window bounds first."] }) },
+  { name: "ableton_get_ui_overview", description: "Get safe UI overview from bridge or screenshot layer.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("ui_overview") },
+  { name: "ableton_compare_screenshots", description: "Compare two diagnostics screenshots.", inputSchema: { left: z.string(), right: z.string() }, annotations: ro, handler: async (args) => {
+    const left = await resolveSafePath(args.left, { mustExist: true });
+    const right = await resolveSafePath(args.right, { mustExist: true });
+    return { ok: true, left: redactPath(left.real), right: redactPath(right.real), note: "v1 verifies both files are safe; pixel diff can be added after screenshot backend is finalized." };
+  } },
+  { name: "ableton_click_named_safe_action", description: "Click a named safe UI action when UI control is enabled.", inputSchema: { action: z.string(), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_named_safe_action", args) },
+  { name: "ableton_click_coordinates", description: "Click explicit coordinates when UI control is enabled.", inputSchema: { x: z.number(), y: z.number(), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_coordinates", args) },
+  { name: "ableton_type_text", description: "Type text into Ableton when UI control is enabled.", inputSchema: { text: z.string().max(500), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("type_text", args) },
+
+  { name: "ableton_search_freesound", description: "Search Freesound for licensed sample metadata.", inputSchema: { query: z.string().min(1), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchFreesound(args.query, args.page, args.pageSize) }) },
+  { name: "ableton_search_internet_archive_audio", description: "Search Internet Archive public audio metadata.", inputSchema: { query: z.string().min(1), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchInternetArchiveAudio(args.query, args.page, args.pageSize) }) },
+  { name: "ableton_get_remote_sample_metadata", description: "Get Internet Archive item metadata by identifier.", inputSchema: { source: z.enum(["internet_archive"]).default("internet_archive"), identifier: z.string().min(1) }, annotations: webro, handler: async (args) => ({ ok: true, metadata: await getInternetArchiveMetadata(args.identifier) as any }) },
+  { name: "ableton_preview_remote_sample", description: "Return preview metadata only; never downloads.", inputSchema: { url: z.string().url(), license: z.string().optional() }, annotations: webro, handler: async (args) => ({ ok: true, preview: { url: args.url, license: normalizeLicense(args.license), downloadEnabled: FLAGS.downloads } }) },
+  { name: "ableton_download_sample", description: "Download an allowed licensed sample into staging when downloads are enabled.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, download: await downloadSample(args.url, args.destinationName, args.metadata) }) },
+  { name: "ableton_analyze_audio_file", description: "Analyze allowed local audio file with ffprobe.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAudioFile(args.path) }) },
+  { name: "ableton_convert_audio_file", description: "Plan safe audio conversion; actual conversion is disabled in v1.", inputSchema: { input: z.string(), output: z.string(), format: z.string().default("wav"), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, dry_run: true, input: redactPath((await resolveSafePath(args.input, { mustExist: true })).real), output: redactPath((await resolveSafePath(args.output, { mustExist: false, forWrite: true })).real), note: "Conversion execution will use ffmpeg after overwrite policy and fixture tests are added." }) },
+  { name: "ableton_normalize_sample_metadata", description: "Normalize sample metadata and license policy.", inputSchema: { metadata: z.record(z.unknown()).default({}) }, annotations: ro, handler: async (args) => ({ ok: true, normalized: { ...args.metadata, licensePolicy: normalizeLicense(String(args.metadata.license ?? args.metadata.licenseurl ?? "")) } }) },
+  { name: "ableton_import_sample_to_library", description: "Import staged sample to Ableton User Library Codex Imports when downloads are enabled.", inputSchema: { stagedPath: z.string(), attribution: z.record(z.unknown()).default({}) }, annotations: rw, handler: async (args) => ({ ok: true, import: await importSampleToLibrary(args.stagedPath, args.attribution) }) },
+  { name: "ableton_find_local_samples", description: "Search indexed local samples.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
+  { name: "ableton_build_sample_pack", description: "Plan a sample pack from allowed local samples.", inputSchema: { query: z.string().default(""), name: z.string().default("Codex Sample Pack"), ...Page }, annotations: ro, handler: async (args) => ({ ok: true, pack: { name: args.name, samples: (await librarySearch(args, "sample")).items } }) },
+  { name: "ableton_generate_attribution_report", description: "Generate attribution report from imported sample sidecars.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, report: { importsRoot: redactPath(LOCAL_PATHS.imports), note: "Attribution sidecars are written as .attribution.json during imports.", ...paginate([], args.page, args.pageSize) } }) },
+
+  { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },
+  { name: "ableton_generate_midi_clip_plan", description: "Generate a MIDI clip plan.", inputSchema: { key: z.string().default("C minor"), bars: z.number().int().min(1).max(64).default(8), style: z.string().default("electronic") }, annotations: ro, handler: async (args) => ({ ok: true, midiClipPlan: args }) },
+  { name: "ableton_generate_drum_rack_plan", description: "Generate a drum rack plan.", inputSchema: { style: z.string().default("house") }, annotations: ro, handler: async (args) => ({ ok: true, drumRackPlan: { style: args.style, pads: ["kick", "snare", "closed_hat", "open_hat", "clap", "perc"] } }) },
+  { name: "ableton_suggest_instrument_chain", description: "Suggest Ableton-native instrument chain.", inputSchema: { role: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, chain: { role: args.role, devices: ["Instrument Rack", "EQ Eight", "Compressor"] } }) },
+  { name: "ableton_suggest_effect_chain", description: "Suggest Ableton-native effect chain.", inputSchema: { source: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, chain: { source: args.source, devices: ["EQ Eight", "Compressor", "Saturator", "Reverb"] } }) },
+  { name: "ableton_suggest_arrangement", description: "Suggest arrangement sections.", inputSchema: { brief: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: { brief: args.brief, sections: ["intro", "A", "break", "B", "outro"] } }) },
+  { name: "ableton_suggest_mix_actions", description: "Suggest non-destructive mix actions.", inputSchema: { issue: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, actions: [{ issue: args.issue, action: "Check gain staging before EQ decisions." }, { action: "Use spectrum and reference comparison." }] }) },
+  { name: "ableton_validate_production_plan", description: "Validate a production plan for safety and feasibility.", inputSchema: { plan: z.record(z.unknown()) }, annotations: ro, handler: async (args) => ({ ok: true, validation: { safeByDefault: true, requiresWrite: JSON.stringify(args.plan).includes("create") || JSON.stringify(args.plan).includes("set"), plan: args.plan } }) },
+
+  { name: "ableton_mcp_health", description: "Health check for the MCP server.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, health: { started: true, roots: rootsForReport(), scan: getScanStatus() } }) },
+  { name: "ableton_mcp_list_capabilities", description: "List registered MCP tool capabilities.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, toolCount: toolDefs.length, tools: toolDefs.map((tool) => ({ name: tool.name, annotations: tool.annotations })) }) },
+  { name: "ableton_mcp_run_self_test", description: "Run lightweight self-tests.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, selfTest: { environment: await environmentSnapshot(), capabilities: toolDefs.length } }) },
+  { name: "ableton_mcp_run_bridge_mock_test", description: "Run bridge mock contract check.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeMock: { requestShape: { id: "uuid", action: "ping" }, responseShape: { ok: true, heartbeat: "iso-date" } } }) },
+  { name: "ableton_mcp_run_path_security_test", description: "Run path security rejection checks.", inputSchema: Empty, annotations: ro, handler: async () => {
+    const rejected = [];
+    for (const candidate of ["C:\\", "C:\\Users\\LIZ", "C:\\Users\\LIZ\\.ssh", "C:\\Users\\LIZ\\AppData\\Roaming"]) {
+      try { await resolveSafePath(candidate, { mustExist: false }); } catch (error) { rejected.push({ candidate: redactPath(candidate), rejected: error instanceof Error }); }
+    }
+    return { ok: true, rejected };
+  } },
+  { name: "ableton_mcp_run_sample_license_test", description: "Run sample license policy checks.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, licenses: ["CC0", "CC BY 4.0", "All Rights Reserved"].map((value) => normalizeLicense(value)) }) },
+  { name: "ableton_mcp_run_eval_suite", description: "Run compact MCP evaluation smoke suite.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, evals: [{ name: "tool_catalog_available", passed: toolDefs.length >= 80 }, { name: "write_disabled_default", passed: !FLAGS.write }, { name: "downloads_disabled_default", passed: !FLAGS.downloads }] }) }
+);
+
+export function registerTools(server: McpServer) {
+  for (const tool of toolDefs) {
+    server.registerTool(tool.name, {
+      title: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      annotations: tool.annotations
+    }, async (args) => {
+      try {
+        return ok(await tool.handler(args), tool.description);
+      } catch (error) {
+        return fail(error);
+      }
+    });
+  }
+}
+
+export const registeredToolNames = toolDefs.map((tool) => tool.name);

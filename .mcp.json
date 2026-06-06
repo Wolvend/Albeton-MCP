@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ableton-mcp": {
+      "command": "node",
+      "args": ["C:/Users/LIZ/Desktop/MCP/ableton-mcp/dist/src/index.js"],
+      "env": {
+        "ABLETON_MCP_ALLOWED_ROOTS": "C:/Users/LIZ/Desktop/MCP/ableton-mcp;C:/Users/LIZ/Documents/Ableton;C:/ProgramData/Ableton/Live 12 Trial",
+        "ABLETON_MCP_ENABLE_WRITE": "0",
+        "ABLETON_MCP_ENABLE_UI_CONTROL": "0",
+        "ABLETON_MCP_ENABLE_DOWNLOADS": "0"
+      }
+    }
+  }
+}

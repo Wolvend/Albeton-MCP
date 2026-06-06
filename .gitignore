@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.env
+*.log
+*.tmp
+tests/fixtures/
+data/cache/*
+data/imports/*
+samples/staging/*
+diagnostics/screenshots/*
+diagnostics/reports/*
+!data/cache/.gitkeep
+!data/imports/.gitkeep
+!samples/staging/.gitkeep
+!diagnostics/screenshots/.gitkeep
+!diagnostics/reports/.gitkeep

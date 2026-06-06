@@ -1,0 +1,12 @@
+import { describe, expect, it } from "vitest";
+import { registeredToolNames } from "../src/tools.js";
+
+describe("tool catalog", () => {
+  it("registers the requested production tool surface", () => {
+    expect(registeredToolNames.length).toBeGreaterThanOrEqual(80);
+    expect(registeredToolNames).toContain("ableton_get_environment");
+    expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");
+    expect(registeredToolNames).toContain("ableton_set_tempo");
+    expect(registeredToolNames).toContain("ableton_search_freesound");
+  });
+});
