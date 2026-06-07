@@ -43,6 +43,9 @@ Response:
 - `ableton_ui_driver_status`
 - `ableton_ui_control_consent_status`
 - `ableton_plan_ui_control_session`
+- `ableton_list_safe_ui_actions`
+- `ableton_plan_ui_action_sequence`
+- `ableton_run_ui_action_sequence`
 - `ableton_ui_driver_ping`
 - `ableton_focus_window`
 - `ableton_capture_screenshot`
@@ -50,6 +53,17 @@ Response:
 - `ableton_click_named_safe_action`
 - `ableton_click_coordinates`
 - `ableton_type_text`
+
+## Named Safe Actions
+
+Use named actions first:
+
+- `focus_window`
+- `capture_screenshot`
+- `capture_browser_region`
+- `capture_detail_region`
+
+These actions are reviewed, Ableton-window scoped, serialized, and dry-run friendly. Raw coordinate clicks remain a fallback for cases where the named action map does not cover the workflow.
 
 ## Run the driver
 

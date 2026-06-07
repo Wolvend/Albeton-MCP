@@ -16,7 +16,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Latest pass reported 16 test files and 31 tests passed.
+Result: succeeded. Latest pass reported 16 test files and 36 tests passed.
 
 ```powershell
 npm run lint
@@ -52,19 +52,19 @@ Result: succeeded. Built the server, installed the Max for Live bridge files, an
 npm run sweep:safe
 ```
 
-Result: succeeded. The safe sweep called 72 representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures.
+Result: succeeded. The safe sweep called 78 representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures. The sweep includes the named safe UI action listing, planning, and dry-run sequence tools.
 
 ```powershell
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 145 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
+Result: succeeded. The verifier reported 151 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
 
 ```powershell
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 145 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 151 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ```powershell
 # Temporary localhost auth smoke on port 17466
@@ -109,6 +109,12 @@ npm audit --audit-level=moderate
 ```
 
 Result: succeeded. npm reported 0 vulnerabilities.
+
+```powershell
+# Named safe UI action verifier
+```
+
+Result: succeeded as part of `npm run doctor`, `npm run sweep:safe`, and `npm run verify:mcp`. The tool catalog now includes `ableton_list_safe_ui_actions`, `ableton_plan_ui_action_sequence`, and `ableton_run_ui_action_sequence`; raw coordinate UI control remains an explicit fallback only.
 
 ## Earlier full MCP sweep
 
@@ -184,3 +190,4 @@ The UI driver was left listening on `127.0.0.1:17365` for continued local contro
 - Plugin/package downloader tools are staging-only, require the downloads feature gate for downloads, restrict URL hosts, and never run installers.
 - The Max for Live bridge source includes a Node-for-Max HTTP server and a LiveAPI handler for ping, snapshots, live-state reads, track/return/master/scene/clip-slot/clip/device/parameter/mixer listing, selected objects, tempo/transport, track and scene creation, clip creation/launch/stop/loop/rename, mixer volume/pan, device parameter setting, track arm/mute/solo, and track rename.
 - The Ableton UI driver service includes loopback-only ping, status, Ableton window discovery, focus, Ableton-window-only screenshot capture, bounded region capture, window-relative click, and bounded text input.
+- Named safe UI actions provide reviewed, serialized, Ableton-window-scoped focus and screenshot workflows before agents fall back to raw coordinates.

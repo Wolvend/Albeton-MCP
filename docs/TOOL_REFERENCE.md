@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-148 tools
+151 tools
 3 resources
 2 prompts
 ```
@@ -32,6 +32,7 @@ Primary groups:
 - Automation, groove, and arrangement workflows
 - Bridge discovery for arrangement markers, clip notes, envelopes, and device parameter maps
 - User-choice UI control consent and production readiness checks
+- Named safe UI actions and dry-run action sequences
 - Screenshot and UI tools
 - Legal sample discovery/import
 - Plugin/package discovery, validation, and download staging
