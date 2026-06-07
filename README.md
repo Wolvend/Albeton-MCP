@@ -71,7 +71,7 @@ Use these launch modes:
 | Bridge install | `.\launch.ps1 install` | Installs the Ableton Max for Live preset and companion files without starting a server. |
 | Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
-| Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe sweep, MCP verifier, and npm audit. |
+| Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
 | Live smoke | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge readiness with read-only and dry-run calls only. |
 | UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
 
@@ -244,7 +244,7 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 17 files, 40 tests passed
+Tests: 18 files, 42 tests passed
 Lint: passed
 Doctor: passed with 0 warnings
 Release check: passed
@@ -252,6 +252,7 @@ Safe sweep: passed
 Live smoke: passed with bridge reachable, live state, snapshot, tracks, scenes, devices, and dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
 MCP verifier: 151 tools, 3 resources, 2 prompts
+All-tool contract sweep: 151 registered tools, 151 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
 Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles

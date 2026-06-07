@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "live-smoke", "inspect", "ui-driver", "bridge-listener", "help")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-smoke", "inspect", "ui-driver", "bridge-listener", "help")]
   [string]$Mode = "stdio",
   [switch]$SkipSetup,
   [switch]$NoBuild,
@@ -41,11 +41,12 @@ Modes:
   setup            Build, install bridge files, and generate client configs.
   install          Build and install Ableton Max for Live bridge files only.
   verify           Build and run MCP verifier.
-  check            Build, test, lint, doctor, release check, safe sweep, verifier, audit.
+  check            Build, test, lint, doctor, release check, sweeps, verifier, audit.
   doctor           Run environment and listener checks.
   test, lint       Run unit tests or lint.
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
+  sweep-all        Run exhaustive safe contract sweep for every registered tool.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
@@ -152,6 +153,7 @@ switch ($Mode) {
     Invoke-CapturedStep { & npm.cmd run doctor }
     Invoke-CapturedStep { & npm.cmd run release:check }
     Invoke-CapturedStep { & npm.cmd run sweep:safe }
+    Invoke-CapturedStep { & npm.cmd run sweep:all }
     Invoke-CapturedStep { & npm.cmd run verify:mcp }
     Invoke-CapturedStep { & npm.cmd audit --audit-level=moderate }
   }
@@ -173,6 +175,11 @@ switch ($Mode) {
   "sweep" {
     Invoke-Setup
     & npm.cmd run sweep:safe
+    exit $LASTEXITCODE
+  }
+  "sweep-all" {
+    Invoke-Setup
+    & npm.cmd run sweep:all
     exit $LASTEXITCODE
   }
   "live-smoke" {

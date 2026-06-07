@@ -81,8 +81,8 @@ async function bridgeRead(action: string, payload: Record<string, unknown> = {})
 }
 
 async function bridgeWrite(action: string, args: any) {
-  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
   if (args.dry_run !== false) return { ok: true, dry_run: true, action, nextStep: "Set dry_run=false to send this action to the Ableton bridge." };
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
   return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
 }
 
@@ -101,8 +101,8 @@ async function typedBridgeWrite(action: string, args: any, plan: Record<string, 
 }
 
 async function uiWrite(action: string, args: any) {
-  requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", action);
   if (args.dry_run !== false) return { ok: true, dry_run: true, action, uiDriver: getUiDriverRuntimeState(), nextStep: "Set dry_run=false only when the Ableton UI driver is attached and you intentionally want mouse/keyboard control." };
+  requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", action);
   return { ok: true, uiDriver: await uiDriverAction(action, args) as Record<string, unknown> };
 }
 

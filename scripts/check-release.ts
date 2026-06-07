@@ -53,7 +53,7 @@ const packageJson = JSON.parse(await fs.readFile(path.join(PROJECT_ROOT, "packag
   engines?: Record<string, string>;
 };
 
-const scriptChecks = ["build", "test", "lint", "verify:mcp", "doctor", "configure:clients", "sweep:safe", "live-smoke"];
+const scriptChecks = ["build", "test", "lint", "verify:mcp", "doctor", "configure:clients", "sweep:safe", "sweep:all", "live-smoke"];
 const missingScripts = scriptChecks.filter((script) => !packageJson.scripts?.[script]);
 
 const ok = missing.length === 0 && missingScripts.length === 0;

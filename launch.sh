@@ -142,11 +142,12 @@ Modes:
   setup            Build, install bridge files, and generate client configs.
   install          Build and install Ableton Max for Live bridge files only.
   verify           Build and run MCP verifier.
-  check            Build, test, lint, doctor, release check, safe sweep, verifier, audit.
+  check            Build, test, lint, doctor, release check, sweeps, verifier, audit.
   doctor           Run environment and listener checks.
   test, lint       Run unit tests or lint.
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
+  sweep-all        Run exhaustive safe contract sweep for every registered tool.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
@@ -215,6 +216,7 @@ case "$MODE" in
     npm run doctor
     npm run release:check
     npm run sweep:safe
+    npm run sweep:all
     npm run verify:mcp
     npm audit --audit-level=moderate
     ;;
@@ -233,6 +235,10 @@ case "$MODE" in
   sweep)
     run_setup
     npm run sweep:safe
+    ;;
+  sweep-all)
+    run_setup
+    npm run sweep:all
     ;;
   live-smoke)
     run_setup

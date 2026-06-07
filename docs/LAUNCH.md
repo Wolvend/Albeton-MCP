@@ -36,12 +36,13 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `install` | `.\launch.ps1 install` | Builds and installs the Max for Live bridge preset files only. |
 | `setup` | `.\launch.ps1 setup` | Builds, installs bridge files, and writes generated Codex, Claude, Cursor, WSL, local HTTP, and Tailscale HTTP client configs. |
 | `verify` | `.\launch.ps1 verify` | Builds, installs bridge files, then runs `npm run verify:mcp`. |
-| `check` | `.\launch.ps1 check` | Builds, tests, lints, runs doctor, release check, safe sweep, MCP verifier, and npm audit. |
+| `check` | `.\launch.ps1 check` | Builds, tests, lints, runs doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
 | `doctor` | `.\launch.ps1 doctor` | Runs environment, catalog, and listener checks. |
 | `test` | `.\launch.ps1 test` | Runs unit tests. |
 | `lint` | `.\launch.ps1 lint` | Runs ESLint. |
 | `build` | `.\launch.ps1 build` | Builds TypeScript only. |
 | `sweep` | `.\launch.ps1 sweep` | Runs the read-only/dry-run MCP safe sweep. |
+| `sweep-all` | `.\launch.ps1 sweep-all` | Calls every registered tool once with safe read-only or dry-run arguments. |
 | `live-smoke` | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge readiness with read-only and dry-run calls only. |
 | `inspect` | `.\launch.ps1 inspect` | Lists tools through MCP Inspector. |
 | `ui-driver` | `.\launch.ps1 ui-driver` | Enables `ABLETON_MCP_ENABLE_UI_CONTROL=1` and starts the foreground Ableton UI driver. |

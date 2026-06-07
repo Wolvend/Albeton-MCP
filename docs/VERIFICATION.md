@@ -44,6 +44,12 @@ Run the safe read-only/dry-run MCP sweep:
 npm run sweep:safe
 ```
 
+Run the exhaustive safe contract sweep for every registered tool:
+
+```powershell
+npm run sweep:all
+```
+
 Run the safe Ableton live bridge smoke after Ableton is open and the bridge device is loaded:
 
 ```powershell
@@ -61,8 +67,9 @@ Native WSL Node can verify the MCP server, but it may not reach the Windows-only
 Expected current results:
 
 ```text
-Tests: 17 files, 40 tests passed
+Tests: 18 files, 42 tests passed
 MCP verifier: 151 tools, 3 resources, 2 prompts
+All-tool contract sweep: 151 registered tools, 151 safe calls
 Audit: 0 vulnerabilities
 ```
 

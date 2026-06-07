@@ -16,7 +16,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Latest pass reported 17 test files and 40 tests passed.
+Result: succeeded. Latest pass reported 18 test files and 42 tests passed.
 
 ```powershell
 npm run lint
@@ -55,6 +55,12 @@ npm run sweep:safe
 Result: succeeded. The safe sweep called 78 representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures. The sweep includes the named safe UI action listing, planning, and dry-run sequence tools.
 
 ```powershell
+npm run sweep:all
+```
+
+Result: succeeded. The all-tool contract sweep called all 151 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 151 registered tools, 151 calls, 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures.
+
+```powershell
 npm run verify:mcp
 ```
 
@@ -65,6 +71,12 @@ wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE
 ```
 
 Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 151 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+
+```powershell
+wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh sweep-all'
+```
+
+Result: succeeded under WSL2 Ubuntu with native WSL Node. The all-tool sweep reported 151 registered tools, 151 calls, and 0 unexpected failures.
 
 ```powershell
 # Temporary localhost auth smoke on port 17466
@@ -114,7 +126,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 .\launch.ps1 check -SkipSetup
 ```
 
-Result: succeeded. The one-command launcher check ran tests, lint, doctor, release check, safe sweep, MCP verifier, and npm audit. It reported 17 test files, 40 tests, 151 tools, 78 safe-sweep calls, and 0 vulnerabilities.
+Result: succeeded. The one-command launcher check ran tests, lint, doctor, release check, safe sweep, all-tool contract sweep, MCP verifier, and npm audit. It reported 18 test files, 42 tests, 151 tools, 78 safe-sweep calls, 151 all-tool sweep calls, and 0 vulnerabilities.
 
 ```powershell
 # Named safe UI action verifier
@@ -136,7 +148,7 @@ Result: succeeded through the Windows-backed launcher path. The native WSL Node 
 
 ## Earlier full MCP sweep
 
-A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 151 tools, 3 resources, and 2 prompts.
+The current `npm run sweep:all` MCP client sweep calls every registered tool with safe fixture/default arguments. The current verifier confirms the registered surface is now 151 tools, 3 resources, and 2 prompts.
 
 ```powershell
 # MCP client smoke for ableton_bridge_ping, ableton_get_full_snapshot, and typed ableton_duplicate_clip dry-run
@@ -198,7 +210,7 @@ The UI driver was left listening on `127.0.0.1:17365` for continued local contro
 ## Current implementation notes
 
 - All registered MCP tools, resources, and prompts were exercised.
-- Root launchers support regular stdio MCP, Docker/HTTP MCP, bridge install, verifier, check, doctor, test, lint, build, sweep, inspect, bridge-listener, and UI-driver workflows.
+- Root launchers support regular stdio MCP, Docker/HTTP MCP, bridge install, verifier, check, doctor, test, lint, build, sweep, sweep-all, live-smoke, inspect, bridge-listener, and UI-driver workflows.
 - Launcher flags expose explicit process-local gates for writes, downloads, UI control, and token-required private-network HTTP.
 - Platform-aware config supports Windows defaults, macOS defaults, and Linux/WSL headless MCP operation with environment path overrides.
 - Other-device HTTP mode stays disabled by default and requires explicit remote enablement plus bearer-token auth.
