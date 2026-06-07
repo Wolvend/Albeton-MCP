@@ -38,6 +38,16 @@ const AutomationPoint = {
   time: BeatTime,
   value: z.number()
 };
+const SafeUiActionId = z.enum([
+  "focus_window",
+  "capture_screenshot",
+  "capture_browser_region",
+  "capture_detail_region"
+]);
+const SafeUiActionSequence = {
+  actions: z.array(SafeUiActionId).min(1).max(12),
+  ...DryRun
+};
 
 type ToolDef = {
   name: string;
@@ -230,6 +240,15 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_ui_driver_status", description: "Report ChromeDriver-style Ableton UI driver host, port, queue, and last action state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiDriverStatus: getUiDriverRuntimeState() }) },
   { name: "ableton_ui_control_consent_status", description: "Report whether foreground Ableton UI/mouse control has been intentionally enabled by the user.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiControl: uiControlConsentProfile() }) },
   { name: "ableton_plan_ui_control_session", description: "Plan a user-chosen foreground UI/mouse control session without moving the mouse.", inputSchema: { purpose: z.string().min(1).max(500).default("Ableton UI fallback"), actions: z.array(z.enum(["focus", "screenshot", "region_capture", "click", "type"])).max(20).default(["focus", "screenshot"]) }, annotations: ro, handler: async (args) => ({ ok: true, uiPlan: { ...uiControlConsentProfile(args.purpose), requestedActions: args.actions, canExecuteNow: FLAGS.uiControl, nextStep: FLAGS.uiControl ? "Start with ableton_window_status or ableton_capture_screenshot." : "Run .\\launch.ps1 ui-driver or set ABLETON_MCP_ENABLE_UI_CONTROL=1 only when foreground control is intentional." } }) },
+  { name: "ableton_list_safe_ui_actions", description: "List reviewed Ableton UI actions that may be run only when UI control is user-enabled.", inputSchema: Empty, annotations: ro, handler: async () => {
+    if (!FLAGS.uiControl) return { ok: true, uiControl: uiControlConsentProfile("List safe UI actions"), actions: [], note: "Start the UI driver to query the live driver allowlist." };
+    return { ok: true, uiDriver: await uiDriverAction("list_safe_ui_actions") as Record<string, unknown> };
+  } },
+  { name: "ableton_plan_ui_action_sequence", description: "Plan a reviewed Ableton UI action sequence without moving the mouse.", inputSchema: SafeUiActionSequence, annotations: ro, handler: async (args) => {
+    if (!FLAGS.uiControl) return { ok: true, dry_run: true, uiControl: uiControlConsentProfile("Plan UI action sequence"), actions: args.actions, nextStep: "Start the UI driver when foreground control is intentional." };
+    return { ok: true, uiDriver: await uiDriverAction("plan_ui_action_sequence", args) as Record<string, unknown> };
+  } },
+  { name: "ableton_run_ui_action_sequence", description: "Run a reviewed Ableton UI action sequence through the gated UI driver.", inputSchema: SafeUiActionSequence, annotations: rw, handler: async (args) => uiWrite("run_ui_action_sequence", args) },
   { name: "ableton_ui_driver_ping", description: "Ping the loopback Ableton UI driver when UI control is enabled.", inputSchema: Empty, annotations: ro, handler: async () => {
     requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", "Ableton UI driver ping");
     return { ok: true, uiDriver: await pingUiDriver() as any };
@@ -362,7 +381,7 @@ toolDefs.push(
     const right = await resolveSafePath(args.right, { mustExist: true });
     return { ok: true, left: redactPath(left.real), right: redactPath(right.real), note: "v1 verifies both files are safe; pixel diff can be added after screenshot backend is finalized." };
   } },
-  { name: "ableton_click_named_safe_action", description: "Click a named safe UI action when UI control is enabled.", inputSchema: { action: z.string(), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_named_safe_action", args) },
+  { name: "ableton_click_named_safe_action", description: "Run one reviewed named Ableton UI action when UI control is enabled.", inputSchema: { action: SafeUiActionId, ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_named_safe_action", args) },
   { name: "ableton_click_coordinates", description: "Click explicit coordinates when UI control is enabled.", inputSchema: { x: z.number(), y: z.number(), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_coordinates", args) },
   { name: "ableton_type_text", description: "Type text into Ableton when UI control is enabled.", inputSchema: { text: z.string().max(500), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("type_text", args) },
 
