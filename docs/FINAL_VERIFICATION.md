@@ -1,6 +1,6 @@
 # Final Verification Report
 
-Date: 2026-06-06
+Date: 2026-06-06 / 2026-06-07 local runtime checks
 
 This report records the latest local verification pass for the Ableton MCP production build.
 
@@ -16,7 +16,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 13 test files and 24 tests passed.
+Result: succeeded. Latest pass reported 15 test files and 28 tests passed.
 
 ```powershell
 npm run lint
@@ -28,7 +28,27 @@ Result: succeeded.
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 112 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
+Result: succeeded. The verifier reported 114 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\launch.ps1 install
+cmd /c launch.cmd install
+bash ./launch.sh install
+```
+
+Result: succeeded. All three launch entry points built the project and installed the bridge preset files into `%USERPROFILE%\Documents\Ableton\User Library\Presets\MIDI Effects\Max MIDI Effect`.
+
+```powershell
+# MCP client smoke test against launch.cmd stdio -SkipSetup
+```
+
+Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 114 tools. This verifies launcher setup output does not corrupt MCP stdout.
+
+```powershell
+.\launch.ps1 docker -SkipSetup
+```
+
+Result: skipped as a new process because `127.0.0.1:17366` was already bound by `"C:\Program Files\nodejs\node.exe" dist/src/http.js`. A Streamable HTTP MCP `initialize` POST to `http://127.0.0.1:17366/mcp` returned HTTP 200 from that existing service.
 
 ```powershell
 npm run inspect
@@ -42,9 +62,9 @@ npm audit --audit-level=moderate
 
 Result: succeeded. npm reported 0 vulnerabilities.
 
-## Full MCP sweep
+## Earlier full MCP sweep
 
-A separate MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt.
+A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 114 tools, 3 resources, and 2 prompts.
 
 Summary:
 
@@ -87,6 +107,7 @@ The temporary UI driver process was stopped after the smoke test.
 ## Current implementation notes
 
 - All registered MCP tools, resources, and prompts were exercised.
+- Root launchers support regular stdio MCP, Docker/HTTP MCP, bridge install, verifier, and UI-driver workflows.
 - FastMCP-inspired runtime middleware wraps every tool with error handling, timing metrics, per-tool rate limiting, short read-only cache, and response-size limits.
 - MCP resources and prompts are registered for environment, runtime, scan status, safe production planning, and security review.
 - File operations enforce explicit allowed roots, realpath checks, and sensitive-path rejection.

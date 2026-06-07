@@ -4,7 +4,7 @@ registry:
   ableton-mcp:
     type: remote
     image: ""
-    description: Local Windows Ableton Live MCP server exposed through a localhost Streamable HTTP transport. Requires the host Ableton MCP HTTP service to be running.
+    description: Local Windows Ableton Live MCP server exposed through localhost Streamable HTTP. Start the host service with ./launch.sh docker or .\launch.ps1 docker before connecting Docker MCP.
     title: Ableton MCP
     remote:
       url: "http://127.0.0.1:17366/mcp"
