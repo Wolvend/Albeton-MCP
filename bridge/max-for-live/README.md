@@ -28,15 +28,20 @@ Response:
 - `ableton-mcp-http.js`: Node for Max loopback HTTP server on `127.0.0.1:17364`.
 - `package.json`: Keeps the Max bridge folder in CommonJS mode, even though the main MCP project is ESM.
 - `ableton-mcp-liveapi.js`: Max JS LiveAPI handler.
+- `ableton-mcp-status.js`: Max Console status decoder for Node for Max lifecycle errors.
 
 ## Setup
 
 1. Open Ableton Live.
 2. Create a MIDI track.
 3. Add a Max MIDI Effect device.
-4. Open it for editing and load `ableton-mcp-bridge.maxpat`, or copy these three files into a Max device folder and save as an `.amxd`.
+4. Open it for editing and load `ableton-mcp-bridge.maxpat`, or copy these bridge files into a Max device folder and save as an `.amxd`.
 5. Watch the Max console for `Ableton MCP HTTP bridge listening on 127.0.0.1:17364`.
 6. Run `ableton_bridge_ping` from the MCP server.
+
+For the persistent local preset, the `.amxd` and companion files are stored under:
+
+`%USERPROFILE%\Documents\Ableton\User Library\Presets\MIDI Effects\Max MIDI Effect`
 
 ## Implemented v1 Actions
 

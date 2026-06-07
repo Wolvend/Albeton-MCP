@@ -17,7 +17,26 @@ Expected behavior:
 - `bridge/max-for-live/ableton-mcp-liveapi.js`: Max JavaScript LiveAPI action handler.
 - `bridge/max-for-live/ableton-mcp-bridge.maxpat`: patch that wires both scripts together.
 
-Load the `.maxpat` in a Max for Live device with both JS files in the same folder, then run `ableton_bridge_ping`.
+Load the `.maxpat` in a Max for Live device with both JS files and `package.json` in the same folder, then run `ableton_bridge_ping`.
+
+## Permanent local install
+
+The working local preset is saved at:
+
+`%USERPROFILE%\Documents\Ableton\User Library\Presets\MIDI Effects\Max MIDI Effect\Ableton MCP Bridge.amxd`
+
+Keep these companion files in that same preset folder so Node for Max resolves the bridge after Ableton restarts:
+
+- `ableton-mcp-http.js`
+- `ableton-mcp-liveapi.js`
+- `ableton-mcp-status.js`
+- `package.json`
+
+The current saved Live Set is:
+
+`%USERPROFILE%\Documents\Ableton\Ableton MCP Bridge Set\Ableton MCP Bridge Set Project\Ableton MCP Bridge Set.als`
+
+When that set is open, lock the Max device patcher and click `script start` if `ableton_bridge_ping` is not reachable. In normal operation the `node.script ... @autostart 1` object should start the loopback bridge.
 
 ## Current LiveAPI coverage
 
