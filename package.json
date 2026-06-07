@@ -23,6 +23,7 @@
     "inspect": "npx @modelcontextprotocol/inspector --cli node dist/src/index.js --method tools/list",
     "doctor": "node dist/scripts/doctor.js",
     "release:check": "node dist/scripts/check-release.js",
+    "sweep:safe": "node dist/scripts/safe-sweep.js",
     "self-test": "node dist/scripts/self-test.js",
     "verify:mcp": "node dist/scripts/verify-mcp.js"
   },

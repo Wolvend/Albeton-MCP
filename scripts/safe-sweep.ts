@@ -1,0 +1,122 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import zlib from "node:zlib";
+import { promisify } from "node:util";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { LOCAL_PATHS } from "../src/config.js";
+
+const gzip = promisify(zlib.gzip);
+
+type SweepCall = {
+  name: string;
+  arguments: Record<string, unknown>;
+  expected?: "ok" | "any";
+};
+
+async function ensureFixtures() {
+  const dir = path.join(LOCAL_PATHS.projectRoot, "tests", "fixtures", "sweep");
+  await fs.mkdir(dir, { recursive: true });
+  const setPath = path.join(dir, "minimal.als");
+  const textPath = path.join(dir, "note.txt");
+  try {
+    await fs.access(setPath);
+  } catch {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><Ableton><LiveSet><Tracks><MidiTrack></MidiTrack></Tracks><Scenes><Scene></Scene></Scenes><Manual Value="120"/></LiveSet></Ableton>`;
+    await fs.writeFile(setPath, await gzip(Buffer.from(xml, "utf8")), { flag: "wx" });
+  }
+  try {
+    await fs.access(textPath);
+  } catch {
+    await fs.writeFile(textPath, "Ableton MCP safe sweep fixture\n", { flag: "wx" });
+  }
+  return { dir, setPath, textPath };
+}
+
+const fixtures = await ensureFixtures();
+
+const calls: SweepCall[] = [
+  { name: "ableton_mcp_health", arguments: {} },
+  { name: "ableton_mcp_list_capabilities", arguments: {} },
+  { name: "ableton_mcp_get_client_connection_profiles", arguments: {} },
+  { name: "ableton_mcp_run_path_security_test", arguments: {} },
+  { name: "ableton_mcp_run_sample_license_test", arguments: {} },
+  { name: "ableton_mcp_run_eval_suite", arguments: {} },
+  { name: "ableton_get_environment", arguments: {} },
+  { name: "ableton_validate_config", arguments: {} },
+  { name: "ableton_find_installation", arguments: {} },
+  { name: "ableton_live_status", arguments: {} },
+  { name: "ableton_control_mode_status", arguments: {} },
+  { name: "ableton_bridge_status", arguments: {} },
+  { name: "ableton_ui_driver_status", arguments: {} },
+  { name: "ableton_bridge_install_instructions", arguments: {} },
+  { name: "ableton_bridge_install_plan", arguments: {} },
+  { name: "ableton_get_scan_status", arguments: {} },
+  { name: "ableton_search_library", arguments: { query: "", page: 1, pageSize: 5 } },
+  { name: "ableton_search_samples", arguments: { query: "", page: 1, pageSize: 5 } },
+  { name: "ableton_search_presets", arguments: { query: "", page: 1, pageSize: 5 } },
+  { name: "ableton_search_templates", arguments: { query: "", page: 1, pageSize: 5 } },
+  { name: "ableton_search_clips", arguments: { query: "", page: 1, pageSize: 5 } },
+  { name: "ableton_search_midi_tools", arguments: { query: "", page: 1, pageSize: 5 } },
+  { name: "ableton_get_library_item", arguments: { path: fixtures.textPath } },
+  { name: "ableton_analyze_set", arguments: { path: fixtures.setPath } },
+  { name: "ableton_get_set_summary", arguments: { path: fixtures.setPath } },
+  { name: "ableton_list_set_tracks", arguments: { path: fixtures.setPath } },
+  { name: "ableton_list_set_devices", arguments: { path: fixtures.setPath } },
+  { name: "ableton_list_set_plugins", arguments: { path: fixtures.setPath } },
+  { name: "ableton_list_set_samples", arguments: { path: fixtures.setPath } },
+  { name: "ableton_extract_set_tempo_map", arguments: { path: fixtures.setPath } },
+  { name: "ableton_extract_set_clip_summary", arguments: { path: fixtures.setPath } },
+  { name: "ableton_compare_sets", arguments: { left: fixtures.setPath, right: fixtures.setPath } },
+  { name: "ableton_launch_live", arguments: { dry_run: true } },
+  { name: "ableton_install_bridge_files", arguments: { dry_run: true } },
+  { name: "ableton_focus_window", arguments: { dry_run: true }, expected: "any" },
+  { name: "ableton_capture_screenshot", arguments: { dry_run: true }, expected: "any" },
+  { name: "ableton_capture_region", arguments: { x: 0, y: 0, width: 100, height: 100, dry_run: true }, expected: "any" },
+  { name: "ableton_click_named_safe_action", arguments: { action: "noop", dry_run: true }, expected: "any" },
+  { name: "ableton_click_coordinates", arguments: { x: 0, y: 0, dry_run: true }, expected: "any" },
+  { name: "ableton_type_text", arguments: { text: "test", dry_run: true }, expected: "any" },
+  { name: "ableton_search_plugin_catalog", arguments: { query: "ableton" } },
+  { name: "ableton_plan_plugin_download", arguments: { url: "https://www.ableton.com/packs/", destinationName: "plugin.zip", catalogId: "ableton-official-packs" } },
+  { name: "ableton_plugin_install_instructions", arguments: { stagedPath: path.join(LOCAL_PATHS.pluginStaging, "plugin.zip") } },
+  { name: "ableton_normalize_sample_metadata", arguments: { metadata: { license: "CC0" } } },
+  { name: "ableton_preview_remote_sample", arguments: { url: "https://archive.org/download/example/file.wav", license: "CC0" } },
+  { name: "ableton_generate_session_plan", arguments: { brief: "safe sweep" } },
+  { name: "ableton_generate_midi_clip_plan", arguments: {} },
+  { name: "ableton_generate_drum_rack_plan", arguments: {} },
+  { name: "ableton_suggest_instrument_chain", arguments: { role: "lead" } },
+  { name: "ableton_suggest_effect_chain", arguments: { source: "drums" } },
+  { name: "ableton_suggest_arrangement", arguments: { brief: "safe sweep" } },
+  { name: "ableton_suggest_mix_actions", arguments: { issue: "muddy low mids" } },
+  { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep" } } }
+];
+
+const transport = new StdioClientTransport({ command: "node", args: ["dist/src/index.js"] });
+const client = new Client({ name: "ableton-mcp-safe-sweep", version: "0.1.0" });
+await client.connect(transport);
+
+const results = [];
+for (const call of calls) {
+  try {
+    const result = await client.callTool({ name: call.name, arguments: call.arguments });
+    const expected = call.expected ?? "ok";
+    const isError = Boolean(result.isError);
+    results.push({ name: call.name, ok: !isError || expected === "any", isError, expected });
+  } catch (error) {
+    results.push({ name: call.name, ok: false, expected: call.expected ?? "ok", error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+await client.close();
+
+const unexpected = results.filter((result) => !result.ok && result.expected !== "any");
+console.log(JSON.stringify({
+  ok: unexpected.length === 0,
+  calls: results.length,
+  unexpectedFailures: unexpected.length,
+  results
+}, null, 2));
+
+if (unexpected.length > 0) {
+  process.exitCode = 1;
+}

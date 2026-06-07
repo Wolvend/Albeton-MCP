@@ -2,7 +2,7 @@
   "name": "ableton-mcp-remote",
   "transport": {
     "type": "streamable-http",
-    "url": "http://100.x.y.z:17366/mcp",
+    "url": "http://100.84.223.22:17366/mcp",
     "headers": {
       "Authorization": "Bearer replace-with-ABLETON_MCP_HTTP_TOKEN"
     }

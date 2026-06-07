@@ -109,6 +109,7 @@ Required environment:
 ```powershell
 $env:ABLETON_MCP_HTTP_ALLOW_REMOTE="1"
 $env:ABLETON_MCP_HTTP_HOST="0.0.0.0"
+$env:ABLETON_MCP_TAILSCALE_HOST="100.84.223.22"
 $env:ABLETON_MCP_HTTP_TOKEN="<at least 16 random characters>"
 .\launch.ps1 docker
 ```
@@ -120,6 +121,12 @@ Authorization: Bearer <ABLETON_MCP_HTTP_TOKEN>
 ```
 
 Do not expose port `17366` to the public internet.
+
+Default Tailscale URL for this machine:
+
+```text
+http://100.84.223.22:17366/mcp
+```
 
 ## OpenRouter, Gemini, llama.cpp, Antigravity
 

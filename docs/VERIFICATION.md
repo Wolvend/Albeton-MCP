@@ -32,10 +32,16 @@ Run release packaging checks:
 npm run release:check
 ```
 
+Run the safe read-only/dry-run MCP sweep:
+
+```powershell
+npm run sweep:safe
+```
+
 Expected current results:
 
 ```text
-Tests: 15 files, 28 tests passed
+Tests: 16 files, 31 tests passed
 MCP verifier: 115 tools, 3 resources, 2 prompts
 Audit: 0 vulnerabilities
 ```

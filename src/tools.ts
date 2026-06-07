@@ -80,6 +80,7 @@ function controlModeStatus() {
 function clientConnectionProfiles() {
   const port = Number(process.env.ABLETON_MCP_HTTP_PORT ?? "17366");
   const configuredHost = process.env.ABLETON_MCP_HTTP_HOST ?? "127.0.0.1";
+  const tailscaleHost = process.env.ABLETON_MCP_TAILSCALE_HOST ?? "100.84.223.22";
   const remoteEnabled = process.env.ABLETON_MCP_HTTP_ALLOW_REMOTE === "1";
   const tokenConfigured = Boolean(process.env.ABLETON_MCP_HTTP_TOKEN?.trim());
   const addresses = Object.entries(os.networkInterfaces()).flatMap(([name, entries]) =>
@@ -107,8 +108,10 @@ function clientConnectionProfiles() {
       requiredEnv: {
         ABLETON_MCP_HTTP_ALLOW_REMOTE: "1",
         ABLETON_MCP_HTTP_HOST: "0.0.0.0 or a specific private interface IP",
+        ABLETON_MCP_TAILSCALE_HOST: tailscaleHost,
         ABLETON_MCP_HTTP_TOKEN: "required bearer token, at least 16 characters"
       },
+      preferredTailscaleUrl: `http://${tailscaleHost}:${port}/mcp`,
       candidateUrls: addresses.map((item) => ({ ...item, url: `http://${item.address}:${port}/mcp` })),
       note: "Use Tailscale/VPN or a trusted private LAN. Do not expose this to the public internet."
     },
@@ -128,8 +131,15 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
   { name: "ableton_validate_config", description: "Validate paths, feature gates, and toolchain availability.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, validation: await environmentSnapshot() as any }) },
   { name: "ableton_launch_live", description: "Launch Ableton Live using the verified local executable.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => {
+    if (args.dry_run !== false) {
+      return {
+        ok: true,
+        dry_run: true,
+        executable: LOCAL_PATHS.liveExecutable,
+        writeRequiredForLaunch: "ABLETON_MCP_ENABLE_WRITE=1"
+      };
+    }
     requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Launching Ableton Live");
-    if (args.dry_run !== false) return { ok: true, dry_run: true, executable: LOCAL_PATHS.liveExecutable };
     if (!LOCAL_PATHS.liveExecutable) {
       return {
         ok: false,

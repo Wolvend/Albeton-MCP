@@ -47,6 +47,16 @@ ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify
 
 The native WSL path is useful for headless MCP validation. For actual Ableton UI/mouse control, keep the Windows host bridge/UI driver running.
 
+## Tailscale Default
+
+This machine's documented Tailscale MCP URL is:
+
+```text
+http://100.84.223.22:17366/mcp
+```
+
+This is an advertised private-network default only. The server still binds to `127.0.0.1` unless `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` and a bearer token are configured.
+
 ## Environment Overrides
 
 All path defaults can be overridden:

@@ -66,6 +66,7 @@ For private-network devices, remote HTTP is opt-in only:
 ```text
 ABLETON_MCP_HTTP_ALLOW_REMOTE=1
 ABLETON_MCP_HTTP_HOST=0.0.0.0
+ABLETON_MCP_TAILSCALE_HOST=100.84.223.22
 ABLETON_MCP_HTTP_TOKEN=<at least 16 random characters>
 ```
 

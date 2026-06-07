@@ -37,6 +37,12 @@ npm run release:check
 Result: succeeded. Release check found all required files and scripts. It reported working-tree-only folders that must stay excluded from release archives: `node_modules`, `diagnostics/screenshots`, `diagnostics/runtime`, and `data/cache`.
 
 ```powershell
+npm run sweep:safe
+```
+
+Result: succeeded. The safe sweep called representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures.
+
+```powershell
 npm run verify:mcp
 ```
 
