@@ -44,11 +44,25 @@ Run the safe read-only/dry-run MCP sweep:
 npm run sweep:safe
 ```
 
+Run the safe Ableton live bridge smoke after Ableton is open and the bridge device is loaded:
+
+```powershell
+.\launch.ps1 live-smoke -SkipSetup
+```
+
+From WSL, use the Windows-backed launcher path for Ableton bridge checks:
+
+```bash
+./launch.sh live-smoke --skip-setup
+```
+
+Native WSL Node can verify the MCP server, but it may not reach the Windows-only Max for Live bridge while the bridge is bound to Windows `127.0.0.1`.
+
 Expected current results:
 
 ```text
-Tests: 16 files, 31 tests passed
-MCP verifier: 115 tools, 3 resources, 2 prompts
+Tests: 17 files, 40 tests passed
+MCP verifier: 151 tools, 3 resources, 2 prompts
 Audit: 0 vulnerabilities
 ```
 
@@ -69,6 +83,8 @@ ableton_get_full_snapshot
 ```
 
 If the bridge is not loaded, these tools should return `BRIDGE_UNREACHABLE` with setup steps.
+
+The live-smoke workflow calls those bridge tools plus one `dry_run=true` write probe. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
 
 ## Check the UI driver
 

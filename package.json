@@ -25,6 +25,7 @@
     "configure:clients": "node dist/scripts/configure-clients.js",
     "release:check": "node dist/scripts/check-release.js",
     "sweep:safe": "node dist/scripts/safe-sweep.js",
+    "live-smoke": "node dist/scripts/live-smoke.js",
     "self-test": "node dist/scripts/self-test.js",
     "verify:mcp": "node dist/scripts/verify-mcp.js"
   },

@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "inspect", "ui-driver", "bridge-listener", "help")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "live-smoke", "inspect", "ui-driver", "bridge-listener", "help")]
   [string]$Mode = "stdio",
   [switch]$SkipSetup,
   [switch]$NoBuild,
@@ -46,6 +46,7 @@ Modes:
   test, lint       Run unit tests or lint.
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
+  live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
   bridge-listener  Start bridge setup listener for Ableton bridge setup.
@@ -172,6 +173,11 @@ switch ($Mode) {
   "sweep" {
     Invoke-Setup
     & npm.cmd run sweep:safe
+    exit $LASTEXITCODE
+  }
+  "live-smoke" {
+    Invoke-Setup
+    & npm.cmd run live-smoke
     exit $LASTEXITCODE
   }
   "inspect" {

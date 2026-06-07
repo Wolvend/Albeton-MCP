@@ -147,6 +147,7 @@ Modes:
   test, lint       Run unit tests or lint.
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
+  live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
   bridge-listener  Start bridge setup listener for Ableton bridge setup.
@@ -232,6 +233,10 @@ case "$MODE" in
   sweep)
     run_setup
     npm run sweep:safe
+    ;;
+  live-smoke)
+    run_setup
+    npm run live-smoke
     ;;
   inspect)
     run_setup

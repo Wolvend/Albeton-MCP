@@ -42,12 +42,22 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `lint` | `.\launch.ps1 lint` | Runs ESLint. |
 | `build` | `.\launch.ps1 build` | Builds TypeScript only. |
 | `sweep` | `.\launch.ps1 sweep` | Runs the read-only/dry-run MCP safe sweep. |
+| `live-smoke` | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge readiness with read-only and dry-run calls only. |
 | `inspect` | `.\launch.ps1 inspect` | Lists tools through MCP Inspector. |
 | `ui-driver` | `.\launch.ps1 ui-driver` | Enables `ABLETON_MCP_ENABLE_UI_CONTROL=1` and starts the foreground Ableton UI driver. |
 | `bridge-listener` | `.\launch.ps1 bridge-listener` | Starts the local bridge setup listener. |
 | `help` | `.\launch.ps1 help` | Prints launcher usage. |
 
 Pass `-SkipSetup` in PowerShell or `--skip-setup` in Bash when dependencies, build output, and bridge files are already current. Generated client configs use this fast path so MCP clients do not rebuild on every spawn. After pulling updates, run `.\launch.ps1 setup` or `.\launch.ps1 check` once to refresh `dist` and bridge files.
+
+Recommended local sequence:
+
+```powershell
+.\launch.ps1 setup
+.\launch.ps1 check -SkipSetup
+# Open Ableton and load the bridge device.
+.\launch.ps1 live-smoke -SkipSetup
+```
 
 ## Options
 

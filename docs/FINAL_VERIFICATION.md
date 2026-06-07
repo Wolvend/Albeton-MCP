@@ -122,9 +122,21 @@ Result: succeeded. The one-command launcher check ran tests, lint, doctor, relea
 
 Result: succeeded as part of `npm run doctor`, `npm run sweep:safe`, and `npm run verify:mcp`. The tool catalog now includes `ableton_list_safe_ui_actions`, `ableton_plan_ui_action_sequence`, and `ableton_run_ui_action_sequence`; raw coordinate UI control remains an explicit fallback only.
 
+```powershell
+.\launch.ps1 live-smoke -SkipSetup
+```
+
+Result: succeeded. The command reported `ok: true`, bridge reachable, dry-run write confirmed, 4 tracks, 9 scenes, and 1 selected-track device without changing the Ableton set.
+
+```powershell
+wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ./launch.sh live-smoke --skip-setup'
+```
+
+Result: succeeded through the Windows-backed launcher path. The native WSL Node variant reported `BRIDGE_UNREACHABLE` because the Max for Live bridge is bound to the Windows host loopback address.
+
 ## Earlier full MCP sweep
 
-A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 145 tools, 3 resources, and 2 prompts.
+A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 151 tools, 3 resources, and 2 prompts.
 
 ```powershell
 # MCP client smoke for ableton_bridge_ping, ableton_get_full_snapshot, and typed ableton_duplicate_clip dry-run
