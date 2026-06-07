@@ -47,12 +47,16 @@ Response:
 - `ableton_click_coordinates`
 - `ableton_type_text`
 
+## Run the driver
+
 Run the driver:
 
 ```powershell
 npm run build
 npm run ui-driver
 ```
+
+Use this driver only when `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
 
 ## Safety Model
 

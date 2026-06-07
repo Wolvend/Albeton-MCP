@@ -1,16 +1,24 @@
 # Tool Reference
 
-Run:
+Use MCP Inspector to list the current tool schemas:
 
 ```powershell
 npm run build
-node dist/scripts/self-test.js
+npm run inspect
 ```
 
-Then use MCP Inspector:
+Run the local verifier:
 
 ```powershell
-npm run inspect
+npm run verify:mcp
+```
+
+Current catalog size:
+
+```text
+112 tools
+3 resources
+2 prompts
 ```
 
 Primary groups:
@@ -40,3 +48,5 @@ Additional MCP context:
 - Prompts: `ableton-safe-production-session`, `ableton-security-review`
 
 All file tools enforce allowed roots and reject broad or sensitive paths.
+
+Write-capable tools require `ABLETON_MCP_ENABLE_WRITE=1` and should be called with `dry_run=true` first. UI-driver tools require `ABLETON_MCP_ENABLE_UI_CONTROL=1`. Download/import tools require `ABLETON_MCP_ENABLE_DOWNLOADS=1`.

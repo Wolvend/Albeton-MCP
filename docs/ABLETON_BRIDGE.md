@@ -1,6 +1,6 @@
 # Ableton Bridge
 
-The primary bridge is a custom Max for Live device in `bridge/max-for-live`.
+The primary Ableton control lane is a custom Max for Live device in `bridge/max-for-live`.
 
 Expected behavior:
 
@@ -10,7 +10,7 @@ Expected behavior:
 - Supports `ping`, `full_snapshot`, `snapshot_diff`, and focused LiveAPI actions.
 - Avoids blocking the audio thread.
 
-The v1 bridge is implemented as:
+## Bridge files
 
 - `bridge/max-for-live/ableton-mcp-http.js`: Node for Max loopback HTTP server.
 - `bridge/max-for-live/ableton-mcp-liveapi.js`: Max JavaScript LiveAPI action handler.
@@ -18,7 +18,11 @@ The v1 bridge is implemented as:
 
 Load the `.maxpat` in a Max for Live device with both JS files in the same folder, then run `ableton_bridge_ping`.
 
+## Current LiveAPI coverage
+
 The bridge currently covers broad read visibility plus common write-gated operations: track/return/master summaries, scenes, clip slots, clips, devices, parameters, mixer volume/pan, clip creation/launch/stop/loop/rename, scene creation, track creation, track arm/mute/solo/rename, tempo, and transport.
+
+## Queueing and fallback
 
 MCP bridge calls are queued locally before they reach the loopback bridge. This prevents overlapping background commands when Codex or another MCP client issues concurrent tool calls.
 
