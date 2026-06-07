@@ -8,6 +8,7 @@ import { createAbletonMcpServer } from "./server.js";
 const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 17366;
 const MAX_BODY_BYTES = 1024 * 1024;
+const LOCAL_HOSTS = new Set(["127.0.0.1", "::1", "localhost"]);
 
 function getPort() {
   const raw = process.env.ABLETON_MCP_HTTP_PORT;
@@ -21,10 +22,24 @@ function getPort() {
 
 function getHost() {
   const host = process.env.ABLETON_MCP_HTTP_HOST ?? DEFAULT_HOST;
-  if (host !== "127.0.0.1" && host !== "::1" && host !== "localhost") {
-    throw new Error("ABLETON_MCP_HTTP_HOST is restricted to localhost addresses.");
+  if (!LOCAL_HOSTS.has(host) && process.env.ABLETON_MCP_HTTP_ALLOW_REMOTE !== "1") {
+    throw new Error("ABLETON_MCP_HTTP_HOST is restricted to localhost unless ABLETON_MCP_HTTP_ALLOW_REMOTE=1 is set.");
   }
   return host;
+}
+
+function getBearerToken() {
+  const token = process.env.ABLETON_MCP_HTTP_TOKEN?.trim() ?? "";
+  if (!LOCAL_HOSTS.has(host) && token.length < 16) {
+    throw new Error("ABLETON_MCP_HTTP_TOKEN with at least 16 characters is required when remote HTTP is enabled.");
+  }
+  return token;
+}
+
+function isAuthorized(req: http.IncomingMessage) {
+  if (!httpToken) return true;
+  const header = req.headers.authorization ?? "";
+  return header === `Bearer ${httpToken}`;
 }
 
 async function readJsonBody(req: http.IncomingMessage) {
@@ -52,12 +67,18 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown) {
 
 const host = getHost();
 const port = getPort();
+const httpToken = getBearerToken();
 const statelessOptions = { sessionIdGenerator: undefined } as unknown as StreamableHTTPServerTransportOptions;
 
 const httpServer = http.createServer(async (req, res) => {
   try {
+    if (!isAuthorized(req)) {
+      sendJson(res, 401, { ok: false, error: "Unauthorized. Provide Authorization: Bearer <ABLETON_MCP_HTTP_TOKEN>." });
+      return;
+    }
+
     if (req.url === "/health" && req.method === "GET") {
-      sendJson(res, 200, { ok: true, name: "ableton-mcp", transport: "streamable-http" });
+      sendJson(res, 200, { ok: true, name: "ableton-mcp", transport: "streamable-http", host, port, authRequired: Boolean(httpToken) });
       return;
     }
 
@@ -83,5 +104,5 @@ const httpServer = http.createServer(async (req, res) => {
 });
 
 httpServer.listen(port, host, () => {
-  console.error(`ableton-mcp HTTP transport listening on http://${host}:${port}/mcp`);
+  console.error(`ableton-mcp HTTP transport listening on http://${host}:${port}/mcp${httpToken ? " with bearer-token auth" : ""}`);
 });

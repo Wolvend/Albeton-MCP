@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-112 tools
+115 tools
 3 resources
 2 prompts
 ```
@@ -34,6 +34,7 @@ Primary groups:
 - Composition helpers
 - Developer/evaluation tools
 - Runtime/security tools
+- Client/device connection profiles
 
 Control-mode tools:
 
@@ -41,6 +42,7 @@ Control-mode tools:
 - `ableton_bridge_status`: reports loopback host/port, serialized queue state, and last bridge action.
 - `ableton_ui_driver_status`: reports the ChromeDriver-style Ableton UI driver endpoint and queue state.
 - `ableton_ui_driver_ping`: pings the UI driver when UI control is enabled.
+- `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.
 
 Additional MCP context:
 

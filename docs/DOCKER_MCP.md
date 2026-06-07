@@ -60,3 +60,13 @@ ABLETON_MCP_ENABLE_DOWNLOADS=0
 ```
 
 Do not expose `17366` publicly. Keep it bound to `127.0.0.1` unless you have a specific private-network need and have reviewed firewall exposure.
+
+For private-network devices, remote HTTP is opt-in only:
+
+```text
+ABLETON_MCP_HTTP_ALLOW_REMOTE=1
+ABLETON_MCP_HTTP_HOST=0.0.0.0
+ABLETON_MCP_HTTP_TOKEN=<at least 16 random characters>
+```
+
+Remote clients must send `Authorization: Bearer <ABLETON_MCP_HTTP_TOKEN>`.

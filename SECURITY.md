@@ -12,6 +12,8 @@ Ableton MCP is read-only by default.
 - No broad `C:\`, `C:\Users\LIZ`, or AppData access.
 - No arbitrary shell tool.
 - No arbitrary URL fetch tool.
+- Streamable HTTP binds to `127.0.0.1` by default.
+- Private-network HTTP requires `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` plus `ABLETON_MCP_HTTP_TOKEN` with at least 16 characters. Remote clients must send `Authorization: Bearer <token>`.
 - Sample downloads are restricted to HTTPS URLs from approved Freesound and Internet Archive hosts.
 - Private, local, raw-IP, credentialed, and non-HTTPS sample URLs are rejected.
 - Sample download redirects are rejected by default.

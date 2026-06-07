@@ -76,6 +76,52 @@ function controlModeStatus() {
   };
 }
 
+function clientConnectionProfiles() {
+  const port = Number(process.env.ABLETON_MCP_HTTP_PORT ?? "17366");
+  const configuredHost = process.env.ABLETON_MCP_HTTP_HOST ?? "127.0.0.1";
+  const remoteEnabled = process.env.ABLETON_MCP_HTTP_ALLOW_REMOTE === "1";
+  const tokenConfigured = Boolean(process.env.ABLETON_MCP_HTTP_TOKEN?.trim());
+  const addresses = Object.entries(os.networkInterfaces()).flatMap(([name, entries]) =>
+    (entries ?? [])
+      .filter((entry) => entry.family === "IPv4" && !entry.internal)
+      .map((entry) => ({ interface: name, address: entry.address }))
+  );
+  return {
+    stdio: {
+      clients: ["Codex", "Claude Desktop", "Cursor", "other local MCP clients"],
+      command: process.platform === "win32" ? path.join(LOCAL_PATHS.projectRoot, "launch.cmd") : path.join(LOCAL_PATHS.projectRoot, "launch.sh"),
+      args: ["stdio"],
+      note: "Best default for same-device local clients."
+    },
+    httpLocal: {
+      clients: ["Docker MCP", "HTTP-capable MCP clients", "WSL clients"],
+      url: `http://127.0.0.1:${port}/mcp`,
+      launch: process.platform === "win32" ? ".\\launch.ps1 docker" : "./launch.sh docker",
+      note: "Default HTTP mode stays on loopback."
+    },
+    httpPrivateNetwork: {
+      enabled: remoteEnabled,
+      configuredHost,
+      tokenConfigured,
+      requiredEnv: {
+        ABLETON_MCP_HTTP_ALLOW_REMOTE: "1",
+        ABLETON_MCP_HTTP_HOST: "0.0.0.0 or a specific private interface IP",
+        ABLETON_MCP_HTTP_TOKEN: "required bearer token, at least 16 characters"
+      },
+      candidateUrls: addresses.map((item) => ({ ...item, url: `http://${item.address}:${port}/mcp` })),
+      note: "Use Tailscale/VPN or a trusted private LAN. Do not expose this to the public internet."
+    },
+    modelProviders: {
+      OpenRouter: "Use through an MCP-capable host app or agent runtime; OpenRouter itself is a model provider, not the MCP transport endpoint.",
+      Gemini: "Use through an MCP-capable Gemini client/agent runtime if it supports MCP server configuration.",
+      llamaCpp: "Use through an MCP-capable local agent wrapper around llama.cpp; llama.cpp itself is model inference, not this MCP transport.",
+      Claude: "Use stdio for desktop/local clients or HTTP if the client supports Streamable HTTP MCP.",
+      Codex: "Use stdio for local desktop/Codex or HTTP for Docker/remote MCP routing.",
+      Antigravity: "Use the stdio or Streamable HTTP profile if the app exposes MCP server configuration."
+    }
+  };
+}
+
 const toolDefs: ToolDef[] = [
   { name: "ableton_find_installation", description: "Find configured Ableton Live and Max paths for this host platform.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
@@ -232,6 +278,7 @@ toolDefs.push(
   { name: "ableton_validate_production_plan", description: "Validate a production plan for safety and feasibility.", inputSchema: { plan: z.record(z.unknown()) }, annotations: ro, handler: async (args) => ({ ok: true, validation: { safeByDefault: true, requiresWrite: JSON.stringify(args.plan).includes("create") || JSON.stringify(args.plan).includes("set"), plan: args.plan } }) },
 
   { name: "ableton_mcp_health", description: "Health check for the MCP server.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, health: { started: true, roots: rootsForReport(), scan: getScanStatus() } }) },
+  { name: "ableton_mcp_get_client_connection_profiles", description: "Return safe connection profiles for Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, profiles: clientConnectionProfiles() }) },
   { name: "ableton_mcp_list_capabilities", description: "List registered MCP tool capabilities.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, toolCount: toolDefs.length, tools: toolDefs.map((tool) => ({ name: tool.name, annotations: tool.annotations })) }) },
   { name: "ableton_mcp_get_runtime_report", description: "Report FastMCP-inspired middleware, limits, cache, rate-limit, and timing metrics.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, runtimeReport: getRuntimeReport() }) },
   { name: "ableton_mcp_security_report", description: "Report active security controls and feature gates.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, security: {

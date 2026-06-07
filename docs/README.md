@@ -10,6 +10,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Ableton bridge](ABLETON_BRIDGE.md) | Loading and operating the Max for Live LiveAPI bridge. |
 | [Ableton UI driver](ABLETON_UI_DRIVER.md) | Running the ChromeDriver-style foreground UI driver. |
 | [Platform compatibility](PORTABILITY.md) | Running stdio/HTTP MCP on Windows, WSL, macOS, and Linux. |
+| [Client compatibility](CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |
 | [Verification](VERIFICATION.md) | Running build, test, lint, MCP, bridge, and UI-driver checks. |
 | [Final verification report](FINAL_VERIFICATION.md) | Reviewing the latest full local verification results. |
 

@@ -194,6 +194,7 @@ Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
 | [Launch modes](docs/LAUNCH.md) | One-command stdio, Docker MCP HTTP, installer, verifier, and UI-driver workflows. |
 | [Docker MCP](docs/DOCKER_MCP.md) | How to connect Docker MCP to the local Windows Ableton host service. |
 | [Platform compatibility](docs/PORTABILITY.md) | Windows, WSL, macOS, and Linux support model with environment overrides. |
+| [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |
 | [Security](SECURITY.md) | Feature gates, path policy, network rules, runtime guardrails, and subprocess policy. |
 | [Tool reference](docs/TOOL_REFERENCE.md) | Tool groups, MCP resources, prompts, and verification commands. |
 | [Sample policy](docs/SAMPLE_POLICY.md) | Licensing, attribution, and import metadata rules. |
@@ -210,9 +211,10 @@ Build: passed
 Tests: 15 files, 28 tests passed
 Lint: passed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 114 tools, 3 resources, 2 prompts
+MCP verifier: 115 tools, 3 resources, 2 prompts
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles
 Audit: 0 vulnerabilities
 ```
 
