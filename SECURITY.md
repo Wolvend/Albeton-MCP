@@ -15,6 +15,8 @@ Ableton MCP is read-only by default.
 - Streamable HTTP binds to `127.0.0.1` by default.
 - Private-network HTTP requires `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` plus `ABLETON_MCP_HTTP_TOKEN` with at least 16 characters. Remote clients must send `Authorization: Bearer <token>`.
 - Sample downloads are restricted to HTTPS URLs from approved Freesound and Internet Archive hosts.
+- Plugin/package downloads are staging-only, require the downloads gate, and are restricted to approved Ableton, Cycling '74, or reviewed GitHub hosts.
+- MCP never runs plugin installers or copies plugins into system VST/AU/CLAP/AAX folders.
 - Private, local, raw-IP, credentialed, and non-HTTPS sample URLs are rejected.
 - Sample download redirects are rejected by default.
 - Downloads disabled by default.

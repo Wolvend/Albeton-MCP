@@ -23,5 +23,6 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Local paths](LOCAL_PATHS.md) | Confirming verified Ableton, Max, library, and database paths. |
 | [Sample policy](SAMPLE_POLICY.md) | Reviewing licensing and attribution rules. |
 | [Sample sources](SAMPLE_SOURCES.md) | Checking approved sample sources and import paths. |
+| [Plugin policy](PLUGIN_POLICY.md) | Checking plugin/package download staging and no-install safety rules. |
 
 Security controls are documented in [SECURITY](../SECURITY.md).

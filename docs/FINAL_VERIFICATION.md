@@ -40,13 +40,13 @@ Result: succeeded. Release check found all required files and scripts. It report
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 115 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
+Result: succeeded. The verifier reported 119 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
 
 ```powershell
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 115 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 119 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ```powershell
 # Temporary localhost auth smoke on port 17466
@@ -72,7 +72,7 @@ Result: succeeded. All three launch entry points built the project and installed
 # MCP client smoke test against launch.cmd stdio -SkipSetup
 ```
 
-Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 115 tools. This verifies launcher setup output does not corrupt MCP stdout.
+Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 119 tools. This verifies launcher setup output does not corrupt MCP stdout.
 
 ```powershell
 .\launch.ps1 docker -SkipSetup
@@ -94,7 +94,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 
 ## Earlier full MCP sweep
 
-A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 115 tools, 3 resources, and 2 prompts.
+A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 119 tools, 3 resources, and 2 prompts.
 
 Summary:
 
@@ -145,5 +145,6 @@ The UI driver was left listening on `127.0.0.1:17365` for continued local contro
 - MCP resources and prompts are registered for environment, runtime, scan status, safe production planning, and security review.
 - File operations enforce explicit allowed roots, realpath checks, and sensitive-path rejection.
 - Remote sample tools reject arbitrary URLs and allow only approved Freesound and Internet Archive hosts.
+- Plugin/package downloader tools are staging-only, require the downloads feature gate for downloads, restrict URL hosts, and never run installers.
 - The Max for Live bridge source includes a Node-for-Max HTTP server and a LiveAPI handler for ping, snapshots, live-state reads, track/return/master/scene/clip-slot/clip/device/parameter/mixer listing, selected objects, tempo/transport, track and scene creation, clip creation/launch/stop/loop/rename, mixer volume/pan, device parameter setting, track arm/mute/solo, and track rename.
 - The Ableton UI driver service includes loopback-only ping, status, Ableton window discovery, focus, Ableton-window-only screenshot capture, bounded region capture, window-relative click, and bounded text input.

@@ -14,6 +14,22 @@ const suffixHosts = [
   ".freesound.org"
 ];
 
+const exactPluginHosts = new Set([
+  "ableton.com",
+  "www.ableton.com",
+  "cdn-downloads.ableton.com",
+  "cycling74.com",
+  "www.cycling74.com",
+  "github.com",
+  "objects.githubusercontent.com"
+]);
+
+const suffixPluginHosts = [
+  ".ableton.com",
+  ".cycling74.com",
+  ".githubusercontent.com"
+];
+
 function isPrivateOrLocalAddress(hostname: string) {
   const lower = hostname.toLowerCase();
   if (["localhost", "127.0.0.1", "::1", "0.0.0.0"].includes(lower)) return true;
@@ -55,6 +71,49 @@ export function assertAllowedSampleUrl(input: string) {
     );
   }
   return parsed.toString();
+}
+
+export function assertAllowedPluginUrl(input: string) {
+  let parsed: URL;
+  try {
+    parsed = new URL(input);
+  } catch {
+    throw new AbletonMcpError("Invalid plugin URL.", "INVALID_URL", ["Use a complete HTTPS URL from an approved plugin/package source."]);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new AbletonMcpError("Only HTTPS plugin/package URLs are allowed.", "URL_SCHEME_REJECTED");
+  }
+  if (parsed.username || parsed.password) {
+    throw new AbletonMcpError("URLs with embedded credentials are rejected.", "URL_CREDENTIALS_REJECTED");
+  }
+  if (isPrivateOrLocalAddress(parsed.hostname)) {
+    throw new AbletonMcpError("Private, local, and raw IP plugin URLs are rejected.", "URL_HOST_REJECTED");
+  }
+  const host = parsed.hostname.toLowerCase();
+  const allowed = exactPluginHosts.has(host) || suffixPluginHosts.some((suffix) => host.endsWith(suffix));
+  if (!allowed) {
+    throw new AbletonMcpError(
+      `Plugin URL host is not approved: ${host}`,
+      "URL_HOST_REJECTED",
+      ["Use official Ableton/Cycling '74 URLs or reviewed GitHub release asset URLs."]
+    );
+  }
+  return parsed.toString();
+}
+
+export async function fetchAllowedPluginUrl(input: string, init: RequestInit = {}) {
+  const safeUrl = assertAllowedPluginUrl(input);
+  const response = await fetch(safeUrl, { ...init, redirect: "manual" });
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get("location");
+    if (!location) {
+      throw new AbletonMcpError("Plugin download redirect did not include a Location header.", "URL_REDIRECT_REJECTED");
+    }
+    const redirected = new URL(location, safeUrl).toString();
+    assertAllowedPluginUrl(redirected);
+    throw new AbletonMcpError("Plugin download redirects are rejected by default.", "URL_REDIRECT_REJECTED", ["Use the final approved HTTPS URL directly."]);
+  }
+  return response;
 }
 
 export async function fetchAllowedSampleUrl(input: string, init: RequestInit = {}) {

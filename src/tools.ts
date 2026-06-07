@@ -14,6 +14,7 @@ import { getRuntimeReport, runTool, type RuntimeTool, type ToolAnnotations } fro
 import { getScanStatus, scanLibrary } from "./scanner.js";
 import { queryLibrary } from "./cache.js";
 import { downloadSample, getInternetArchiveMetadata, importSampleToLibrary, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
+import { downloadPluginPackage, planPluginDownload, pluginInstallInstructions, searchPluginCatalog } from "./plugins.js";
 import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
 import { getUiDriverRuntimeState, pingUiDriver, uiDriverAction } from "./ui-driver.js";
 
@@ -267,6 +268,10 @@ toolDefs.push(
   { name: "ableton_find_local_samples", description: "Search indexed local samples.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
   { name: "ableton_build_sample_pack", description: "Plan a sample pack from allowed local samples.", inputSchema: { query: z.string().default(""), name: z.string().default("Codex Sample Pack"), ...Page }, annotations: ro, handler: async (args) => ({ ok: true, pack: { name: args.name, samples: (await librarySearch(args, "sample")).items } }) },
   { name: "ableton_generate_attribution_report", description: "Generate attribution report from imported sample sidecars.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, report: { importsRoot: redactPath(LOCAL_PATHS.imports), note: "Attribution sidecars are written as .attribution.json during imports.", ...paginate([], args.page, args.pageSize) } }) },
+  { name: "ableton_search_plugin_catalog", description: "Search curated Ableton/Max plugin and package source metadata without downloading.", inputSchema: { query: z.string().max(200).default("") }, annotations: ro, handler: async (args) => ({ ok: true, plugins: searchPluginCatalog(args.query) }) },
+  { name: "ableton_plan_plugin_download", description: "Plan a safe plugin/package download into staging without installing it.", inputSchema: { url: z.string().url().optional(), destinationName: z.string().min(1).optional(), catalogId: z.string().max(100).optional() }, annotations: ro, handler: async (args) => ({ ok: true, pluginDownload: planPluginDownload(args) }) },
+  { name: "ableton_download_plugin_package", description: "Download an approved plugin/package URL into plugin staging when downloads are enabled; never installs it.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, pluginPackage: await downloadPluginPackage(args.url, args.destinationName, args.metadata) }) },
+  { name: "ableton_plugin_install_instructions", description: "Return manual install instructions for a staged plugin/package; MCP never runs installers.", inputSchema: { stagedPath: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, instructions: pluginInstallInstructions(args.stagedPath) }) },
 
   { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1).max(2000) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },
   { name: "ableton_generate_midi_clip_plan", description: "Generate a MIDI clip plan.", inputSchema: { key: z.string().default("C minor"), bars: z.number().int().min(1).max(64).default(8), style: z.string().default("electronic") }, annotations: ro, handler: async (args) => ({ ok: true, midiClipPlan: args }) },

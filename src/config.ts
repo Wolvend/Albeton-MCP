@@ -80,6 +80,7 @@ export const LOCAL_PATHS = {
   liveDatabase: envPath("ABLETON_MCP_LIVE_DATABASE", defaultLiveDatabase()),
   imports: envPath("ABLETON_MCP_IMPORTS", path.join(abletonDocumentsRoot, "User Library", "Samples", "Codex Imports")),
   staging: path.join(PROJECT_ROOT, "samples", "staging"),
+  pluginStaging: path.join(PROJECT_ROOT, "samples", "staging", "plugins"),
   diagnostics: path.join(PROJECT_ROOT, "diagnostics")
 } as const;
 

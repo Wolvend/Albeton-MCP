@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-115 tools
+119 tools
 3 resources
 2 prompts
 ```
@@ -31,6 +31,7 @@ Primary groups:
 - Write-gated Live control
 - Screenshot and UI tools
 - Legal sample discovery/import
+- Plugin/package discovery and download staging
 - Composition helpers
 - Developer/evaluation tools
 - Runtime/security tools

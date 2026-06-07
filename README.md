@@ -20,6 +20,7 @@ MCP client -> stdio server -> Max for Live bridge -> Ableton LiveAPI
 | Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, clicks, and text when LiveAPI is not enough. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
+| Plugins | Search curated plugin/package sources, plan downloads, and stage approved packages without running installers. |
 | Safety/evals | Run security checks, runtime reports, bridge mock checks, sample license tests, and full MCP verification. |
 
 ## Start locally
@@ -200,6 +201,7 @@ Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
 | [Tool reference](docs/TOOL_REFERENCE.md) | Tool groups, MCP resources, prompts, and verification commands. |
 | [Sample policy](docs/SAMPLE_POLICY.md) | Licensing, attribution, and import metadata rules. |
 | [Sample sources](docs/SAMPLE_SOURCES.md) | Approved remote sources and download/import paths. |
+| [Plugin policy](docs/PLUGIN_POLICY.md) | Plugin/package discovery, download staging, and no-install safety policy. |
 | [Local paths](docs/LOCAL_PATHS.md) | Verified Ableton, Max, library, and database paths. |
 | [Verification](docs/FINAL_VERIFICATION.md) | Latest build, test, MCP, audit, and runtime sweep results. |
 
@@ -214,7 +216,7 @@ Lint: passed
 Doctor: passed with optional-service warnings only
 Release check: passed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 115 tools, 3 resources, 2 prompts
+MCP verifier: 119 tools, 3 resources, 2 prompts
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
 Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles
