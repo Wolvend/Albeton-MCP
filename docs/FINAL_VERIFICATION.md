@@ -16,7 +16,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Latest pass reported 16 test files and 36 tests passed.
+Result: succeeded. Latest pass reported 17 test files and 40 tests passed.
 
 ```powershell
 npm run lint
@@ -114,7 +114,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 .\launch.ps1 check -SkipSetup
 ```
 
-Result: succeeded. The one-command launcher check ran tests, lint, doctor, release check, safe sweep, MCP verifier, and npm audit. It reported 16 test files, 36 tests, 151 tools, 78 safe-sweep calls, and 0 vulnerabilities.
+Result: succeeded. The one-command launcher check ran tests, lint, doctor, release check, safe sweep, MCP verifier, and npm audit. It reported 17 test files, 40 tests, 151 tools, 78 safe-sweep calls, and 0 vulnerabilities.
 
 ```powershell
 # Named safe UI action verifier
@@ -126,7 +126,7 @@ Result: succeeded as part of `npm run doctor`, `npm run sweep:safe`, and `npm ru
 .\launch.ps1 live-smoke -SkipSetup
 ```
 
-Result: succeeded. The command reported `ok: true`, bridge reachable, dry-run write confirmed, 4 tracks, 9 scenes, and 1 selected-track device without changing the Ableton set.
+Result: succeeded. The command reported `ok: true`, bridge reachable, live state reachable, snapshot reachable, dry-run write confirmed, 4 tracks, 9 scenes, and 1 selected-track device without changing the Ableton set.
 
 ```powershell
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ./launch.sh live-smoke --skip-setup'

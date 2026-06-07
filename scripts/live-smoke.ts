@@ -46,6 +46,7 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_live_status", arguments: {}, required: true },
   { name: "ableton_bridge_status", arguments: {}, required: true },
   { name: "ableton_bridge_ping", arguments: {}, required: true },
+  { name: "ableton_get_live_state", arguments: {}, required: true },
   { name: "ableton_get_full_snapshot", arguments: {}, required: true },
   { name: "ableton_list_tracks", arguments: {}, required: true },
   { name: "ableton_list_scenes", arguments: {}, required: true },

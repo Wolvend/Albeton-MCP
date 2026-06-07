@@ -25,6 +25,7 @@ describe("live smoke workflow", () => {
     expect(dryRunWrite?.arguments).toMatchObject({ dry_run: true });
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_capture_screenshot");
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_download_sample");
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_live_state");
   });
 
   it("builds a compact success report from mocked MCP results", () => {

@@ -244,11 +244,12 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 16 files, 31 tests passed
+Tests: 17 files, 40 tests passed
 Lint: passed
 Doctor: passed with 0 warnings
 Release check: passed
 Safe sweep: passed
+Live smoke: passed with bridge reachable, live state, snapshot, tracks, scenes, devices, and dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
 MCP verifier: 151 tools, 3 resources, 2 prompts
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
