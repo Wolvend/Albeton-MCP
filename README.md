@@ -195,6 +195,7 @@ Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
 | [Docker MCP](docs/DOCKER_MCP.md) | How to connect Docker MCP to the local Windows Ableton host service. |
 | [Platform compatibility](docs/PORTABILITY.md) | Windows, WSL, macOS, and Linux support model with environment overrides. |
 | [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |
+| [Config templates](config) | Ready-made starting configs for Codex, Claude Desktop, Cursor, WSL, and remote HTTP clients. |
 | [Security](SECURITY.md) | Feature gates, path policy, network rules, runtime guardrails, and subprocess policy. |
 | [Tool reference](docs/TOOL_REFERENCE.md) | Tool groups, MCP resources, prompts, and verification commands. |
 | [Sample policy](docs/SAMPLE_POLICY.md) | Licensing, attribution, and import metadata rules. |
@@ -210,6 +211,8 @@ Latest local verification:
 Build: passed
 Tests: 15 files, 28 tests passed
 Lint: passed
+Doctor: passed with optional-service warnings only
+Release check: passed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
 MCP verifier: 115 tools, 3 resources, 2 prompts
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366

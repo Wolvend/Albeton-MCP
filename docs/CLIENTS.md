@@ -7,6 +7,14 @@ Ableton MCP exposes the same tools through two transports:
 
 The safest default is stdio on the same machine.
 
+Ready-made template files live in `config/`:
+
+- `config/codex.json`
+- `config/claude-desktop.json`
+- `config/cursor.json`
+- `config/wsl-stdio.json`
+- `config/remote-http.example.json`
+
 ## Codex
 
 Use the checked-in `.mcp.json` on this Windows machine:

@@ -20,11 +20,23 @@ npm run inspect
 npm run verify:mcp
 ```
 
+Run first-run diagnostics:
+
+```powershell
+npm run doctor
+```
+
+Run release packaging checks:
+
+```powershell
+npm run release:check
+```
+
 Expected current results:
 
 ```text
-Tests: 13 files, 24 tests passed
-MCP verifier: 112 tools, 3 resources, 2 prompts
+Tests: 15 files, 28 tests passed
+MCP verifier: 115 tools, 3 resources, 2 prompts
 Audit: 0 vulnerabilities
 ```
 

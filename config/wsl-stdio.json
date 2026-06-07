@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ableton-mcp": {
+      "command": "/mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp/launch.sh",
+      "args": ["stdio"],
+      "env": {
+        "ABLETON_MCP_ENABLE_WRITE": "0",
+        "ABLETON_MCP_ENABLE_UI_CONTROL": "0",
+        "ABLETON_MCP_ENABLE_DOWNLOADS": "0"
+      }
+    }
+  }
+}

@@ -21,6 +21,8 @@
     "bridge:setup-listener": "node dist/scripts/ableton-bridge-setup-listener.js",
     "bridge:setup-listener:dev": "tsx scripts/ableton-bridge-setup-listener.ts",
     "inspect": "npx @modelcontextprotocol/inspector --cli node dist/src/index.js --method tools/list",
+    "doctor": "node dist/scripts/doctor.js",
+    "release:check": "node dist/scripts/check-release.js",
     "self-test": "node dist/scripts/self-test.js",
     "verify:mcp": "node dist/scripts/verify-mcp.js"
   },

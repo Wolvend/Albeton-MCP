@@ -25,6 +25,18 @@ npm run lint
 Result: succeeded.
 
 ```powershell
+npm run doctor
+```
+
+Result: succeeded. Doctor reported 8 checks, 0 failures, and 0 warnings: tool catalog, Node, ffprobe, Ableton User Library, bridge sources, HTTP transport, UI driver, and Max for Live bridge.
+
+```powershell
+npm run release:check
+```
+
+Result: succeeded. Release check found all required files and scripts. It reported working-tree-only folders that must stay excluded from release archives: `node_modules`, `diagnostics/screenshots`, `diagnostics/runtime`, and `data/cache`.
+
+```powershell
 npm run verify:mcp
 ```
 
