@@ -52,19 +52,19 @@ Result: succeeded. Built the server, installed the Max for Live bridge files, an
 npm run sweep:safe
 ```
 
-Result: succeeded. The safe sweep called representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures.
+Result: succeeded. The safe sweep called 63 representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures.
 
 ```powershell
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 119 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
+Result: succeeded. The verifier reported 141 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
 
 ```powershell
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 119 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 141 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ```powershell
 # Temporary localhost auth smoke on port 17466

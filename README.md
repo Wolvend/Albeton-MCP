@@ -18,9 +18,11 @@ MCP client -> stdio server -> Max for Live bridge -> Ableton LiveAPI
 | Set analysis | Read `.als` files as gzip/XML summaries without modifying the original file. |
 | Live session view | Read tracks, scenes, clips, devices, transport, tempo, mixer, and snapshots when the Max for Live bridge is loaded. |
 | Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing. |
+| Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, clicks, and text when LiveAPI is not enough. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
-| Plugins | Search curated plugin/package sources, plan downloads, and stage approved packages without running installers. |
+| Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
+| Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
 | Safety/evals | Run security checks, runtime reports, bridge mock checks, sample license tests, and full MCP verification. |
 
 ## Start locally

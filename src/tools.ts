@@ -36,6 +36,16 @@ const ro = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, o
 const rw = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
 const webro = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
 
+function productionPlan(kind: string, payload: Record<string, unknown>, nextStep = "Review the plan, then execute with write-gated bridge tools if needed.") {
+  return {
+    kind,
+    dry_run: true,
+    safeByDefault: true,
+    payload,
+    nextStep
+  };
+}
+
 async function librarySearch(args: any, kind?: string) {
   const rows = await queryLibrary(args.query, kind);
   return { ok: true, ...paginate(rows.map((row) => ({ ...row, path: redactPath(String(row.path)) })), args.page, args.pageSize) };
@@ -233,7 +243,10 @@ const writeToolNames = [
   "ableton_insert_midi_notes", "ableton_set_clip_loop", "ableton_fire_clip", "ableton_stop_clip",
   "ableton_arm_track", "ableton_mute_track", "ableton_solo_track", "ableton_set_track_volume",
   "ableton_set_track_pan", "ableton_insert_instrument", "ableton_insert_effect", "ableton_load_preset_or_sample",
-  "ableton_set_device_parameter", "ableton_map_macro", "ableton_rename_track", "ableton_rename_clip"
+  "ableton_set_device_parameter", "ableton_map_macro", "ableton_rename_track", "ableton_rename_clip",
+  "ableton_create_automation_envelope", "ableton_set_automation_point", "ableton_simplify_automation",
+  "ableton_create_arrangement_marker", "ableton_duplicate_scene", "ableton_duplicate_clip", "ableton_move_clip",
+  "ableton_quantize_clip", "ableton_apply_groove", "ableton_humanize_midi_clip"
 ];
 
 for (const name of writeToolNames) {
@@ -282,6 +295,36 @@ toolDefs.push(
   { name: "ableton_plan_plugin_download", description: "Plan a safe plugin/package download into staging without installing it.", inputSchema: { url: z.string().url().optional(), destinationName: z.string().min(1).optional(), catalogId: z.string().max(100).optional() }, annotations: ro, handler: async (args) => ({ ok: true, pluginDownload: planPluginDownload(args) }) },
   { name: "ableton_download_plugin_package", description: "Download an approved plugin/package URL into plugin staging when downloads are enabled; never installs it.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, pluginPackage: await downloadPluginPackage(args.url, args.destinationName, args.metadata) }) },
   { name: "ableton_plugin_install_instructions", description: "Return manual install instructions for a staged plugin/package; MCP never runs installers.", inputSchema: { stagedPath: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, instructions: pluginInstallInstructions(args.stagedPath) }) },
+  { name: "ableton_validate_plugin_package", description: "Validate a staged plugin/package path and extension without running installers.", inputSchema: { stagedPath: z.string().min(1) }, annotations: ro, handler: async (args) => {
+    const safe = await resolveSafePath(args.stagedPath, { mustExist: true });
+    const stat = await fs.stat(safe.real);
+    const extension = path.extname(safe.real).toLowerCase();
+    const knownPackage = [".zip", ".amxd", ".alp", ".adv", ".adg", ".vst3", ".component", ".dll"].includes(extension);
+    return { ok: true, package: { path: redactPath(safe.real), size: stat.size, extension, knownPackage, installerExecutionAllowed: false } };
+  } },
+  { name: "ableton_scan_vst_folders", description: "Plan VST folder scanning from allowed Ableton/library roots without broad filesystem access.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, scanPlan: productionPlan("vst_folder_scan", { allowedRoots: rootsForReport(), folders: ["User Library", "Factory Packs", "project samples/staging/plugins"], broadSystemPluginScan: false }) }) },
+  { name: "ableton_list_installed_plugins", description: "Return installed plugin summary from indexed set/library metadata when available.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, plugins: { note: "Uses indexed Ableton files and .als plugin references; it does not scan arbitrary system VST folders.", ...paginate([], args.page, args.pageSize) } }) },
+  { name: "ableton_check_plugin_license_metadata", description: "Check plugin/package metadata for license and source fields before download or manual install.", inputSchema: { metadata: z.record(z.unknown()).default({}) }, annotations: ro, handler: async (args) => {
+    const license = String(args.metadata.license ?? args.metadata.licenseUrl ?? args.metadata.licenseurl ?? "").trim();
+    const source = String(args.metadata.source ?? args.metadata.url ?? "").trim();
+    return { ok: true, licenseCheck: { hasLicense: license.length > 0, license, hasSource: source.length > 0, source, installerExecutionAllowed: false, nextStep: "Prefer official vendor pages and verify license manually before installing plugins." } };
+  } },
+
+  { name: "ableton_extract_automation_summary", description: "Plan automation summary extraction from a set or live snapshot without modifying Ableton.", inputSchema: { path: z.string().optional(), track_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => {
+    if (args.path) return { ok: true, automation: { source: "set_file", analysis: await analyzeAbletonSet(args.path), note: "v1 summarizes set structure; detailed breakpoint extraction depends on deeper LOM/XML mapping." } };
+    return { ok: true, automation: await bridgeRead("automation_summary", { track_id: args.track_id ?? "selected" }) };
+  } },
+  { name: "ableton_extract_groove", description: "Create a read-only groove extraction plan for a clip or MIDI/audio file.", inputSchema: { source: z.string().min(1), strength: z.number().min(0).max(1).default(0.5) }, annotations: ro, handler: async (args) => ({ ok: true, groove: productionPlan("extract_groove", { source: args.source, strength: args.strength, output: "groove timing and velocity template" }) }) },
+  { name: "ableton_plan_export_audio", description: "Plan audio export or stem export settings without rendering.", inputSchema: { scope: z.enum(["master", "selected_track", "all_tracks", "time_selection"]).default("master"), sampleRate: z.number().int().min(8000).max(384000).default(48000), bitDepth: z.enum(["16", "24", "32"]).default("24"), normalize: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, exportPlan: productionPlan("audio_export", args, "Use this plan to configure Ableton export manually or through a future write-gated export tool.") }) },
+  { name: "ableton_validate_export_settings", description: "Validate export settings for clipping, file naming, and release-readiness.", inputSchema: { settings: z.record(z.unknown()) }, annotations: ro, handler: async (args) => {
+    const sampleRate = Number(args.settings.sampleRate ?? args.settings.sample_rate ?? 0);
+    const bitDepth = String(args.settings.bitDepth ?? args.settings.bit_depth ?? "");
+    return { ok: true, validation: { sampleRateOk: sampleRate >= 44100 && sampleRate <= 192000, bitDepthOk: ["16", "24", "32"].includes(bitDepth), normalizeRisk: Boolean(args.settings.normalize), notes: ["Check master peak/headroom before export.", "Use clear file names and preserve project backups."], settings: args.settings } };
+  } },
+  { name: "ableton_prepare_stems_plan", description: "Plan stem export groups and naming without changing Ableton.", inputSchema: { groups: z.array(z.string().min(1).max(80)).default(["drums", "bass", "music", "vocals", "fx"]), prefix: z.string().max(80).default("ableton-mcp-stems") }, annotations: ro, handler: async (args) => ({ ok: true, stemsPlan: productionPlan("stems_export", { prefix: args.prefix, groups: args.groups, naming: args.groups.map((group: string) => `${args.prefix}-${group}.wav`) }) }) },
+  { name: "ableton_browse_live_devices", description: "Return a curated Ableton-native device browser plan without scanning private folders.", inputSchema: { category: z.string().max(80).default("") }, annotations: ro, handler: async (args) => ({ ok: true, browser: productionPlan("live_devices", { category: args.category, devices: ["Instrument Rack", "Drum Rack", "Simpler", "Operator", "Wavetable", "EQ Eight", "Compressor", "Saturator", "Echo", "Hybrid Reverb"] }) }) },
+  { name: "ableton_browse_max_devices", description: "Return a Max for Live device browser plan limited to Ableton User Library and project bridge files.", inputSchema: { query: z.string().max(120).default("") }, annotations: ro, handler: async (args) => ({ ok: true, browser: productionPlan("max_for_live_devices", { query: args.query, roots: [redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), redactPath(path.join(LOCAL_PATHS.userLibrary, "Presets", "MIDI Effects", "Max MIDI Effect"))] }) }) },
+  { name: "ableton_browse_drum_hits", description: "Search indexed local drum-hit samples with pagination.", inputSchema: { query: z.string().max(120).default("kick OR snare OR hat"), ...Page }, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
 
   { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1).max(2000) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },
   { name: "ableton_generate_midi_clip_plan", description: "Generate a MIDI clip plan.", inputSchema: { key: z.string().default("C minor"), bars: z.number().int().min(1).max(64).default(8), style: z.string().default("electronic") }, annotations: ro, handler: async (args) => ({ ok: true, midiClipPlan: args }) },

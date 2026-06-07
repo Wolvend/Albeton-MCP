@@ -15,5 +15,11 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_search_freesound");
     expect(registeredToolNames).toContain("ableton_search_plugin_catalog");
     expect(registeredToolNames).toContain("ableton_download_plugin_package");
+    expect(registeredToolNames).toContain("ableton_create_automation_envelope");
+    expect(registeredToolNames).toContain("ableton_extract_automation_summary");
+    expect(registeredToolNames).toContain("ableton_create_arrangement_marker");
+    expect(registeredToolNames).toContain("ableton_quantize_clip");
+    expect(registeredToolNames).toContain("ableton_plan_export_audio");
+    expect(registeredToolNames).toContain("ableton_validate_plugin_package");
   });
 });
