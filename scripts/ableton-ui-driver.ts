@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import { LOCAL_PATHS, TOOL_PATHS } from "../src/config.js";
+import { findSafeUiAction, getSafeUiActions, planSafeUiActionSequence } from "./ui-safe-actions.js";
 
 const execFileAsync = promisify(execFile);
 const host = "127.0.0.1";
@@ -292,6 +293,36 @@ public static class Win32 {
   return { window, rect, capture: result };
 }
 
+async function runSafeUiAction(id: string, payload: Record<string, unknown>) {
+  const action = findSafeUiAction(id);
+  if (!action) {
+    return {
+      unsupported: true,
+      action: id,
+      reason: "Named UI action is not in the reviewed allowlist."
+    };
+  }
+
+  if (payload.dry_run !== false) {
+    return {
+      ok: true,
+      dry_run: true,
+      action: action.id,
+      planned: action
+    };
+  }
+
+  if (action.kind === "focus") return focusWindow();
+  if (action.kind === "screenshot") return captureAbletonScreenshot({}, false);
+  if (action.kind === "region_capture") return captureAbletonScreenshot(action.payload ?? {}, true);
+
+  return {
+    unsupported: true,
+    action: action.id,
+    reason: "Safe UI action kind is not implemented."
+  };
+}
+
 async function dispatch(action: string, payload: Record<string, unknown>) {
   if (action === "ping") return { startedAt, protocol: "ableton-ui-driver-v1" };
   if (action === "status") return { startedAt, requestCount, lastAction, windows: await listAbletonWindows() };
@@ -301,13 +332,17 @@ async function dispatch(action: string, payload: Record<string, unknown>) {
   if (action === "type_text") return typeText(payload);
   if (action === "capture_screenshot") return captureAbletonScreenshot(payload, false);
   if (action === "capture_region") return captureAbletonScreenshot(payload, true);
-  if (action === "click_named_safe_action") {
-    return {
-      unsupported: true,
-      action,
-      reason: "Named UI actions need a reviewed selector map before execution.",
-      nextSteps: ["Use background LiveAPI bridge actions first.", "Add reviewed named action mappings for Ableton UI-only controls."]
-    };
+  if (action === "list_safe_ui_actions") return { actions: getSafeUiActions() };
+  if (action === "plan_ui_action_sequence") return planSafeUiActionSequence(Array.isArray(payload.actions) ? payload.actions.map(String) : []);
+  if (action === "click_named_safe_action") return runSafeUiAction(String(payload.action ?? ""), payload);
+  if (action === "run_ui_action_sequence") {
+    const planned = planSafeUiActionSequence(Array.isArray(payload.actions) ? payload.actions.map(String) : []);
+    if (payload.dry_run !== false) return planned;
+    const results = [];
+    for (const plannedAction of planned.actions) {
+      results.push(await runSafeUiAction(plannedAction.id, { dry_run: false }));
+    }
+    return { ok: true, actions: planned.actions, results };
   }
   return { unsupported: true, action };
 }
