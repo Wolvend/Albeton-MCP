@@ -52,8 +52,7 @@ Response:
 Run the driver:
 
 ```powershell
-npm run build
-npm run ui-driver
+.\launch.ps1 ui-driver
 ```
 
 Use this driver only when `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
@@ -64,8 +63,8 @@ The UI driver is disabled unless `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
 
 It binds only to `127.0.0.1`, targets only Ableton Live windows, rejects unknown actions, bounds payload sizes, and keeps a single command queue. Do not run UI driver operations while bridge write commands are active.
 
-`click_coordinates` uses Ableton-window-relative coordinates, not whole-desktop coordinates. `type_text` rejects SendKeys control characters until a literal text injector is added.
+`click_coordinates` and `capture_region` use Ableton-window-relative coordinates, not whole-desktop coordinates. `type_text` rejects SendKeys control characters until a literal text injector is added.
 
-Screenshot actions currently return a structured unsupported response until the driver can guarantee Ableton-window-only screenshot bounds.
+Screenshot actions focus Ableton, read its Win32 window bounds, reject out-of-window regions, and save PNG files only under `diagnostics\screenshots`.
 
 Background LiveAPI bridge control remains the default for normal production work.

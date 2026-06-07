@@ -1,7 +1,8 @@
 import http from "node:http";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { TOOL_PATHS } from "../src/config.js";
+import path from "node:path";
+import { LOCAL_PATHS, TOOL_PATHS } from "../src/config.js";
 
 const execFileAsync = promisify(execFile);
 const host = "127.0.0.1";
@@ -23,6 +24,15 @@ type AbletonWindow = {
   pid: number;
   title: string;
   handle: number;
+};
+
+type WindowRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
 };
 
 function jsonResponse(res: http.ServerResponse, statusCode: number, body: unknown) {
@@ -83,6 +93,10 @@ async function requireAbletonWindow() {
   return window;
 }
 
+function psString(value: string) {
+  return JSON.stringify(value).replace(/\u2028|\u2029/g, "");
+}
+
 async function focusWindow() {
   const window = await requireAbletonWindow();
   const result = await powershellJson(`
@@ -97,7 +111,7 @@ public static class Win32 {
     $handle = [IntPtr]${window.handle}
     [void][Win32]::ShowWindowAsync($handle, 9)
     $ok = [Win32]::SetForegroundWindow($handle)
-    [PSCustomObject]@{ ok = $ok; handle = ${window.handle}; title = ${JSON.stringify(window.title)} } | ConvertTo-Json -Compress
+    [PSCustomObject]@{ ok = $ok; handle = ${window.handle}; title = ${psString(window.title)} } | ConvertTo-Json -Compress
   `);
   return { window, focus: result };
 }
@@ -139,7 +153,7 @@ public static class Win32 {
     [void][Win32]::SetCursorPos($screenX, $screenY)
     [Win32]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
     [Win32]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
-    [PSCustomObject]@{ ok = $true; x = ${x}; y = ${y}; coordinateSpace = "ableton_window"; title = ${JSON.stringify(window.title)} } | ConvertTo-Json -Compress
+    [PSCustomObject]@{ ok = $true; x = ${x}; y = ${y}; coordinateSpace = "ableton_window"; title = ${psString(window.title)} } | ConvertTo-Json -Compress
   `);
   return { window, click: result };
 }
@@ -163,10 +177,119 @@ public static class Win32 {
     [void][Win32]::ShowWindowAsync($handle, 9)
     [void][Win32]::SetForegroundWindow($handle)
     Start-Sleep -Milliseconds 100
-    [System.Windows.Forms.SendKeys]::SendWait(${JSON.stringify(text)})
-    [PSCustomObject]@{ ok = $true; chars = ${text.length}; title = ${JSON.stringify(window.title)} } | ConvertTo-Json -Compress
+    [System.Windows.Forms.SendKeys]::SendWait(${psString(text)})
+    [PSCustomObject]@{ ok = $true; chars = ${text.length}; title = ${psString(window.title)} } | ConvertTo-Json -Compress
   `);
   return { window, type: result };
+}
+
+async function getWindowRect(window: AbletonWindow): Promise<WindowRect> {
+  const result = await powershellJson(`
+    Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+public static class Win32 {
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+}
+'@
+    $handle = [IntPtr]${window.handle}
+    $rect = New-Object RECT
+    if (-not [Win32]::GetWindowRect($handle, [ref]$rect)) { throw "Unable to read Ableton window bounds." }
+    $width = $rect.Right - $rect.Left
+    $height = $rect.Bottom - $rect.Top
+    [PSCustomObject]@{ left = $rect.Left; top = $rect.Top; right = $rect.Right; bottom = $rect.Bottom; width = $width; height = $height } | ConvertTo-Json -Compress
+  `);
+  const rect = result as Partial<WindowRect> | null;
+  const left = rect?.left;
+  const top = rect?.top;
+  const right = rect?.right;
+  const bottom = rect?.bottom;
+  const width = rect?.width;
+  const height = rect?.height;
+  if (
+    !rect ||
+    !Number.isFinite(left) ||
+    !Number.isFinite(top) ||
+    !Number.isFinite(right) ||
+    !Number.isFinite(bottom) ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    left === undefined ||
+    top === undefined ||
+    right === undefined ||
+    bottom === undefined ||
+    width === undefined ||
+    height === undefined ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    throw new Error("Ableton window bounds were invalid.");
+  }
+  return {
+    left,
+    top,
+    right,
+    bottom,
+    width,
+    height
+  };
+}
+
+async function captureAbletonScreenshot(payload: Record<string, unknown>, regionOnly: boolean) {
+  const window = await requireAbletonWindow();
+  const rect = await getWindowRect(window);
+  const x = regionOnly ? boundedNumber(payload.x, "x", 0, rect.width) : 0;
+  const y = regionOnly ? boundedNumber(payload.y, "y", 0, rect.height) : 0;
+  const width = regionOnly ? boundedNumber(payload.width, "width", 1, Math.min(rect.width - x, 3000)) : Math.min(rect.width, 3000);
+  const height = regionOnly ? boundedNumber(payload.height, "height", 1, Math.min(rect.height - y, 3000)) : Math.min(rect.height, 3000);
+  if (x + width > rect.width || y + height > rect.height) {
+    throw new Error("Capture region is outside the Ableton window.");
+  }
+
+  const screenshotsDir = path.join(LOCAL_PATHS.diagnostics, "screenshots");
+  const fileName = `ableton-ui-${new Date().toISOString().replace(/[:.]/g, "-")}-${regionOnly ? "region" : "window"}.png`;
+  const outputPath = path.join(screenshotsDir, fileName);
+  const result = await powershellJson(`
+    Add-Type -AssemblyName System.Drawing
+    Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class Win32 {
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+}
+'@
+    $handle = [IntPtr]${window.handle}
+    [void][Win32]::ShowWindowAsync($handle, 9)
+    [void][Win32]::SetForegroundWindow($handle)
+    Start-Sleep -Milliseconds 150
+    $dir = ${psString(screenshotsDir)}
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $path = ${psString(outputPath)}
+    $bitmap = New-Object System.Drawing.Bitmap(${width}, ${height})
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    try {
+      $graphics.CopyFromScreen(${rect.left + x}, ${rect.top + y}, 0, 0, (New-Object System.Drawing.Size(${width}, ${height})))
+      $bitmap.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+    } finally {
+      $graphics.Dispose()
+      $bitmap.Dispose()
+    }
+    $info = Get-Item -LiteralPath $path
+    [PSCustomObject]@{
+      ok = $true
+      path = $info.FullName
+      bytes = $info.Length
+      x = ${x}
+      y = ${y}
+      width = ${width}
+      height = ${height}
+      coordinateSpace = "ableton_window"
+      title = ${psString(window.title)}
+    } | ConvertTo-Json -Compress
+  `);
+  return { window, rect, capture: result };
 }
 
 async function dispatch(action: string, payload: Record<string, unknown>) {
@@ -176,14 +299,8 @@ async function dispatch(action: string, payload: Record<string, unknown>) {
   if (action === "focus_window") return focusWindow();
   if (action === "click_coordinates") return clickCoordinates(payload);
   if (action === "type_text") return typeText(payload);
-  if (action === "capture_screenshot" || action === "capture_region") {
-    return {
-      unsupported: true,
-      action,
-      reason: "Screenshot capture is blocked until the driver can guarantee Ableton-window-only bounds.",
-      nextSteps: ["Use window_status first.", "Add bounded Ableton window capture before enabling screenshot output."]
-    };
-  }
+  if (action === "capture_screenshot") return captureAbletonScreenshot(payload, false);
+  if (action === "capture_region") return captureAbletonScreenshot(payload, true);
   if (action === "click_named_safe_action") {
     return {
       unsupported: true,

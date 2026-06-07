@@ -136,11 +136,13 @@ Then use:
 ableton_ui_driver_ping
 ableton_window_status
 ableton_focus_window
+ableton_capture_screenshot
+ableton_capture_region
 ableton_click_coordinates
 ableton_type_text
 ```
 
-`click_coordinates` uses Ableton-window-relative coordinates. Screenshot actions currently return a structured unsupported response until Ableton-window-only capture is implemented.
+`click_coordinates` and `capture_region` use Ableton-window-relative coordinates. Screenshots are saved as PNG diagnostics under `diagnostics\screenshots` after the driver focuses the Ableton window and verifies bounded window coordinates.
 
 ## Configure feature gates
 

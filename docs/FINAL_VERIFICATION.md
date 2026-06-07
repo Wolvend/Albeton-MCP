@@ -87,15 +87,16 @@ Expected non-OK results:
 
 ## UI driver smoke test
 
-The Ableton UI driver was started temporarily on `127.0.0.1:17365`.
+The Ableton UI driver was restarted onto the current rebuilt code on `127.0.0.1:17365`.
 
 Verified:
 
-- `ping` returned `ok: true`.
-- `window_status` found `Untitled* - Ableton Live 12 Trial`.
-- `capture_screenshot` returned a structured unsupported response, as intended, until Ableton-window-only screenshot bounds are implemented.
+- `ableton_ui_driver_ping` returned `ok: true`.
+- `ableton_capture_screenshot` with `dry_run=false` returned `ok: true`, captured `816x683`, and saved `diagnostics\screenshots\ableton-ui-2026-06-07T04-00-57-794Z-window.png`.
+- `ableton_capture_region` with `dry_run=false` returned `ok: true`, captured a `320x180` Ableton-window-relative region, and saved `diagnostics\screenshots\ableton-ui-2026-06-07T04-00-59-168Z-region.png`.
+- The full-window PNG was visually checked and correctly framed on `Ableton MCP Bridge Set - Ableton Live 12 Trial`.
 
-The temporary UI driver process was stopped after the smoke test.
+The UI driver was left listening on `127.0.0.1:17365` for continued local control.
 
 ## Runtime state
 
@@ -113,4 +114,4 @@ The temporary UI driver process was stopped after the smoke test.
 - File operations enforce explicit allowed roots, realpath checks, and sensitive-path rejection.
 - Remote sample tools reject arbitrary URLs and allow only approved Freesound and Internet Archive hosts.
 - The Max for Live bridge source includes a Node-for-Max HTTP server and a LiveAPI handler for ping, snapshots, live-state reads, track/return/master/scene/clip-slot/clip/device/parameter/mixer listing, selected objects, tempo/transport, track and scene creation, clip creation/launch/stop/loop/rename, mixer volume/pan, device parameter setting, track arm/mute/solo, and track rename.
-- The Ableton UI driver service includes loopback-only ping, status, Ableton window discovery, focus, window-relative click, and bounded text input.
+- The Ableton UI driver service includes loopback-only ping, status, Ableton window discovery, focus, Ableton-window-only screenshot capture, bounded region capture, window-relative click, and bounded text input.
