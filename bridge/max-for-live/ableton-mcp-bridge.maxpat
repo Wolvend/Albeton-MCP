@@ -29,16 +29,66 @@
         "box": {
           "id": "node-http",
           "maxclass": "newobj",
+          "numinlets": 1,
+          "numoutlets": 2,
+          "outlettype": ["", ""],
+          "saved_object_attributes": {
+            "autostart": 1,
+            "defer": 0,
+            "node_bin_path": "",
+            "npm_bin_path": "",
+            "watch": 0
+          },
           "text": "node.script ableton-mcp-http.js @autostart 1",
+          "textfile": {
+            "filename": "ableton-mcp-http.js",
+            "flags": 0,
+            "embed": 0,
+            "autowatch": 1
+          },
           "patching_rect": [35.0, 125.0, 300.0, 22.0]
+        }
+      },
+      {
+        "box": {
+          "id": "message-start",
+          "maxclass": "message",
+          "numinlets": 2,
+          "numoutlets": 1,
+          "outlettype": [""],
+          "text": "script start",
+          "patching_rect": [360.0, 125.0, 90.0, 22.0]
         }
       },
       {
         "box": {
           "id": "js-liveapi",
           "maxclass": "newobj",
+          "numinlets": 1,
+          "numoutlets": 1,
+          "outlettype": [""],
           "text": "js ableton-mcp-liveapi.js",
           "patching_rect": [35.0, 205.0, 220.0, 22.0]
+        }
+      },
+      {
+        "box": {
+          "id": "print-node-status",
+          "maxclass": "newobj",
+          "numinlets": 1,
+          "numoutlets": 0,
+          "text": "print ableton-mcp-node-status",
+          "patching_rect": [390.0, 160.0, 220.0, 22.0]
+        }
+      },
+      {
+        "box": {
+          "id": "js-node-status",
+          "maxclass": "newobj",
+          "numinlets": 1,
+          "numoutlets": 0,
+          "text": "js ableton-mcp-status.js",
+          "patching_rect": [390.0, 190.0, 170.0, 22.0]
         }
       },
       {
@@ -55,6 +105,24 @@
         "patchline": {
           "source": ["node-http", 0],
           "destination": ["js-liveapi", 0]
+        }
+      },
+      {
+        "patchline": {
+          "source": ["node-http", 1],
+          "destination": ["print-node-status", 0]
+        }
+      },
+      {
+        "patchline": {
+          "source": ["node-http", 1],
+          "destination": ["js-node-status", 0]
+        }
+      },
+      {
+        "patchline": {
+          "source": ["message-start", 0],
+          "destination": ["node-http", 0]
         }
       },
       {

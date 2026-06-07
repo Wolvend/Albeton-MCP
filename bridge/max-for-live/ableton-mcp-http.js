@@ -1,12 +1,35 @@
 const http = require("http");
 const crypto = require("crypto");
-const Max = require("max-api");
+const fs = require("fs");
+const path = require("path");
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.ABLETON_MCP_BRIDGE_PORT || 17364);
 const MAX_REQUEST_BYTES = 64_000;
 const REQUEST_TIMEOUT_MS = 2500;
 const pending = new Map();
+const DIAGNOSTICS_DIR = path.resolve(__dirname, "..", "..", "diagnostics", "runtime");
+const STARTUP_LOG = path.join(DIAGNOSTICS_DIR, "node-for-max-http-start.log");
+
+function logStartup(message) {
+  try {
+    fs.mkdirSync(DIAGNOSTICS_DIR, { recursive: true });
+    fs.appendFileSync(STARTUP_LOG, `${new Date().toISOString()} ${message}\n`);
+  } catch {
+    // Max console logging remains the fallback if filesystem diagnostics are unavailable.
+  }
+}
+
+logStartup("ableton-mcp-http.js loaded");
+
+let Max;
+try {
+  Max = require("max-api");
+  logStartup("max-api loaded");
+} catch (error) {
+  logStartup(`max-api load failed: ${error instanceof Error ? error.stack || error.message : String(error)}`);
+  throw error;
+}
 
 function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
@@ -88,7 +111,13 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
+  logStartup(`listening on ${HOST}:${PORT}`);
   Max.post(`Ableton MCP HTTP bridge listening on ${HOST}:${PORT}`);
+});
+
+server.on("error", (error) => {
+  logStartup(`server error: ${error && error.stack ? error.stack : String(error)}`);
+  Max.post(`Ableton MCP HTTP bridge error: ${String(error)}`);
 });
 
 process.on("SIGTERM", () => server.close());

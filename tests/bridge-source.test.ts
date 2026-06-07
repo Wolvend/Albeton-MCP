@@ -24,6 +24,12 @@ describe("Max for Live bridge source", () => {
     await execFileAsync("C:\\Program Files\\nodejs\\node.exe", ["--check", liveApiScript], { timeout: 10_000 });
   });
 
+  it("keeps Node for Max bridge scripts in CommonJS mode", async () => {
+    const packagePath = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "package.json");
+    const packageJson = JSON.parse(await fs.readFile(packagePath, "utf8"));
+    expect(packageJson.type).toBe("commonjs");
+  });
+
   it("documents implemented LiveAPI bridge actions in source", async () => {
     const liveApiScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-liveapi.js");
     const source = await fs.readFile(liveApiScript, "utf8");

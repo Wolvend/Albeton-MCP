@@ -13,6 +13,7 @@ Expected behavior:
 ## Bridge files
 
 - `bridge/max-for-live/ableton-mcp-http.js`: Node for Max loopback HTTP server.
+- `bridge/max-for-live/package.json`: local CommonJS marker required by Node for Max.
 - `bridge/max-for-live/ableton-mcp-liveapi.js`: Max JavaScript LiveAPI action handler.
 - `bridge/max-for-live/ableton-mcp-bridge.maxpat`: patch that wires both scripts together.
 

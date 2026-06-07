@@ -26,6 +26,7 @@ Response:
 
 - `ableton-mcp-bridge.maxpat`: patch wiring.
 - `ableton-mcp-http.js`: Node for Max loopback HTTP server on `127.0.0.1:17364`.
+- `package.json`: Keeps the Max bridge folder in CommonJS mode, even though the main MCP project is ESM.
 - `ableton-mcp-liveapi.js`: Max JS LiveAPI handler.
 
 ## Setup
