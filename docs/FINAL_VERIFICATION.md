@@ -120,6 +120,18 @@ A separate earlier MCP client sweep called every registered tool with safe fixtu
 
 Result: succeeded. The read-only live bridge ping and full snapshot returned without MCP errors, and the typed `ableton_duplicate_clip` dry-run returned without contacting a write-gated execution path.
 
+```powershell
+# Real write smoke with ABLETON_MCP_ENABLE_WRITE=1: ableton_create_scene dry_run=false
+```
+
+Result: succeeded. The bridge returned a new Live object id `48`; after the read-cache TTL expired, `ableton_list_scenes` reported 9 scenes, up from 8 before the write. UI control stayed disabled.
+
+```powershell
+# Deep bridge marker smoke: ableton_create_arrangement_marker dry_run=false
+```
+
+Result: reached the running Ableton bridge but returned the old active-device unsupported response, which means the open Max device had not reloaded the newly installed `ableton-mcp-liveapi.js`. Reloading the bridge device in Ableton is required before validating the newest marker/automation handlers live.
+
 Summary:
 
 ```text
