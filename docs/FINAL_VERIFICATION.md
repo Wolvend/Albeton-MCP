@@ -90,7 +90,7 @@ Result: succeeded. All three launch entry points built the project and installed
 # MCP client smoke test against launch.cmd stdio -SkipSetup
 ```
 
-Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 145 tools. This verifies launcher setup output does not corrupt MCP stdout.
+Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 151 tools. This verifies launcher setup output does not corrupt MCP stdout.
 
 ```powershell
 .\launch.ps1 docker -SkipSetup
@@ -109,6 +109,12 @@ npm audit --audit-level=moderate
 ```
 
 Result: succeeded. npm reported 0 vulnerabilities.
+
+```powershell
+.\launch.ps1 check -SkipSetup
+```
+
+Result: succeeded. The one-command launcher check ran tests, lint, doctor, release check, safe sweep, MCP verifier, and npm audit. It reported 16 test files, 36 tests, 151 tools, 78 safe-sweep calls, and 0 vulnerabilities.
 
 ```powershell
 # Named safe UI action verifier
@@ -180,7 +186,8 @@ The UI driver was left listening on `127.0.0.1:17365` for continued local contro
 ## Current implementation notes
 
 - All registered MCP tools, resources, and prompts were exercised.
-- Root launchers support regular stdio MCP, Docker/HTTP MCP, bridge install, verifier, and UI-driver workflows.
+- Root launchers support regular stdio MCP, Docker/HTTP MCP, bridge install, verifier, check, doctor, test, lint, build, sweep, inspect, bridge-listener, and UI-driver workflows.
+- Launcher flags expose explicit process-local gates for writes, downloads, UI control, and token-required private-network HTTP.
 - Platform-aware config supports Windows defaults, macOS defaults, and Linux/WSL headless MCP operation with environment path overrides.
 - Other-device HTTP mode stays disabled by default and requires explicit remote enablement plus bearer-token auth.
 - FastMCP-inspired runtime middleware wraps every tool with error handling, timing metrics, per-tool rate limiting, short read-only cache, and response-size limits.

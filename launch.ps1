@@ -1,7 +1,14 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "ui-driver")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "inspect", "ui-driver", "bridge-listener", "help")]
   [string]$Mode = "stdio",
-  [switch]$SkipSetup
+  [switch]$SkipSetup,
+  [switch]$NoBuild,
+  [switch]$NoBridgeInstall,
+  [switch]$WithWrite,
+  [switch]$WithDownloads,
+  [switch]$WithUiControl,
+  [switch]$RemoteHttp,
+  [string]$HttpToken
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,11 +26,52 @@ function Write-Err {
   [Console]::Error.WriteLine($Message)
 }
 
+function Show-Help {
+  @"
+Ableton MCP launcher
+
+Usage:
+  .\launch.ps1 [mode] [options]
+  ./launch.sh [mode] [options]
+  launch.cmd [mode] [options]
+
+Modes:
+  stdio            Start local stdio MCP server for Codex, Claude, Cursor, etc. Default.
+  docker, http     Start local Streamable HTTP MCP at http://127.0.0.1:17366/mcp.
+  setup            Build, install bridge files, and generate client configs.
+  install          Build and install Ableton Max for Live bridge files only.
+  verify           Build and run MCP verifier.
+  check            Build, test, lint, doctor, release check, safe sweep, verifier, audit.
+  doctor           Run environment and listener checks.
+  test, lint       Run unit tests or lint.
+  build            Build TypeScript only.
+  sweep            Run safe read-only/dry-run MCP sweep.
+  inspect          List MCP tools with MCP Inspector.
+  ui-driver        Start user-chosen foreground Ableton UI driver.
+  bridge-listener  Start bridge setup listener for Ableton bridge setup.
+  help             Show this help.
+
+Options:
+  -SkipSetup         Reuse existing node_modules, dist, and installed bridge files.
+  -NoBuild           Do not build during setup.
+  -NoBridgeInstall   Do not install Max for Live bridge files during setup.
+  -WithWrite         Set ABLETON_MCP_ENABLE_WRITE=1 for this process.
+  -WithDownloads     Set ABLETON_MCP_ENABLE_DOWNLOADS=1 for this process.
+  -WithUiControl     Set ABLETON_MCP_ENABLE_UI_CONTROL=1 for this process.
+  -RemoteHttp        For http/docker only: bind 0.0.0.0; requires -HttpToken or env token.
+  -HttpToken <token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 16 chars.
+
+Safe defaults:
+  Writes, UI control, downloads, and remote HTTP are off unless explicitly enabled.
+  Setup logs are written to stderr so stdio MCP stdout stays clean.
+"@ | Write-Output
+}
+
 function Invoke-CapturedStep {
   param([scriptblock]$Step)
 
   $output = & $Step 2>&1
-  $exitCode = $LASTEXITCODE
+  $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
   foreach ($line in $output) {
     Write-Err $line
   }
@@ -42,11 +90,15 @@ function Invoke-Setup {
     Invoke-CapturedStep { & npm.cmd install }
   }
 
-  Write-Err "Building Ableton MCP..."
-  Invoke-CapturedStep { & npm.cmd run build }
+  if (-not $NoBuild) {
+    Write-Err "Building Ableton MCP..."
+    Invoke-CapturedStep { & npm.cmd run build }
+  }
 
-  Write-Err "Installing Ableton Max for Live bridge files..."
-  Invoke-CapturedStep { & npm.cmd run bridge:install }
+  if (-not $NoBridgeInstall) {
+    Write-Err "Installing Ableton Max for Live bridge files..."
+    Invoke-CapturedStep { & npm.cmd run bridge:install }
+  }
 }
 
 Set-DefaultEnv "ABLETON_MCP_ENABLE_WRITE" "0"
@@ -55,9 +107,32 @@ Set-DefaultEnv "ABLETON_MCP_ENABLE_DOWNLOADS" "0"
 Set-DefaultEnv "ABLETON_MCP_HTTP_HOST" "127.0.0.1"
 Set-DefaultEnv "ABLETON_MCP_HTTP_PORT" "17366"
 
+if ($WithWrite) { $env:ABLETON_MCP_ENABLE_WRITE = "1" }
+if ($WithDownloads) { $env:ABLETON_MCP_ENABLE_DOWNLOADS = "1" }
+if ($WithUiControl) { $env:ABLETON_MCP_ENABLE_UI_CONTROL = "1" }
+if (-not [string]::IsNullOrWhiteSpace($HttpToken)) { $env:ABLETON_MCP_HTTP_TOKEN = $HttpToken }
+
+if ($RemoteHttp) {
+  if ($Mode -notin @("http", "docker")) {
+    throw "-RemoteHttp is only valid with http or docker mode."
+  }
+  $token = $env:ABLETON_MCP_HTTP_TOKEN
+  if ([string]::IsNullOrWhiteSpace($token) -or $token.Length -lt 16) {
+    throw "Remote HTTP requires -HttpToken or ABLETON_MCP_HTTP_TOKEN with at least 16 characters."
+  }
+  $env:ABLETON_MCP_HTTP_ALLOW_REMOTE = "1"
+  $env:ABLETON_MCP_HTTP_HOST = "0.0.0.0"
+}
+
 switch ($Mode) {
+  "help" {
+    Show-Help
+  }
   "install" {
     Invoke-Setup
+  }
+  "build" {
+    Invoke-CapturedStep { & npm.cmd run build }
   }
   "setup" {
     Invoke-Setup
@@ -67,6 +142,41 @@ switch ($Mode) {
   "verify" {
     Invoke-Setup
     & npm.cmd run verify:mcp
+    exit $LASTEXITCODE
+  }
+  "check" {
+    Invoke-Setup
+    Invoke-CapturedStep { & npm.cmd test }
+    Invoke-CapturedStep { & npm.cmd run lint }
+    Invoke-CapturedStep { & npm.cmd run doctor }
+    Invoke-CapturedStep { & npm.cmd run release:check }
+    Invoke-CapturedStep { & npm.cmd run sweep:safe }
+    Invoke-CapturedStep { & npm.cmd run verify:mcp }
+    Invoke-CapturedStep { & npm.cmd audit --audit-level=moderate }
+  }
+  "doctor" {
+    Invoke-Setup
+    & npm.cmd run doctor
+    exit $LASTEXITCODE
+  }
+  "test" {
+    Invoke-Setup
+    & npm.cmd test
+    exit $LASTEXITCODE
+  }
+  "lint" {
+    Invoke-Setup
+    & npm.cmd run lint
+    exit $LASTEXITCODE
+  }
+  "sweep" {
+    Invoke-Setup
+    & npm.cmd run sweep:safe
+    exit $LASTEXITCODE
+  }
+  "inspect" {
+    Invoke-Setup
+    & npm.cmd run inspect
     exit $LASTEXITCODE
   }
   "stdio" {
@@ -83,6 +193,11 @@ switch ($Mode) {
     $env:ABLETON_MCP_ENABLE_UI_CONTROL = "1"
     Invoke-Setup
     & node dist/scripts/ableton-ui-driver.js
+    exit $LASTEXITCODE
+  }
+  "bridge-listener" {
+    Invoke-Setup
+    & node dist/scripts/ableton-bridge-setup-listener.js
     exit $LASTEXITCODE
   }
 }

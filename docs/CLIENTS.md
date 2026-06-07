@@ -18,6 +18,8 @@ cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
 
 This writes ready-to-use configs under `config/generated/` for Codex, Claude Desktop, Cursor, WSL stdio, localhost HTTP, and Tailscale/private HTTP. The generated folder is gitignored because `remote-http.env` may contain a bearer token.
 
+Generated stdio configs use the fast launcher path, so they pass `-SkipSetup` or `--skip-setup`. After pulling updates, run `.\launch.ps1 setup` or `.\launch.ps1 check` once before restarting MCP clients.
+
 Ready-made template files live in `config/`:
 
 - `config/codex.json`
@@ -35,7 +37,7 @@ Use the checked-in `.mcp.json` on this Windows machine:
   "mcpServers": {
     "ableton-mcp": {
       "command": "C:/Users/LIZ/Desktop/MCP/ableton-mcp/launch.cmd",
-      "args": ["stdio"]
+      "args": ["stdio", "-SkipSetup"]
     }
   }
 }
@@ -48,7 +50,7 @@ For another OS, point the client to the local launcher:
   "mcpServers": {
     "ableton-mcp": {
       "command": "/path/to/ableton-mcp/launch.sh",
-      "args": ["stdio"]
+      "args": ["stdio", "--skip-setup"]
     }
   }
 }
@@ -63,7 +65,7 @@ Use stdio when Claude Desktop is on the same device:
   "mcpServers": {
     "ableton-mcp": {
       "command": "C:/Users/LIZ/Desktop/MCP/ableton-mcp/launch.cmd",
-      "args": ["stdio"],
+      "args": ["stdio", "-SkipSetup"],
       "env": {
         "ABLETON_MCP_ENABLE_WRITE": "0",
         "ABLETON_MCP_ENABLE_UI_CONTROL": "0",
@@ -105,7 +107,7 @@ cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp
 ./launch.sh stdio
 ```
 
-Use native WSL Node for headless verification:
+By default this delegates to the Windows launcher when PowerShell is available. Use native WSL Node for headless verification:
 
 ```bash
 ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify
@@ -118,11 +120,7 @@ For another device on a private network, use Streamable HTTP. Keep this behind T
 Required environment:
 
 ```powershell
-$env:ABLETON_MCP_HTTP_ALLOW_REMOTE="1"
-$env:ABLETON_MCP_HTTP_HOST="0.0.0.0"
-$env:ABLETON_MCP_TAILSCALE_HOST="100.84.223.22"
-$env:ABLETON_MCP_HTTP_TOKEN="<at least 16 random characters>"
-.\launch.ps1 docker
+.\launch.ps1 docker -RemoteHttp -HttpToken "<at least 16 random characters>"
 ```
 
 Remote clients must send:
@@ -131,7 +129,7 @@ Remote clients must send:
 Authorization: Bearer <ABLETON_MCP_HTTP_TOKEN>
 ```
 
-Do not expose port `17366` to the public internet.
+Do not expose port `17366` to the public internet. Prefer Tailscale/VPN, keep the bearer token private, and verify actual listener/firewall exposure before connecting another device.
 
 Default Tailscale URL for this machine:
 

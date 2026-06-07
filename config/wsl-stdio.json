@@ -2,7 +2,7 @@
   "mcpServers": {
     "ableton-mcp": {
       "command": "/mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp/launch.sh",
-      "args": ["stdio"],
+      "args": ["stdio", "--skip-setup"],
       "env": {
         "ABLETON_MCP_ENABLE_WRITE": "0",
         "ABLETON_MCP_ENABLE_UI_CONTROL": "0",

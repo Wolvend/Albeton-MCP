@@ -71,9 +71,12 @@ Use these launch modes:
 | Bridge install | `.\launch.ps1 install` | Installs the Ableton Max for Live preset and companion files without starting a server. |
 | Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
+| Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe sweep, MCP verifier, and npm audit. |
 | UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
 
-Manual setup still works:
+Pass `-SkipSetup` after first setup when you want fast startup from existing `dist` and installed bridge files. Generated client configs use this fast path by default, so rerun `.\launch.ps1 setup` after code updates that need a rebuild or bridge reinstall.
+
+Manual development commands still work:
 
 ```powershell
 cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
@@ -84,10 +87,10 @@ npm test
 npm run lint
 ```
 
-Start the MCP server:
+Start the MCP server through the launcher, not `npm start`, when an MCP client is attached:
 
 ```powershell
-npm start
+.\launch.ps1 stdio -SkipSetup
 ```
 
 Inspect the MCP tool surface:
