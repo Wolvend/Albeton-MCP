@@ -52,19 +52,19 @@ Result: succeeded. Built the server, installed the Max for Live bridge files, an
 npm run sweep:safe
 ```
 
-Result: succeeded. The safe sweep called 63 representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures.
+Result: succeeded. The safe sweep called 72 representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures.
 
 ```powershell
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 141 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
+Result: succeeded. The verifier reported 145 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
 
 ```powershell
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 141 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 145 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ```powershell
 # Temporary localhost auth smoke on port 17466
@@ -90,7 +90,7 @@ Result: succeeded. All three launch entry points built the project and installed
 # MCP client smoke test against launch.cmd stdio -SkipSetup
 ```
 
-Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 119 tools. This verifies launcher setup output does not corrupt MCP stdout.
+Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 145 tools. This verifies launcher setup output does not corrupt MCP stdout.
 
 ```powershell
 .\launch.ps1 docker -SkipSetup
@@ -112,7 +112,13 @@ Result: succeeded. npm reported 0 vulnerabilities.
 
 ## Earlier full MCP sweep
 
-A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 119 tools, 3 resources, and 2 prompts.
+A separate earlier MCP client sweep called every registered tool with safe fixture/default arguments, read every resource, and rendered every prompt. The current verifier confirms the registered surface is now 145 tools, 3 resources, and 2 prompts.
+
+```powershell
+# MCP client smoke for ableton_bridge_ping, ableton_get_full_snapshot, and typed ableton_duplicate_clip dry-run
+```
+
+Result: succeeded. The read-only live bridge ping and full snapshot returned without MCP errors, and the typed `ableton_duplicate_clip` dry-run returned without contacting a write-gated execution path.
 
 Summary:
 

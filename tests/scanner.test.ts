@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { LOCAL_PATHS } from "../src/config.js";
 import { queryLibrary } from "../src/cache.js";
-import { scanLibrary } from "../src/scanner.js";
+import { classifyFile, scanLibrary } from "../src/scanner.js";
 
 describe("scanner", () => {
   it("indexes a tiny fixture on demand", async () => {
@@ -15,5 +15,15 @@ describe("scanner", () => {
     expect(scan.indexed).toBeGreaterThanOrEqual(1);
     const rows = await queryLibrary("kick");
     expect(rows.some((row) => String(row.name) === "kick.wav")).toBe(true);
+  });
+
+  it("classifies Ableton packs, grooves, devices, and plugin presets without broad scans", () => {
+    expect(classifyFile("foo.agr")).toBe("groove");
+    expect(classifyFile("foo.adg")).toBe("preset");
+    expect(classifyFile("foo.adv")).toBe("preset");
+    expect(classifyFile("foo.amxd")).toBe("max_device");
+    expect(classifyFile("foo.alp")).toBe("pack");
+    expect(classifyFile("foo.vstpreset")).toBe("plugin_preset");
+    expect(classifyFile("foo.vst3")).toBe("plugin");
   });
 });

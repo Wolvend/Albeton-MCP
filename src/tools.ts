@@ -23,6 +23,21 @@ const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().in
 const Query = { query: z.string().max(200).default(""), ...Page };
 const PathArg = { path: z.string().min(1) };
 const DryRun = { dry_run: z.boolean().default(true) };
+const TrackIndex = z.number().int().min(0);
+const SceneIndex = z.number().int().min(0);
+const ClipSlotIndex = z.number().int().min(0);
+const DeviceIndex = z.number().int().min(0);
+const ParameterIndex = z.number().int().min(0);
+const BeatTime = z.number().min(0).max(100_000);
+const TrackClipRef = { track_index: TrackIndex, clip_slot_index: ClipSlotIndex };
+const OptionalTrackClipRef = { track_index: TrackIndex.default(0), clip_slot_index: ClipSlotIndex.default(0) };
+const AutomationPoint = {
+  track_index: TrackIndex,
+  device_index: DeviceIndex.optional(),
+  parameter_index: ParameterIndex,
+  time: BeatTime,
+  value: z.number()
+};
 
 type ToolDef = {
   name: string;
@@ -58,6 +73,20 @@ async function bridgeRead(action: string, payload: Record<string, unknown> = {})
 async function bridgeWrite(action: string, args: any) {
   requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
   if (args.dry_run !== false) return { ok: true, dry_run: true, action, nextStep: "Set dry_run=false to send this action to the Ableton bridge." };
+  return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
+}
+
+async function typedBridgeWrite(action: string, args: any, plan: Record<string, unknown>) {
+  if (args.dry_run !== false) {
+    return {
+      ok: true,
+      dry_run: true,
+      action,
+      plan,
+      nextStep: "Set dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 to send this typed action to the Ableton bridge."
+    };
+  }
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
   return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
 }
 
@@ -244,9 +273,7 @@ const writeToolNames = [
   "ableton_arm_track", "ableton_mute_track", "ableton_solo_track", "ableton_set_track_volume",
   "ableton_set_track_pan", "ableton_insert_instrument", "ableton_insert_effect", "ableton_load_preset_or_sample",
   "ableton_set_device_parameter", "ableton_map_macro", "ableton_rename_track", "ableton_rename_clip",
-  "ableton_create_automation_envelope", "ableton_set_automation_point", "ableton_simplify_automation",
-  "ableton_create_arrangement_marker", "ableton_duplicate_scene", "ableton_duplicate_clip", "ableton_move_clip",
-  "ableton_quantize_clip", "ableton_apply_groove", "ableton_humanize_midi_clip"
+  "ableton_apply_groove"
 ];
 
 for (const name of writeToolNames) {
@@ -254,6 +281,19 @@ for (const name of writeToolNames) {
 }
 
 toolDefs.push(
+  { name: "ableton_list_arrangement_markers", description: "List arrangement locators and marker-like metadata from the LiveAPI bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("arrangement_markers") },
+  { name: "ableton_get_clip_notes", description: "Read MIDI note summary for a clip through the LiveAPI bridge.", inputSchema: { ...OptionalTrackClipRef }, annotations: ro, handler: async (args) => bridgeRead("clip_notes", args) },
+  { name: "ableton_get_clip_envelopes", description: "Read clip envelope availability from the LiveAPI bridge where supported.", inputSchema: { ...OptionalTrackClipRef }, annotations: ro, handler: async (args) => bridgeRead("clip_envelopes", args) },
+  { name: "ableton_get_device_parameter_map", description: "Read device parameter map for a track/device through the LiveAPI bridge.", inputSchema: { track_index: TrackIndex.default(0), device_index: DeviceIndex.default(0) }, annotations: ro, handler: async (args) => bridgeRead("device_parameter_map", args) },
+  { name: "ableton_create_automation_envelope", description: "Create or select an automation envelope target through the gated LiveAPI bridge.", inputSchema: { track_index: TrackIndex, device_index: DeviceIndex.optional(), parameter_index: ParameterIndex, ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_create_automation_envelope", args, { target: "automation_envelope", track_index: args.track_index, device_index: args.device_index ?? null, parameter_index: args.parameter_index }) },
+  { name: "ableton_set_automation_point", description: "Set one automation breakpoint through the gated LiveAPI bridge when supported.", inputSchema: { ...AutomationPoint, ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_set_automation_point", args, { target: "automation_point", track_index: args.track_index, device_index: args.device_index ?? null, parameter_index: args.parameter_index, time: args.time, value: args.value }) },
+  { name: "ableton_simplify_automation", description: "Simplify automation for one parameter through the gated LiveAPI bridge when supported.", inputSchema: { track_index: TrackIndex, device_index: DeviceIndex.optional(), parameter_index: ParameterIndex, tolerance: z.number().min(0).max(1).default(0.05), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_simplify_automation", args, { target: "automation_simplify", tolerance: args.tolerance }) },
+  { name: "ableton_create_arrangement_marker", description: "Create an arrangement marker/locator through the gated LiveAPI bridge.", inputSchema: { time: BeatTime, name: z.string().min(1).max(128), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_create_arrangement_marker", args, { target: "arrangement_marker", time: args.time, name: args.name }) },
+  { name: "ableton_duplicate_scene", description: "Duplicate a scene through the gated LiveAPI bridge.", inputSchema: { scene_index: SceneIndex, ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_duplicate_scene", args, { target: "scene", scene_index: args.scene_index }) },
+  { name: "ableton_duplicate_clip", description: "Duplicate a Session View clip to another clip slot through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, destination_track_index: TrackIndex.optional(), destination_clip_slot_index: ClipSlotIndex.optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_duplicate_clip", args, { source: { track_index: args.track_index, clip_slot_index: args.clip_slot_index }, destination: { track_index: args.destination_track_index ?? args.track_index, clip_slot_index: args.destination_clip_slot_index ?? args.clip_slot_index + 1 } }) },
+  { name: "ableton_move_clip", description: "Move a Session View clip to another clip slot through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, destination_track_index: TrackIndex, destination_clip_slot_index: ClipSlotIndex, ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_move_clip", args, { source: { track_index: args.track_index, clip_slot_index: args.clip_slot_index }, destination: { track_index: args.destination_track_index, clip_slot_index: args.destination_clip_slot_index } }) },
+  { name: "ableton_quantize_clip", description: "Quantize a MIDI clip through the gated LiveAPI bridge when supported.", inputSchema: { ...TrackClipRef, grid: z.enum(["1_bar", "1/2", "1/4", "1/8", "1/16", "1/32"]).default("1/16"), amount: z.number().min(0).max(1).default(1), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_quantize_clip", args, { target: "clip_quantize", grid: args.grid, amount: args.amount }) },
+  { name: "ableton_humanize_midi_clip", description: "Apply bounded MIDI timing/velocity humanization through the gated LiveAPI bridge when supported.", inputSchema: { ...TrackClipRef, timing_amount: z.number().min(0).max(0.25).default(0.02), velocity_amount: z.number().min(0).max(32).default(5), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_humanize_midi_clip", args, { target: "clip_humanize", timing_amount: args.timing_amount, velocity_amount: args.velocity_amount }) },
   { name: "ableton_window_status", description: "Report Ableton window status from the ChromeDriver-style UI driver.", inputSchema: Empty, annotations: ro, handler: async () => {
     if (!FLAGS.uiControl) return { ok: true, uiDriverStatus: getUiDriverRuntimeState(), note: "Set ABLETON_MCP_ENABLE_UI_CONTROL=1 and start the UI driver to query live Ableton windows." };
     return { ok: true, uiDriver: await uiDriverAction("window_status") as Record<string, unknown> };
@@ -391,3 +431,4 @@ export function registerTools(server: McpServer) {
 }
 
 export const registeredToolNames = toolDefs.map((tool) => tool.name);
+export const registeredToolSchemas = Object.fromEntries(toolDefs.map((tool) => [tool.name, tool.inputSchema]));

@@ -42,6 +42,23 @@ function safeCall(api, methodName, args) {
   }
 }
 
+function callSucceeded(result) {
+  return !(result && typeof result === "object" && result.error);
+}
+
+function unsupported(action, reason, details) {
+  return {
+    unsupported: true,
+    action: action,
+    reason: reason,
+    details: details || {},
+    nextSteps: [
+      "Use read tools to inspect the target first.",
+      "If this action is required, update the Max for Live bridge after confirming the exact LiveAPI method for this Ableton version."
+    ]
+  };
+}
+
 function childCount(api, childName) {
   try {
     return api.getcount(childName);
@@ -277,6 +294,26 @@ function parseIndex(payload, keyName) {
   return Math.floor(parsed);
 }
 
+function parseRequiredIndex(payload, keyName) {
+  var parsed = parseIndex(payload, keyName);
+  if (parsed === null) throw new Error(keyName + " must be a non-negative integer.");
+  return parsed;
+}
+
+function parseTrackIndex(payload) {
+  var parsed = parseIndex(payload, "track_index");
+  if (parsed === null) parsed = parseIndex(payload, "track_id");
+  if (parsed === null) parsed = selectedTrackIndex();
+  return parsed;
+}
+
+function parseClipSlotIndex(payload) {
+  var parsed = parseIndex(payload, "clip_slot_index");
+  if (parsed === null) parsed = parseIndex(payload, "slot_index");
+  if (parsed === null) parsed = 0;
+  return parsed;
+}
+
 function selectedTrackIndex() {
   var selected = liveObject("live_set view selected_track");
   var selectedId = objectId(selected);
@@ -301,8 +338,10 @@ function listDevices(payload) {
 
 function listDeviceParameters(payload) {
   var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = parseIndex(payload, "track_index");
   if (trackIndex === null) trackIndex = selectedTrackIndex();
   var deviceIndex = parseIndex(payload, "device_id");
+  if (deviceIndex === null) deviceIndex = parseIndex(payload, "device_index");
   if (deviceIndex === null) deviceIndex = 0;
   var deviceApi = liveObject("live_set tracks " + trackIndex + " devices " + deviceIndex);
   var count = childCount(deviceApi, "parameters");
@@ -398,16 +437,26 @@ function createScene() {
 }
 
 function clipSlotFromPayload(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
-  var slotIndex = parseIndex(payload, "slot_index");
-  if (slotIndex === null) slotIndex = 0;
+  var trackIndex = parseTrackIndex(payload);
+  var slotIndex = parseClipSlotIndex(payload);
   return {
     track_index: trackIndex,
     slot_index: slotIndex,
     slot: liveObject("live_set tracks " + trackIndex + " clip_slots " + slotIndex),
     clip_path: "live_set tracks " + trackIndex + " clip_slots " + slotIndex + " clip"
   };
+}
+
+function clipSlotByIndexes(trackIndex, slotIndex) {
+  return liveObject("live_set tracks " + trackIndex + " clip_slots " + slotIndex);
+}
+
+function clipByIndexes(trackIndex, slotIndex) {
+  return liveObject("live_set tracks " + trackIndex + " clip_slots " + slotIndex + " clip");
+}
+
+function clipExists(trackIndex, slotIndex) {
+  return Number(safeGet(clipSlotByIndexes(trackIndex, slotIndex), "has_clip", 0)) === 1;
 }
 
 function createClip(payload) {
@@ -490,6 +539,151 @@ function setDeviceParameter(payload) {
   };
 }
 
+function listArrangementMarkers() {
+  var song = liveObject("live_set");
+  var count = childCount(song, "cue_points");
+  var markers = [];
+  for (var i = 0; i < count; i += 1) {
+    var marker = liveObject("live_set cue_points " + i);
+    markers.push({
+      id: objectId(marker),
+      index: i,
+      name: safeGet(marker, "name", ""),
+      time: safeGet(marker, "time", null)
+    });
+  }
+  return { markers: markers };
+}
+
+function createArrangementMarker(payload) {
+  var time = Number(payload && payload.time);
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  if (!isFinite(time) || time < 0) throw new Error("time must be a non-negative number.");
+  if (!name) throw new Error("name is required.");
+  var song = liveObject("live_set");
+  var result = safeCall(song, "create_locator", [time]);
+  if (!callSucceeded(result)) return unsupported("ableton_create_arrangement_marker", "create_locator is unavailable from this LiveAPI context.", { time: time, name: name, result: result });
+  var markers = listArrangementMarkers().markers;
+  for (var i = 0; i < markers.length; i += 1) {
+    if (Number(markers[i].time) === time) {
+      liveObject("live_set cue_points " + markers[i].index).set("name", name);
+      markers[i].name = name;
+      return { created: true, marker: markers[i], result: result };
+    }
+  }
+  return { created: true, time: time, name: name, result: result };
+}
+
+function duplicateScene(payload) {
+  var sceneIndex = parseRequiredIndex(payload, "scene_index");
+  var result = safeCall(liveObject("live_set"), "duplicate_scene", [sceneIndex]);
+  if (!callSucceeded(result)) return unsupported("ableton_duplicate_scene", "duplicate_scene is unavailable from this LiveAPI context.", { scene_index: sceneIndex, result: result });
+  return { scene_index: sceneIndex, duplicated: true, result: result };
+}
+
+function duplicateClip(payload) {
+  var sourceTrack = parseTrackIndex(payload);
+  var sourceSlot = parseClipSlotIndex(payload);
+  var destinationTrack = parseIndex(payload, "destination_track_index");
+  if (destinationTrack === null) destinationTrack = sourceTrack;
+  var destinationSlot = parseIndex(payload, "destination_clip_slot_index");
+  if (destinationSlot === null) destinationSlot = sourceSlot + 1;
+  if (!clipExists(sourceTrack, sourceSlot)) throw new Error("Source clip slot does not contain a clip.");
+  if (clipExists(destinationTrack, destinationSlot)) throw new Error("Destination clip slot already contains a clip.");
+  var result = safeCall(clipSlotByIndexes(sourceTrack, sourceSlot), "duplicate_clip_to", [clipSlotByIndexes(destinationTrack, destinationSlot)]);
+  if (!callSucceeded(result)) return unsupported("ableton_duplicate_clip", "duplicate_clip_to is unavailable from this LiveAPI context.", { source_track_index: sourceTrack, source_clip_slot_index: sourceSlot, destination_track_index: destinationTrack, destination_clip_slot_index: destinationSlot, result: result });
+  return { duplicated: true, source_track_index: sourceTrack, source_clip_slot_index: sourceSlot, destination_track_index: destinationTrack, destination_clip_slot_index: destinationSlot, result: result };
+}
+
+function moveClip(payload) {
+  var sourceTrack = parseTrackIndex(payload);
+  var sourceSlot = parseClipSlotIndex(payload);
+  var destinationTrack = parseRequiredIndex(payload, "destination_track_index");
+  var destinationSlot = parseRequiredIndex(payload, "destination_clip_slot_index");
+  var duplicateResult = duplicateClip({
+    track_index: sourceTrack,
+    clip_slot_index: sourceSlot,
+    destination_track_index: destinationTrack,
+    destination_clip_slot_index: destinationSlot
+  });
+  if (duplicateResult.unsupported) return duplicateResult;
+  var deleteResult = safeCall(clipSlotByIndexes(sourceTrack, sourceSlot), "delete_clip");
+  if (!callSucceeded(deleteResult)) return unsupported("ableton_move_clip", "Clip duplicated but source delete_clip is unavailable from this LiveAPI context.", { duplicate: duplicateResult, delete_result: deleteResult });
+  return { moved: true, duplicate: duplicateResult, delete_result: deleteResult };
+}
+
+function getClipNotes(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var slotIndex = parseClipSlotIndex(payload);
+  if (!clipExists(trackIndex, slotIndex)) throw new Error("Clip slot does not contain a clip.");
+  var clip = clipByIndexes(trackIndex, slotIndex);
+  var notes = safeCall(clip, "get_notes_extended", [0, 0, 128, 128]);
+  if (!callSucceeded(notes)) {
+    notes = safeCall(clip, "get_notes", [0, 0, 128, 128]);
+  }
+  if (!callSucceeded(notes)) return unsupported("clip_notes", "MIDI note read methods are unavailable from this LiveAPI context.", { track_index: trackIndex, clip_slot_index: slotIndex, result: notes });
+  return { track_index: trackIndex, clip_slot_index: slotIndex, notes: notes };
+}
+
+function getClipEnvelopes(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var slotIndex = parseClipSlotIndex(payload);
+  if (!clipExists(trackIndex, slotIndex)) throw new Error("Clip slot does not contain a clip.");
+  return unsupported("clip_envelopes", "Detailed clip envelope enumeration needs a reviewed LiveAPI envelope mapping for this Ableton version.", { track_index: trackIndex, clip_slot_index: slotIndex, clip: summarizeClipSlot(trackIndex, slotIndex).clip });
+}
+
+function automationTarget(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var parameterIndex = parseRequiredIndex(payload, "parameter_index");
+  var deviceIndex = parseIndex(payload, "device_index");
+  var parameterPath;
+  if (deviceIndex === null) {
+    parameterPath = "live_set tracks " + trackIndex + " mixer_device volume";
+  } else {
+    parameterPath = "live_set tracks " + trackIndex + " devices " + deviceIndex + " parameters " + parameterIndex;
+  }
+  var parameter = liveObject(parameterPath);
+  return {
+    track_index: trackIndex,
+    device_index: deviceIndex,
+    parameter_index: parameterIndex,
+    parameter_path: parameterPath,
+    parameter: summarizeParameter(parameter, parameterIndex)
+  };
+}
+
+function createAutomationEnvelope(payload) {
+  return unsupported("ableton_create_automation_envelope", "LiveAPI automation envelope creation is not exposed reliably from this bridge context.", automationTarget(payload));
+}
+
+function setAutomationPoint(payload) {
+  var target = automationTarget(payload);
+  target.time = Number(payload && payload.time);
+  target.value = Number(payload && payload.value);
+  return unsupported("ableton_set_automation_point", "LiveAPI automation breakpoint writing is not exposed reliably from this bridge context.", target);
+}
+
+function simplifyAutomation(payload) {
+  var target = automationTarget(payload);
+  target.tolerance = Number(payload && payload.tolerance !== undefined ? payload.tolerance : 0.05);
+  return unsupported("ableton_simplify_automation", "LiveAPI automation simplification is not exposed reliably from this bridge context.", target);
+}
+
+function quantizeClip(payload) {
+  var target = clipSlotFromPayload(payload);
+  if (!clipExists(target.track_index, target.slot_index)) throw new Error("Clip slot does not contain a clip.");
+  var amount = Number(payload && payload.amount !== undefined ? payload.amount : 1);
+  if (!isFinite(amount) || amount < 0 || amount > 1) throw new Error("amount must be between 0 and 1.");
+  var grid = String(payload && payload.grid ? payload.grid : "1/16");
+  return unsupported("ableton_quantize_clip", "Quantization enum values vary by LiveAPI context; refusing to guess.", { track_index: target.track_index, clip_slot_index: target.slot_index, grid: grid, amount: amount });
+}
+
+function humanizeMidiClip(payload) {
+  var target = clipSlotFromPayload(payload);
+  if (!clipExists(target.track_index, target.slot_index)) throw new Error("Clip slot does not contain a clip.");
+  return unsupported("ableton_humanize_midi_clip", "MIDI note rewriting needs reviewed get/apply note support for this Ableton version.", { track_index: target.track_index, clip_slot_index: target.slot_index, timing_amount: payload && payload.timing_amount, velocity_amount: payload && payload.velocity_amount });
+}
+
 function dispatch(action, payload) {
   if (action === "ping") return { heartbeat: new Date().toISOString(), bridge: "ableton-mcp-liveapi", version: 1 };
   if (action === "live_state") return liveState();
@@ -502,10 +696,14 @@ function dispatch(action, payload) {
   if (action === "master_track") return { master_track: summarizeMasterTrack(false) };
   if (action === "track_mixer") return getTrackMixer(payload);
   if (action === "list_scenes") return { scenes: listScenes() };
+  if (action === "arrangement_markers") return listArrangementMarkers();
   if (action === "list_clips") return { clips: listClips() };
   if (action === "list_clip_slots") return listClipSlots(payload);
+  if (action === "clip_notes") return getClipNotes(payload);
+  if (action === "clip_envelopes") return getClipEnvelopes(payload);
   if (action === "list_devices") return listDevices(payload);
   if (action === "list_device_parameters") return listDeviceParameters(payload);
+  if (action === "device_parameter_map") return listDeviceParameters(payload);
   if (action === "selected_track") return { track: summarizeTrack(selectedTrackIndex(), false, false) };
   if (action === "selected_device") return listDeviceParameters({ track_id: selectedTrackIndex(), device_id: 0 });
   if (action === "set_tempo" || action === "ableton_set_tempo") return setTempo(payload);
@@ -526,6 +724,15 @@ function dispatch(action, payload) {
   if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);
   if (action === "ableton_rename_clip") return renameClip(payload);
+  if (action === "ableton_create_automation_envelope") return createAutomationEnvelope(payload);
+  if (action === "ableton_set_automation_point") return setAutomationPoint(payload);
+  if (action === "ableton_simplify_automation") return simplifyAutomation(payload);
+  if (action === "ableton_create_arrangement_marker") return createArrangementMarker(payload);
+  if (action === "ableton_duplicate_scene") return duplicateScene(payload);
+  if (action === "ableton_duplicate_clip") return duplicateClip(payload);
+  if (action === "ableton_move_clip") return moveClip(payload);
+  if (action === "ableton_quantize_clip") return quantizeClip(payload);
+  if (action === "ableton_humanize_midi_clip") return humanizeMidiClip(payload);
   return { unsupported: true, action: action, message: "Action is registered on the MCP side but not implemented in the v1 LiveAPI bridge yet." };
 }
 

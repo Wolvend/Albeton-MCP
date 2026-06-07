@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { registeredToolNames } from "../src/tools.js";
+import { registeredToolNames, registeredToolSchemas } from "../src/tools.js";
 
 describe("tool catalog", () => {
   it("registers the requested production tool surface", () => {
@@ -21,5 +21,15 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_quantize_clip");
     expect(registeredToolNames).toContain("ableton_plan_export_audio");
     expect(registeredToolNames).toContain("ableton_validate_plugin_package");
+  });
+
+  it("uses typed schemas for newer bridge workflow tools", () => {
+    expect(registeredToolSchemas.ableton_duplicate_clip).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_duplicate_clip).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_duplicate_clip).toHaveProperty("clip_slot_index");
+    expect(registeredToolSchemas.ableton_create_arrangement_marker).toHaveProperty("time");
+    expect(registeredToolSchemas.ableton_create_arrangement_marker).toHaveProperty("name");
+    expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("parameter_index");
+    expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("value");
   });
 });

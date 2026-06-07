@@ -8,6 +8,7 @@ Expected behavior:
 - Accepts JSON requests with `id`, `action`, and optional `payload`.
 - Returns JSON with matching request identity, status, errors, and structured data.
 - Supports `ping`, `full_snapshot`, `snapshot_diff`, and focused LiveAPI actions.
+- Newer deep bridge actions use typed MCP schemas and return explicit `unsupported: true` responses when an Ableton LiveAPI operation is not reliable in the current bridge context.
 - Avoids blocking the audio thread.
 
 ## Bridge files

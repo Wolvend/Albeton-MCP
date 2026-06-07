@@ -21,8 +21,12 @@ const kindByExtension: Record<string, string> = {
   ".adv": "preset",
   ".amxd": "max_device",
   ".agr": "groove",
+  ".alp": "pack",
   ".ascl": "tuning",
-  ".ablbundle": "pack"
+  ".ablbundle": "pack",
+  ".vstpreset": "plugin_preset",
+  ".vst3": "plugin",
+  ".component": "plugin"
 };
 
 let lastScan: Record<string, unknown> = { running: false, indexed: 0, startedAt: null, finishedAt: null };

@@ -45,7 +45,20 @@ describe("Max for Live bridge source", () => {
       "ableton_set_track_volume",
       "ableton_set_track_pan",
       "ableton_set_device_parameter",
-      "ableton_rename_clip"
+      "ableton_rename_clip",
+      "arrangement_markers",
+      "clip_notes",
+      "clip_envelopes",
+      "device_parameter_map",
+      "ableton_create_automation_envelope",
+      "ableton_set_automation_point",
+      "ableton_simplify_automation",
+      "ableton_create_arrangement_marker",
+      "ableton_duplicate_scene",
+      "ableton_duplicate_clip",
+      "ableton_move_clip",
+      "ableton_quantize_clip",
+      "ableton_humanize_midi_clip"
     ]) {
       expect(source).toContain(action);
     }
