@@ -1,11 +1,12 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { analyzeAbletonSet, analyzeAudioFile } from "./analysis.js";
 import { bridgeAction, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
-import { FLAGS, LOCAL_PATHS } from "./config.js";
+import { FLAGS, LOCAL_PATHS, PLATFORM } from "./config.js";
 import { environmentSnapshot } from "./environment.js";
 import { requireFlag } from "./errors.js";
 import { paginate } from "./response.js";
@@ -76,12 +77,20 @@ function controlModeStatus() {
 }
 
 const toolDefs: ToolDef[] = [
-  { name: "ableton_find_installation", description: "Find verified Ableton Live and Max executables on this Windows machine.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
+  { name: "ableton_find_installation", description: "Find configured Ableton Live and Max paths for this host platform.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
   { name: "ableton_validate_config", description: "Validate paths, feature gates, and toolchain availability.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, validation: await environmentSnapshot() as any }) },
   { name: "ableton_launch_live", description: "Launch Ableton Live using the verified local executable.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => {
     requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Launching Ableton Live");
     if (args.dry_run !== false) return { ok: true, dry_run: true, executable: LOCAL_PATHS.liveExecutable };
+    if (!LOCAL_PATHS.liveExecutable) {
+      return {
+        ok: false,
+        platform: PLATFORM.nodePlatform,
+        error: "Ableton Live executable is not configured for this platform.",
+        nextSteps: ["Set ABLETON_MCP_LIVE_EXECUTABLE to a local Ableton executable path.", "On Linux/WSL, run Ableton control through a Windows or macOS host bridge instead of launching Ableton inside Linux."]
+      };
+    }
     const child = (await import("node:child_process")).spawn(LOCAL_PATHS.liveExecutable, [], { detached: true, stdio: "ignore", env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
     child.unref();
     return { ok: true, pid: child.pid ?? null };
@@ -253,7 +262,7 @@ toolDefs.push(
   { name: "ableton_mcp_run_bridge_mock_test", description: "Run bridge mock contract check.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeMock: { requestShape: { id: "uuid", action: "ping", payload: {} }, responseShape: { id: "uuid", ok: true, data: { heartbeat: "iso-date" } }, loopback: "127.0.0.1:17364" } }) },
   { name: "ableton_mcp_run_path_security_test", description: "Run path security rejection checks.", inputSchema: Empty, annotations: ro, handler: async () => {
     const rejected = [];
-    for (const candidate of ["C:\\", "C:\\Users\\LIZ", "C:\\Users\\LIZ\\.ssh", "C:\\Users\\LIZ\\AppData\\Roaming"]) {
+    for (const candidate of [path.parse(os.homedir()).root, os.homedir(), path.join(os.homedir(), ".ssh"), path.join(os.homedir(), "AppData", "Roaming")]) {
       try { await resolveSafePath(candidate, { mustExist: false }); } catch (error) { rejected.push({ candidate: redactPath(candidate), rejected: error instanceof Error }); }
     }
     return { ok: true, rejected };

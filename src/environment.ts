@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import { promisify } from "node:util";
-import { LOCAL_PATHS, FLAGS, getAllowedRoots, TOOL_PATHS } from "./config.js";
+import { LOCAL_PATHS, FLAGS, getAllowedRoots, TOOL_PATHS, PLATFORM } from "./config.js";
 import { rootsForReport } from "./security.js";
 
 const execFileAsync = promisify(execFile);
@@ -17,7 +17,7 @@ async function exists(filePath: string) {
 
 async function commandVersion(command: string, args: string[]) {
   try {
-    const { stdout, stderr } = await execFileAsync(command, args, { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot } });
+    const { stdout, stderr } = await execFileAsync(command, args, { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
     return { ok: true, output: `${stdout}${stderr}`.split(/\r?\n/).find(Boolean) ?? "" };
   } catch (error) {
     return { ok: false, output: error instanceof Error ? error.message : String(error) };
@@ -25,6 +25,9 @@ async function commandVersion(command: string, args: string[]) {
 }
 
 export async function getLiveProcesses() {
+  if (!PLATFORM.isWindows) {
+    return [];
+  }
   const { stdout } = await execFileAsync(TOOL_PATHS.powershell, [
     "-NoProfile",
     "-Command",
@@ -40,6 +43,7 @@ export async function environmentSnapshot() {
   const processes = await getLiveProcesses();
   return {
     paths,
+    platform: PLATFORM,
     liveRunning: processes.some((proc) => String(proc.ProcessName ?? "").toLowerCase().includes("ableton live")),
     abletonProcesses: processes,
     tools: {

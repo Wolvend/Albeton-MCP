@@ -31,6 +31,12 @@ npm run verify:mcp
 Result: succeeded. The verifier reported 114 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
 
 ```powershell
+wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
+```
+
+Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 114 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+
+```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\launch.ps1 install
 cmd /c launch.cmd install
 bash ./launch.sh install
@@ -109,6 +115,7 @@ The UI driver was left listening on `127.0.0.1:17365` for continued local contro
 
 - All registered MCP tools, resources, and prompts were exercised.
 - Root launchers support regular stdio MCP, Docker/HTTP MCP, bridge install, verifier, and UI-driver workflows.
+- Platform-aware config supports Windows defaults, macOS defaults, and Linux/WSL headless MCP operation with environment path overrides.
 - FastMCP-inspired runtime middleware wraps every tool with error handling, timing metrics, per-tool rate limiting, short read-only cache, and response-size limits.
 - MCP resources and prompts are registered for environment, runtime, scan status, safe production planning, and security review.
 - File operations enforce explicit allowed roots, realpath checks, and sensitive-path rejection.

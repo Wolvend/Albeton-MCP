@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { getAllowedRoots, LOCAL_PATHS, type AllowedRoot } from "./config.js";
+import { getAllowedRoots, LOCAL_PATHS, PLATFORM, type AllowedRoot } from "./config.js";
 import { AbletonMcpError } from "./errors.js";
 
 const forbiddenFragments = [
@@ -16,8 +16,9 @@ const forbiddenFragments = [
 ];
 
 function hasForbiddenFragment(resolved: string): boolean {
-  const lower = `${resolved.toLowerCase()}\\`;
-  if (lower === "c:\\users\\liz\\" || lower === "c:\\") return true;
+  const lower = `${resolved.toLowerCase().replace(/[\\/]+/g, "\\")}\\`;
+  const home = `${path.resolve(PLATFORM.userHome).toLowerCase().replace(/[\\/]+/g, "\\")}\\`;
+  if (lower === "c:\\" || lower === home) return true;
   return forbiddenFragments.some((fragment) => lower.includes(fragment));
 }
 
@@ -62,7 +63,9 @@ export async function resolveSafePath(inputPath: string, options: { mustExist?: 
 }
 
 export function redactPath(value: string): string {
-  return value.replace(/C:\\Users\\LIZ/gi, "%USERPROFILE%");
+  const home = path.resolve(PLATFORM.userHome);
+  if (!home || home === path.parse(home).root) return value;
+  return value.replace(new RegExp(home.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "%USERPROFILE%");
 }
 
 export function rootsForReport(): AllowedRoot[] {
