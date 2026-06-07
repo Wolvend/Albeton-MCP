@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+const userProfile = process.env.USERPROFILE || "C:\\Users\\LIZ";
 function detectProjectRoot() {
   const parent = path.basename(path.dirname(here)).toLowerCase();
   if (parent === "dist") return path.resolve(here, "..", "..");
@@ -15,12 +16,12 @@ export const LOCAL_PATHS = {
   liveInstall: "C:\\ProgramData\\Ableton\\Live 12 Trial",
   liveExecutable: "C:\\ProgramData\\Ableton\\Live 12 Trial\\Program\\Ableton Live 12 Trial.exe",
   maxExecutable: "C:\\ProgramData\\Ableton\\Live 12 Trial\\Resources\\Max\\Max.exe",
-  userLibrary: "C:\\Users\\LIZ\\Documents\\Ableton\\User Library",
-  factoryPacks: "C:\\Users\\LIZ\\Documents\\Ableton\\Factory Packs",
-  liveRecordings: "C:\\Users\\LIZ\\Documents\\Ableton\\Live Recordings",
-  preferences: "C:\\Users\\LIZ\\AppData\\Roaming\\Ableton\\Live 12.4\\Preferences",
-  liveDatabase: "C:\\Users\\LIZ\\AppData\\Local\\Ableton\\Live Database",
-  imports: "C:\\Users\\LIZ\\Documents\\Ableton\\User Library\\Samples\\Codex Imports",
+  userLibrary: path.join(userProfile, "Documents", "Ableton", "User Library"),
+  factoryPacks: path.join(userProfile, "Documents", "Ableton", "Factory Packs"),
+  liveRecordings: path.join(userProfile, "Documents", "Ableton", "Live Recordings"),
+  preferences: path.join(userProfile, "AppData", "Roaming", "Ableton", "Live 12.4", "Preferences"),
+  liveDatabase: path.join(userProfile, "AppData", "Local", "Ableton", "Live Database"),
+  imports: path.join(userProfile, "Documents", "Ableton", "User Library", "Samples", "Codex Imports"),
   staging: path.join(PROJECT_ROOT, "samples", "staging"),
   diagnostics: path.join(PROJECT_ROOT, "diagnostics")
 } as const;
@@ -42,7 +43,7 @@ export type AllowedRoot = {
 export function getAllowedRoots(): AllowedRoot[] {
   const baseline = [
     LOCAL_PATHS.projectRoot,
-    "C:\\Users\\LIZ\\Documents\\Ableton",
+    path.join(userProfile, "Documents", "Ableton"),
     LOCAL_PATHS.liveInstall
   ].map((root) => path.resolve(root));
   const explicit = process.env.ABLETON_MCP_ALLOWED_ROOTS;

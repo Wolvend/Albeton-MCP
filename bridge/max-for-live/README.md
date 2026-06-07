@@ -24,6 +24,7 @@ Response:
 
 ## Files
 
+- `Ableton MCP Bridge.amxd`: saved Max for Live MIDI Effect preset for quick install.
 - `ableton-mcp-bridge.maxpat`: patch wiring.
 - `ableton-mcp-http.js`: Node for Max loopback HTTP server on `127.0.0.1:17364`.
 - `package.json`: Keeps the Max bridge folder in CommonJS mode, even though the main MCP project is ESM.
@@ -32,10 +33,18 @@ Response:
 
 ## Setup
 
+Fast path after `npm run build`:
+
+```powershell
+npm run bridge:install
+```
+
+This copies `Ableton MCP Bridge.amxd`, `ableton-mcp-http.js`, `ableton-mcp-liveapi.js`, `ableton-mcp-status.js`, and `package.json` into the default Ableton User Library Max MIDI Effect preset folder.
+
 1. Open Ableton Live.
 2. Create a MIDI track.
 3. Add a Max MIDI Effect device.
-4. Open it for editing and load `ableton-mcp-bridge.maxpat`, or copy these bridge files into a Max device folder and save as an `.amxd`.
+4. Load `Ableton MCP Bridge` from User Library > Presets > MIDI Effects > Max MIDI Effect. For development, open a Max MIDI Effect for editing and load `ableton-mcp-bridge.maxpat`.
 5. Watch the Max console for `Ableton MCP HTTP bridge listening on 127.0.0.1:17364`.
 6. Run `ableton_bridge_ping` from the MCP server.
 

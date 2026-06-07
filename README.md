@@ -30,6 +30,7 @@ Run:
 cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
 npm install
 npm run build
+npm run bridge:install
 npm test
 npm run lint
 ```
@@ -72,9 +73,18 @@ bridge\max-for-live\ableton-mcp-bridge.maxpat
 Keep these files in the same folder:
 
 ```text
+Ableton MCP Bridge.amxd
 ableton-mcp-bridge.maxpat
 ableton-mcp-http.js
 ableton-mcp-liveapi.js
+ableton-mcp-status.js
+package.json
+```
+
+The companion files can be installed automatically into the Ableton User Library preset folder with:
+
+```powershell
+npm run bridge:install
 ```
 
 Then call:
