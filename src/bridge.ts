@@ -53,11 +53,29 @@ function bridgeCall<T>(request: BridgeRequest, timeoutMs = 2_500): Promise<T> {
       res.on("end", () => {
         const text = Buffer.concat(chunks).toString("utf8");
         if ((res.statusCode ?? 500) >= 400) {
-          reject(new AbletonMcpError(`Ableton bridge returned HTTP ${res.statusCode}: ${text}`, "BRIDGE_HTTP_ERROR", ["Confirm the Max for Live bridge device is loaded and listening on 127.0.0.1."]));
+          try {
+            const parsed = JSON.parse(text) as { code?: string; error?: string; nextSteps?: string[] };
+            reject(new AbletonMcpError(
+              parsed.error ?? `Ableton bridge returned HTTP ${res.statusCode}.`,
+              parsed.code ?? "BRIDGE_HTTP_ERROR",
+              Array.isArray(parsed.nextSteps) ? parsed.nextSteps : ["Confirm the Max for Live bridge device is loaded and listening on 127.0.0.1."]
+            ));
+          } catch {
+            reject(new AbletonMcpError(`Ableton bridge returned HTTP ${res.statusCode}: ${text}`, "BRIDGE_HTTP_ERROR", ["Confirm the Max for Live bridge device is loaded and listening on 127.0.0.1."]));
+          }
           return;
         }
         try {
-          resolve(JSON.parse(text) as T);
+          const parsed = JSON.parse(text) as { ok?: boolean; code?: string; error?: string; nextSteps?: string[] };
+          if (parsed.ok === false) {
+            reject(new AbletonMcpError(
+              parsed.error ?? "Ableton bridge returned an execution error.",
+              parsed.code ?? "BRIDGE_EXECUTION_ERROR",
+              Array.isArray(parsed.nextSteps) ? parsed.nextSteps : ["Check the Ableton bridge logs and retry."]
+            ));
+            return;
+          }
+          resolve(parsed as T);
         } catch {
           reject(new AbletonMcpError("Ableton bridge returned invalid JSON.", "BRIDGE_INVALID_JSON", ["Restart the bridge device and retry."]));
         }

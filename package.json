@@ -16,6 +16,8 @@
     "dev:http": "tsx src/http.ts",
     "ui-driver": "node dist/scripts/ableton-ui-driver.js",
     "ui-driver:dev": "tsx scripts/ableton-ui-driver.ts",
+    "bridge:setup-listener": "node dist/scripts/ableton-bridge-setup-listener.js",
+    "bridge:setup-listener:dev": "tsx scripts/ableton-bridge-setup-listener.ts",
     "inspect": "npx @modelcontextprotocol/inspector --cli node dist/src/index.js --method tools/list",
     "self-test": "node dist/scripts/self-test.js",
     "verify:mcp": "node dist/scripts/verify-mcp.js"
