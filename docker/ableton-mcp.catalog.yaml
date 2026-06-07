@@ -1,0 +1,21 @@
+name: ableton-mcp-local
+displayName: Ableton MCP Local
+registry:
+  ableton-mcp:
+    type: remote
+    image: ""
+    description: Local Windows Ableton Live MCP server exposed through a localhost Streamable HTTP transport. Requires the host Ableton MCP HTTP service to be running.
+    title: Ableton MCP
+    remote:
+      url: "http://127.0.0.1:17366/mcp"
+      transport_type: streamable-http
+    metadata:
+      category: music-production
+      tags:
+        - ableton
+        - live
+        - music-production
+        - windows
+        - local
+      license: MIT License
+      owner: Wolvend
