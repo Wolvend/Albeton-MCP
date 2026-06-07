@@ -7,6 +7,17 @@ Ableton MCP exposes the same tools through two transports:
 
 The safest default is stdio on the same machine.
 
+## Automatic Setup
+
+Run:
+
+```powershell
+cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
+.\launch.ps1 setup
+```
+
+This writes ready-to-use configs under `config/generated/` for Codex, Claude Desktop, Cursor, WSL stdio, localhost HTTP, and Tailscale/private HTTP. The generated folder is gitignored because `remote-http.env` may contain a bearer token.
+
 Ready-made template files live in `config/`:
 
 - `config/codex.json`

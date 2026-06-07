@@ -24,6 +24,7 @@ cd /c/Users/LIZ/Desktop/MCP/ableton-mcp
 | `docker` | `.\launch.ps1 docker` | Builds, installs bridge files, then starts `dist/src/http.js` at `127.0.0.1:17366/mcp`. |
 | `http` | `.\launch.ps1 http` | Alias for `docker`; useful for non-Docker Streamable HTTP clients. |
 | `install` | `.\launch.ps1 install` | Builds and installs the Max for Live bridge preset files only. |
+| `setup` | `.\launch.ps1 setup` | Builds, installs bridge files, and writes generated Codex, Claude, Cursor, WSL, local HTTP, and Tailscale HTTP client configs. |
 | `verify` | `.\launch.ps1 verify` | Builds, installs bridge files, then runs `npm run verify:mcp`. |
 | `ui-driver` | `.\launch.ps1 ui-driver` | Enables `ABLETON_MCP_ENABLE_UI_CONTROL=1` and starts the foreground Ableton UI driver. |
 
@@ -42,6 +43,29 @@ ABLETON_MCP_HTTP_PORT=17366
 ```
 
 Only enable write, UI control, or downloads for a specific workflow that needs them.
+
+## Automatic Client Setup
+
+Run:
+
+```powershell
+.\launch.ps1 setup
+```
+
+Generated files are written to `config/generated/`, which is ignored by git:
+
+```text
+codex.json
+claude-desktop.json
+cursor.json
+wsl-stdio.json
+local-http.json
+remote-http.json
+remote-http.env
+INSTALL_SUMMARY.md
+```
+
+`remote-http.env` contains a generated bearer token when setup is run through the launcher. The token is not printed in terminal output and should not be committed.
 
 ## MCP stdio safety
 

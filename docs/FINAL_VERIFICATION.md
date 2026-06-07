@@ -16,7 +16,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Latest pass reported 15 test files and 28 tests passed.
+Result: succeeded. Latest pass reported 16 test files and 31 tests passed.
 
 ```powershell
 npm run lint
@@ -35,6 +35,18 @@ npm run release:check
 ```
 
 Result: succeeded. Release check found all required files and scripts. It reported working-tree-only folders that must stay excluded from release archives: `node_modules`, `diagnostics/screenshots`, `diagnostics/runtime`, and `data/cache`.
+
+```powershell
+npm run configure:clients -- --out diagnostics/runtime/generated-config-test --with-token
+```
+
+Result: succeeded. Generated Codex, Claude Desktop, Cursor, WSL stdio, local HTTP, Tailscale HTTP, remote env, and install-summary files. Terminal output redacted the generated bearer token.
+
+```powershell
+.\launch.ps1 setup
+```
+
+Result: succeeded. Built the server, installed the Max for Live bridge files, and generated real local client configs under `config/generated/` with the default Tailscale URL `http://100.84.223.22:17366/mcp`.
 
 ```powershell
 npm run sweep:safe

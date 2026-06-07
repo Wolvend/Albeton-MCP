@@ -57,6 +57,8 @@ http://100.84.223.22:17366/mcp
 
 This is an advertised private-network default only. The server still binds to `127.0.0.1` unless `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` and a bearer token are configured.
 
+Run `.\launch.ps1 setup` to generate `config/generated/remote-http.json` and `config/generated/remote-http.env` with this default address.
+
 ## Environment Overrides
 
 All path defaults can be overridden:

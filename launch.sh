@@ -74,6 +74,10 @@ case "$MODE" in
   install)
     run_setup
     ;;
+  setup)
+    run_setup
+    npm run configure:clients -- --with-token
+    ;;
   verify)
     run_setup
     npm run verify:mcp
@@ -92,7 +96,7 @@ case "$MODE" in
     exec node dist/scripts/ableton-ui-driver.js
     ;;
   *)
-    printf 'Usage: ./launch.sh [stdio|http|docker|install|verify|ui-driver] [--skip-setup]\n' >&2
+    printf 'Usage: ./launch.sh [stdio|http|docker|install|setup|verify|ui-driver] [--skip-setup]\n' >&2
     exit 2
     ;;
 esac

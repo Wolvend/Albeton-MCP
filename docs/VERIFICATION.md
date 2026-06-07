@@ -32,6 +32,12 @@ Run release packaging checks:
 npm run release:check
 ```
 
+Generate client configs:
+
+```powershell
+npm run configure:clients -- --out diagnostics/runtime/generated-config-test
+```
+
 Run the safe read-only/dry-run MCP sweep:
 
 ```powershell

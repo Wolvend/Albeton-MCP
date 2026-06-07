@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "verify", "ui-driver")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "ui-driver")]
   [string]$Mode = "stdio",
   [switch]$SkipSetup
 )
@@ -58,6 +58,11 @@ Set-DefaultEnv "ABLETON_MCP_HTTP_PORT" "17366"
 switch ($Mode) {
   "install" {
     Invoke-Setup
+  }
+  "setup" {
+    Invoke-Setup
+    & npm.cmd run configure:clients -- --with-token
+    exit $LASTEXITCODE
   }
   "verify" {
     Invoke-Setup

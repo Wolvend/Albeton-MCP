@@ -25,6 +25,15 @@ MCP client -> stdio server -> Max for Live bridge -> Ableton LiveAPI
 
 ## Start locally
 
+For first-time setup, generate ready-to-use client configs:
+
+```powershell
+cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
+.\launch.ps1 setup
+```
+
+This builds the server, installs the Max for Live bridge files, and writes Codex, Claude Desktop, Cursor, WSL, local HTTP, and Tailscale HTTP configs under `config/generated/`. Remote HTTP configs use the default Tailscale URL `http://100.84.223.22:17366/mcp` with a generated bearer token stored only in the ignored generated config folder.
+
 One command is enough for normal use:
 
 ```powershell
@@ -47,6 +56,7 @@ Use these launch modes:
 | Regular MCP | `.\launch.ps1 stdio` | Starts the local stdio MCP server for Codex, Claude Desktop, Cursor, or another regular MCP client. |
 | Docker MCP | `.\launch.ps1 docker` | Starts the local Streamable HTTP MCP transport at `http://127.0.0.1:17366/mcp` for Docker MCP catalogs. |
 | Bridge install | `.\launch.ps1 install` | Installs the Ableton Max for Live preset and companion files without starting a server. |
+| Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
 | UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
 
