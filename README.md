@@ -9,6 +9,15 @@ MCP client -> stdio server -> Max for Live bridge -> Ableton LiveAPI
                          \-> UI driver fallback -> Ableton window
 ```
 
+## Control Model
+
+| Lane | Default | Use it for | User choice required |
+| --- | --- | --- | --- |
+| Background LiveAPI bridge | Enabled for reads, write-gated for changes | Session state, tracks, scenes, clips, devices, mixer, safe production automation | Writes require `ABLETON_MCP_ENABLE_WRITE=1` and `dry_run=false`. |
+| Foreground UI/mouse driver | Disabled | Ableton-only screenshots, focus, clicks, and typing when LiveAPI cannot reach a control | Start `.\launch.ps1 ui-driver` or set `ABLETON_MCP_ENABLE_UI_CONTROL=1`. |
+
+Use `ableton_get_production_readiness`, `ableton_control_mode_status`, and `ableton_ui_control_consent_status` before enabling write or UI control.
+
 ## What this server can do
 
 | Area | What is available |
@@ -19,7 +28,7 @@ MCP client -> stdio server -> Max for Live bridge -> Ableton LiveAPI
 | Live session view | Read tracks, scenes, clips, devices, transport, tempo, mixer, and snapshots when the Max for Live bridge is loaded. |
 | Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing. |
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
-| UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, clicks, and text when LiveAPI is not enough. |
+| UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
 | Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
 | Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
@@ -229,7 +238,7 @@ Doctor: passed with 0 warnings
 Release check: passed
 Safe sweep: passed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 145 tools, 3 resources, 2 prompts
+MCP verifier: 148 tools, 3 resources, 2 prompts
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
 Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles

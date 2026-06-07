@@ -8,6 +8,9 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_control_mode_status");
     expect(registeredToolNames).toContain("ableton_bridge_status");
     expect(registeredToolNames).toContain("ableton_ui_driver_status");
+    expect(registeredToolNames).toContain("ableton_ui_control_consent_status");
+    expect(registeredToolNames).toContain("ableton_plan_ui_control_session");
+    expect(registeredToolNames).toContain("ableton_get_production_readiness");
     expect(registeredToolNames).toContain("ableton_ui_driver_ping");
     expect(registeredToolNames).toContain("ableton_mcp_get_client_connection_profiles");
     expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");

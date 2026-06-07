@@ -116,6 +116,32 @@ function controlModeStatus() {
   };
 }
 
+function uiControlConsentProfile(purpose = "Ableton UI fallback") {
+  return {
+    purpose,
+    userChoiceRequired: true,
+    enabled: FLAGS.uiControl,
+    defaultEnabled: false,
+    driver: getUiDriverRuntimeState(),
+    launchCommand: process.platform === "win32" ? ".\\launch.ps1 ui-driver" : "./launch.sh ui-driver",
+    requiredEnv: {
+      ABLETON_MCP_ENABLE_UI_CONTROL: "1"
+    },
+    boundaries: [
+      "Targets only Ableton Live windows.",
+      "Uses Ableton-window-relative coordinates for coordinate actions.",
+      "Runs through the serialized loopback UI driver on 127.0.0.1.",
+      "Do not run UI/mouse actions at the same time as write-gated bridge actions."
+    ],
+    recommendedSequence: [
+      "Call ableton_ui_control_consent_status.",
+      "Start the UI driver only if foreground control is intentional.",
+      "Call ableton_window_status or ableton_capture_screenshot before clicks.",
+      "Use dry_run=true before any click or type action."
+    ]
+  };
+}
+
 function clientConnectionProfiles() {
   const port = Number(process.env.ABLETON_MCP_HTTP_PORT ?? "17366");
   const configuredHost = process.env.ABLETON_MCP_HTTP_HOST ?? "127.0.0.1";
@@ -202,11 +228,32 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_bridge_ping", description: "Ping the loopback Max for Live bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: await pingBridge() as any }) },
   { name: "ableton_bridge_status", description: "Report loopback bridge host, port, queue, and last command state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeStatus: getBridgeRuntimeState() }) },
   { name: "ableton_ui_driver_status", description: "Report ChromeDriver-style Ableton UI driver host, port, queue, and last action state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiDriverStatus: getUiDriverRuntimeState() }) },
+  { name: "ableton_ui_control_consent_status", description: "Report whether foreground Ableton UI/mouse control has been intentionally enabled by the user.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiControl: uiControlConsentProfile() }) },
+  { name: "ableton_plan_ui_control_session", description: "Plan a user-chosen foreground UI/mouse control session without moving the mouse.", inputSchema: { purpose: z.string().min(1).max(500).default("Ableton UI fallback"), actions: z.array(z.enum(["focus", "screenshot", "region_capture", "click", "type"])).max(20).default(["focus", "screenshot"]) }, annotations: ro, handler: async (args) => ({ ok: true, uiPlan: { ...uiControlConsentProfile(args.purpose), requestedActions: args.actions, canExecuteNow: FLAGS.uiControl, nextStep: FLAGS.uiControl ? "Start with ableton_window_status or ableton_capture_screenshot." : "Run .\\launch.ps1 ui-driver or set ABLETON_MCP_ENABLE_UI_CONTROL=1 only when foreground control is intentional." } }) },
   { name: "ableton_ui_driver_ping", description: "Ping the loopback Ableton UI driver when UI control is enabled.", inputSchema: Empty, annotations: ro, handler: async () => {
     requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", "Ableton UI driver ping");
     return { ok: true, uiDriver: await pingUiDriver() as any };
   } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
+  { name: "ableton_get_production_readiness", description: "Summarize Ableton MCP readiness for professional music-production work.", inputSchema: Empty, annotations: ro, handler: async () => {
+    const environment = await environmentSnapshot();
+    return {
+      ok: true,
+      readiness: {
+        liveRunning: environment.liveRunning,
+        writeEnabled: FLAGS.write,
+        uiControl: uiControlConsentProfile("Production readiness check"),
+        bridge: getBridgeRuntimeState(),
+        scan: getScanStatus(),
+        recommendedWorkflow: [
+          "Use LiveAPI bridge reads and dry-run writes first.",
+          "Use foreground UI/mouse control only when the user intentionally starts the UI driver.",
+          "Keep downloads and plugin installers separate from production sessions.",
+          "Run ableton_mcp_security_report before enabling remote or write modes."
+        ]
+      }
+    };
+  } },
   { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
     const dir = path.join(LOCAL_PATHS.diagnostics, "reports");
     await fs.mkdir(dir, { recursive: true });

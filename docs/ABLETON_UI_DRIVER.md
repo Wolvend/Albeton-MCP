@@ -2,6 +2,8 @@
 
 The UI driver is the foreground control lane for Ableton. It is intentionally separate from the Max for Live bridge.
 
+It is available by user choice only. The default MCP server will report UI control status and plan UI sessions, but it will not move the mouse or type unless `ABLETON_MCP_ENABLE_UI_CONTROL=1` is set and the UI driver is running.
+
 Use it like ChromeDriver:
 
 - A dedicated local driver owns Ableton window discovery, screenshots, clicks, typing, and recovery.
@@ -39,6 +41,8 @@ Response:
 ## Supported MCP Tools
 
 - `ableton_ui_driver_status`
+- `ableton_ui_control_consent_status`
+- `ableton_plan_ui_control_session`
 - `ableton_ui_driver_ping`
 - `ableton_focus_window`
 - `ableton_capture_screenshot`
@@ -56,6 +60,15 @@ Run the driver:
 ```
 
 Use this driver only when `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
+
+Before clicking or typing, use:
+
+```text
+ableton_ui_control_consent_status
+ableton_plan_ui_control_session
+ableton_window_status
+ableton_capture_screenshot
+```
 
 ## Safety Model
 
