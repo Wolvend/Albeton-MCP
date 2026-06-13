@@ -202,5 +202,13 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_generate_midi_clip_plan).toHaveProperty("intensity");
     expect(registeredToolSchemas.ableton_generate_midi_clip_plan).toHaveProperty("track_index");
     expect(registeredToolSchemas.ableton_generate_midi_clip_plan).toHaveProperty("clip_slot_index");
+    expect(registeredToolSchemas.ableton_generate_session_plan).toHaveProperty("target_duration_seconds");
+    expect(registeredToolSchemas.ableton_generate_session_plan).toHaveProperty("intensity");
+    expect(registeredToolSchemas.ableton_generate_drum_rack_plan).toHaveProperty("concept");
+    expect(registeredToolSchemas.ableton_generate_drum_rack_plan).toHaveProperty("bars");
+    expect(registeredToolSchemas.ableton_suggest_instrument_chain).toHaveProperty("style");
+    expect(registeredToolSchemas.ableton_suggest_effect_chain).toHaveProperty("intensity");
+    expect(registeredToolSchemas.ableton_suggest_arrangement).toHaveProperty("target_duration_seconds");
+    expect(registeredToolSchemas.ableton_suggest_mix_actions).toHaveProperty("context");
   });
 });
