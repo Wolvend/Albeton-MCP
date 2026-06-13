@@ -47,6 +47,7 @@ describe("concept-to-music planning", () => {
     expect(horror?.layerBlueprints.map((layer) => layer.name)).toEqual(expect.arrayContaining([
       "Degraded Memory",
       "Stretched Room",
+      "Distant Room Tone",
       "Low Pressure",
       "Mechanical Texture",
       "Reversed Fragments",
@@ -92,6 +93,7 @@ describe("concept-to-music planning", () => {
     expect(first.plan.layers.map((layer) => layer.name)).toEqual(expect.arrayContaining([
       "Degraded Memory",
       "Stretched Room",
+      "Distant Room Tone",
       "Low Pressure",
       "Mechanical Texture",
       "Reversed Fragments",
@@ -247,6 +249,7 @@ describe("concept-to-music planning", () => {
     expect(scorecard.status).toMatch(/ready_for_dry_run|needs_samples_or_bridge_review/);
     expect(scorecard.score).toBeGreaterThanOrEqual(70);
     expect(scorecard.summary.layers.missingAudioLayers).toContain("Degraded Memory");
+    expect(scorecard.summary.layers.missingAudioLayers).toContain("Distant Room Tone");
     expect(scorecard.summary.actions.samplePlacements).toBeGreaterThan(0);
     expect(scorecard.checks.map((check) => check.id)).toEqual(expect.arrayContaining([
       "layer_architecture",
@@ -407,13 +410,14 @@ describe("concept-to-music planning", () => {
     expect(planned.plan.reference?.sourceAudioPlan?.targetLayers.map((layer) => layer.layer)).toEqual(expect.arrayContaining([
       "Degraded Memory",
       "Stretched Room",
+      "Distant Room Tone",
       "Reversed Fragments"
     ]));
     expect(arrangement.arrangement.sourceAudioPlan?.referencePath).not.toBe(sourcePath);
-    expect(arrangement.arrangement.sourceAudioPlan?.assignments.length).toBeGreaterThanOrEqual(3);
+    expect(arrangement.arrangement.sourceAudioPlan?.assignments.length).toBeGreaterThanOrEqual(4);
     expect(arrangement.arrangement.sampleAssignments.every((assignment) => assignment.path !== sourcePath)).toBe(true);
     expect(arrangement.arrangement.sampleAssignments.some((assignment) => assignment.source === "reference_audio")).toBe(true);
-    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_load_preset_or_sample").length).toBeGreaterThanOrEqual(3);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_load_preset_or_sample").length).toBeGreaterThanOrEqual(4);
     expect(stored.sampleAssignments.some((assignment) => assignment.path === sourcePath && assignment.source === "reference_audio")).toBe(true);
   });
 
@@ -437,10 +441,11 @@ describe("concept-to-music planning", () => {
     const conversions = "conversions" in preparation ? preparation.conversions : [];
 
     expect(preparation.dry_run).toBe(true);
-    expect(conversions.length).toBeGreaterThanOrEqual(3);
+    expect(conversions.length).toBeGreaterThanOrEqual(4);
     expect(conversions.map((entry: any) => entry.layer)).toEqual(expect.arrayContaining([
       "Degraded Memory",
       "Stretched Room",
+      "Distant Room Tone",
       "Reversed Fragments"
     ]));
     expect(conversions.map((entry: any) => entry.conversion.preset)).toEqual(expect.arrayContaining([

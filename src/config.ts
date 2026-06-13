@@ -3,9 +3,19 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const userProfile = process.env.USERPROFILE || os.homedir();
 const isWindows = process.platform === "win32";
 const isMac = process.platform === "darwin";
+const isWsl = process.platform === "linux" && Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
+
+function windowsPathToWslPath(value: string) {
+  const match = value.match(/^([A-Za-z]):[\\/](.*)$/);
+  if (!match) return value;
+  return `/mnt/${match[1]!.toLowerCase()}/${match[2]!.replaceAll("\\", "/")}`;
+}
+
+function hostPath(value: string) {
+  return isWsl ? windowsPathToWslPath(value) : value;
+}
 
 function detectProjectRoot() {
   const parent = path.basename(path.dirname(here)).toLowerCase();
@@ -15,6 +25,14 @@ function detectProjectRoot() {
 
 export const PROJECT_ROOT = detectProjectRoot();
 
+function inferWslWindowsUserProfile() {
+  const match = PROJECT_ROOT.replaceAll("\\", "/").match(/^(\/mnt\/[A-Za-z]\/Users\/[^/]+)/);
+  return match?.[1];
+}
+
+const rawUserProfile = process.env.USERPROFILE || (isWsl ? inferWslWindowsUserProfile() : undefined) || os.homedir();
+const userProfile = hostPath(rawUserProfile);
+
 function envPath(name: string, fallback: string) {
   return process.env[name] && process.env[name]!.trim().length > 0
     ? process.env[name]!
@@ -23,18 +41,21 @@ function envPath(name: string, fallback: string) {
 
 function defaultLiveInstall() {
   if (isWindows) return "C:\\ProgramData\\Ableton\\Live 12 Trial";
+  if (isWsl) return "/mnt/c/ProgramData/Ableton/Live 12 Trial";
   if (isMac) return "/Applications/Ableton Live 12 Trial.app";
   return "";
 }
 
 function defaultLiveExecutable() {
   if (isWindows) return "C:\\ProgramData\\Ableton\\Live 12 Trial\\Program\\Ableton Live 12 Trial.exe";
+  if (isWsl) return "/mnt/c/ProgramData/Ableton/Live 12 Trial/Program/Ableton Live 12 Trial.exe";
   if (isMac) return "/Applications/Ableton Live 12 Trial.app/Contents/MacOS/Live";
   return "";
 }
 
 function defaultMaxExecutable() {
   if (isWindows) return "C:\\ProgramData\\Ableton\\Live 12 Trial\\Resources\\Max\\Max.exe";
+  if (isWsl) return "/mnt/c/ProgramData/Ableton/Live 12 Trial/Resources/Max/Max.exe";
   if (isMac) return "/Applications/Ableton Live 12 Trial.app/Contents/App-Resources/Max.app/Contents/MacOS/Max";
   return "";
 }
@@ -46,12 +67,14 @@ function defaultAbletonDocumentsRoot() {
 
 function defaultPreferences() {
   if (isWindows) return path.join(userProfile, "AppData", "Roaming", "Ableton", "Live 12.4", "Preferences");
+  if (isWsl) return path.join(userProfile, "AppData", "Roaming", "Ableton", "Live 12.4", "Preferences");
   if (isMac) return path.join(userProfile, "Library", "Preferences", "Ableton", "Live 12.4");
   return path.join(userProfile, ".config", "Ableton");
 }
 
 function defaultLiveDatabase() {
   if (isWindows) return path.join(userProfile, "AppData", "Local", "Ableton", "Live Database");
+  if (isWsl) return path.join(userProfile, "AppData", "Local", "Ableton", "Live Database");
   if (isMac) return path.join(userProfile, "Library", "Application Support", "Ableton", "Live Database");
   return path.join(userProfile, ".local", "share", "Ableton", "Live Database");
 }
@@ -61,7 +84,7 @@ export const PLATFORM = {
   isWindows,
   isMac,
   isLinux: process.platform === "linux",
-  isWsl: Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP),
+  isWsl,
   userHome: userProfile
 } as const;
 

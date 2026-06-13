@@ -27,6 +27,38 @@ function isWithin(candidate: string, root: string): boolean {
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function windowsPathToWslPath(value: string) {
+  const match = value.match(/^([A-Za-z]):[\\/](.*)$/);
+  if (!match) return value;
+  return `/mnt/${match[1]!.toLowerCase()}/${match[2]!.replaceAll("\\", "/")}`;
+}
+
+function redactionRoots() {
+  const roots = new Set<string>();
+  const mountedWindowsUser = LOCAL_PATHS.projectRoot.replaceAll("\\", "/").match(/^(\/mnt\/[A-Za-z]\/Users\/[^/]+)/)?.[1];
+  const driveWindowsUser = LOCAL_PATHS.projectRoot.replaceAll("\\", "/").match(/^([A-Za-z]:\/Users\/[^/]+)/)?.[1];
+  for (const candidate of [
+    PLATFORM.userHome,
+    process.env.USERPROFILE,
+    process.env.HOME,
+    mountedWindowsUser,
+    driveWindowsUser
+  ]) {
+    if (!candidate) continue;
+    roots.add(candidate);
+    roots.add(candidate.replaceAll("\\", "/"));
+    roots.add(candidate.replaceAll("/", "\\"));
+    roots.add(windowsPathToWslPath(candidate));
+  }
+  return [...roots]
+    .filter((candidate) => candidate && candidate !== path.parse(candidate).root)
+    .sort((left, right) => right.length - left.length);
+}
+
 export async function resolveSafePath(inputPath: string, options: { mustExist?: boolean; forWrite?: boolean } = {}) {
   if (!inputPath || inputPath.trim().length === 0) {
     throw new AbletonMcpError("Path is required.", "PATH_REQUIRED");
@@ -63,9 +95,11 @@ export async function resolveSafePath(inputPath: string, options: { mustExist?: 
 }
 
 export function redactPath(value: string): string {
-  const home = path.resolve(PLATFORM.userHome);
-  if (!home || home === path.parse(home).root) return value;
-  return value.replace(new RegExp(home.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "%USERPROFILE%");
+  let redacted = value;
+  for (const root of redactionRoots()) {
+    redacted = redacted.replace(new RegExp(escapeRegExp(root), "gi"), "%USERPROFILE%");
+  }
+  return redacted;
 }
 
 export function rootsForReport(): AllowedRoot[] {

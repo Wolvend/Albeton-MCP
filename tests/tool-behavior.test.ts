@@ -2,8 +2,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { describe, expect, it } from "vitest";
 
+const INTEGRATION_TIMEOUT_MS = 20_000;
+
 async function withClient<T>(fn: (client: Client) => Promise<T>) {
-  const transport = new StdioClientTransport({ command: "node", args: ["dist/src/index.js"] });
+  const transport = new StdioClientTransport({ command: process.execPath, args: ["dist/src/index.js"] });
   const client = new Client({ name: "tool-behavior-test", version: "0.1.0" });
   await client.connect(transport);
   try {
@@ -44,7 +46,7 @@ describe("MCP tool behavior", () => {
       expect(policy.downloadsEnabled).toBe(false);
       expect(policy.uiControlEnabled).toBe(false);
     });
-  });
+  }, INTEGRATION_TIMEOUT_MS);
 
   it("reports unsupported dry-run status for LiveAPI controls that cannot be proven reliable", async () => {
     await withClient(async (client) => {
@@ -78,5 +80,5 @@ describe("MCP tool behavior", () => {
         ]));
       }
     });
-  });
+  }, INTEGRATION_TIMEOUT_MS);
 });

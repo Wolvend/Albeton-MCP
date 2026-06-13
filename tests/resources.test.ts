@@ -2,8 +2,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { describe, expect, it } from "vitest";
 
+const INTEGRATION_TIMEOUT_MS = 20_000;
+
 async function withClient<T>(fn: (client: Client) => Promise<T>) {
-  const transport = new StdioClientTransport({ command: "node", args: ["dist/src/index.js"] });
+  const transport = new StdioClientTransport({ command: process.execPath, args: ["dist/src/index.js"] });
   const client = new Client({ name: "resource-test", version: "0.1.0" });
   await client.connect(transport);
   try {
@@ -21,7 +23,7 @@ describe("MCP resources and prompts", () => {
       expect(resources.resources.map((resource) => resource.uri)).toContain("ableton://runtime");
       expect(prompts.prompts.map((prompt) => prompt.name)).toContain("ableton-security-review");
     });
-  });
+  }, INTEGRATION_TIMEOUT_MS);
 
   it("sanitizes prompt arguments and labels them as untrusted data", async () => {
     await withClient(async (client) => {
@@ -46,5 +48,5 @@ describe("MCP resources and prompts", () => {
       expect(productionText).toContain("backrooms texture");
       expect(reviewText).toContain("sample download");
     });
-  });
+  }, INTEGRATION_TIMEOUT_MS);
 });

@@ -340,8 +340,16 @@ function sourceAudioTreatmentPlan(horror: boolean, intensity: number): SourceAud
           followUp: ["Use only low-mid detail under the main motif.", "High-pass rumble before reverb.", "Keep level below the Degraded Memory layer."]
         },
         {
-          layer: "Reversed Fragments",
+          layer: "Distant Room Tone",
           clip_slot_index: 2,
+          name: "Source Memory - distant room tone bed",
+          treatment: "Extract a low-detail noise floor, tail, or quiet passage and use it as the constant far-room bed beneath the arrangement.",
+          warp: "Texture stretch with long fades; remove transients and obvious musical attacks.",
+          followUp: ["Keep the layer barely audible in the Recognizable Motif section.", "High-pass before the reverb send.", "Avoid masking the Degraded Memory layer."]
+        },
+        {
+          layer: "Reversed Fragments",
+          clip_slot_index: 3,
           name: "Source Memory - reversed fragments",
           treatment: "Reverse short fragments and place them before section changes as impossible-memory swells.",
           warp: "Manual reverse/resample step; keep fragments short and sparse.",
@@ -437,6 +445,16 @@ function horrorLayers(concept: string): ConceptLayer[] {
       deviceChain: ["EQ Eight", "Hybrid Reverb", "Auto Filter"],
       automation: ["slow filter movement", "reverb bloom"],
       mix: { volume: 0.5, pan: 0, sends: { reverb: 0.68, delay: 0.05 } }
+    },
+    {
+      name: "Distant Room Tone",
+      type: "audio",
+      role: "barely audible far-room noise floor and fluorescent air",
+      sourceStrategy: "Use quiet room tone, HVAC air, or a noise-floor excerpt; keep it continuous and low.",
+      searchQueries: ["distant room tone fluorescent hum", "hvac air noise floor ambience"],
+      deviceChain: ["EQ Eight", "Auto Filter", "Hybrid Reverb", "Utility"],
+      automation: ["subtle level breathing", "bandwidth narrowing", "reverb distance swell"],
+      mix: { volume: 0.29, pan: 0, sends: { reverb: 0.58, delay: 0.04 } }
     },
     {
       name: "Low Pressure",
@@ -997,12 +1015,12 @@ function sampleClipShapeForLayer(layerName: string, horror: boolean) {
   const text = layerName.toLowerCase();
   const clipLength = horror ? 16 : 8;
   const gain = horror
-    ? text.includes("mechanical") ? 0.52 : text.includes("low") ? 0.58 : 0.65
+    ? text.includes("distant room") ? 0.42 : text.includes("mechanical") ? 0.52 : text.includes("low") ? 0.58 : 0.65
     : 0.78;
   const semitones = horror
-    ? text.includes("stretched") || text.includes("room") ? -12 : text.includes("reversed") ? -7 : text.includes("degraded") ? -5 : text.includes("mechanical") ? -3 : -2
+    ? text.includes("distant room") ? -7 : text.includes("stretched") || text.includes("room") ? -12 : text.includes("reversed") ? -7 : text.includes("degraded") ? -5 : text.includes("mechanical") ? -3 : -2
     : 0;
-  const cents = horror ? (text.includes("mechanical") ? -3 : -7) : 0;
+  const cents = horror ? (text.includes("distant room") ? -11 : text.includes("mechanical") ? -3 : -7) : 0;
   const warpMode = text.includes("stretched") || text.includes("room")
     ? "texture"
     : text.includes("mechanical")
@@ -1034,6 +1052,7 @@ function layerIsActiveInSection(layer: ConceptLayer, sectionIndex: number, horro
   if (!horror) return layer.type === "return" || sectionIndex > 0;
   const name = layer.name.toLowerCase();
   if (layer.type === "return") return true;
+  if (name.includes("distant room")) return true;
   if (name.includes("degraded")) return sectionIndex === 1 || sectionIndex === 2;
   if (name.includes("stretched") || name.includes("room")) return sectionIndex === 0 || sectionIndex >= 3;
   if (name.includes("low")) return sectionIndex === 0 || sectionIndex >= 2;
@@ -1048,6 +1067,7 @@ function layerSectionRole(layer: ConceptLayer, sectionIndex: number, horror: boo
   if (sectionIndex === 0) return layer.type === "return" ? "space" : "establish";
   const wasActive = sectionIndex > 0 && layerIsActiveInSection(layer, sectionIndex - 1, horror);
   const name = layer.name.toLowerCase();
+  if (name.includes("distant room")) return sectionIndex === 0 ? "establish" : "constant_distance";
   if (!wasActive && layer.type !== "return") return "entrance";
   if (name.includes("motif") || name.includes("degraded")) return "featured";
   if (name.includes("low") || layer.type === "return") return "support";
@@ -2737,7 +2757,7 @@ export async function renderConceptProductionScorecard(options: ConceptProductio
     .filter((layer) => !assignedAudioLayerNames.has(layer.name.toLowerCase()))
     .map((layer) => layer.name);
   const requiredHorrorLayers = concept.preset === "liminal_backrooms_horror"
-    ? ["Degraded Memory", "Stretched Room", "Low Pressure", "Mechanical Texture", "Reversed Fragments", "Sparse Motif", "Memory Reverb", "Distant Delay"]
+    ? ["Degraded Memory", "Stretched Room", "Distant Room Tone", "Low Pressure", "Mechanical Texture", "Reversed Fragments", "Sparse Motif", "Memory Reverb", "Distant Delay"]
     : [];
   const coveredRequiredHorrorLayers = requiredHorrorLayers.filter((layerName) =>
     concept.layers.some((layer) => layer.name.toLowerCase() === layerName.toLowerCase())
@@ -3249,6 +3269,7 @@ function normalizedLevelToDb(value: number) {
 function layerBusRole(layer: ConceptLayer, horror: boolean) {
   const name = layer.name.toLowerCase();
   if (layer.type === "return") return name.includes("delay") ? "delay_return" : "reverb_return";
+  if (name.includes("distant room")) return "distance_bed";
   if (name.includes("low pressure")) return "controlled_low_end";
   if (name.includes("mechanical") || name.includes("reverse") || name.includes("fragment")) return "threat_fx";
   if (name.includes("motif") || name.includes("memory")) return horror ? "damaged_music_memory" : "musical_anchor";
@@ -3259,6 +3280,7 @@ function layerBusRole(layer: ConceptLayer, horror: boolean) {
 function layerMixPriority(layer: ConceptLayer, horror: boolean) {
   const name = layer.name.toLowerCase();
   if (horror && name.includes("degraded memory")) return 1;
+  if (name.includes("distant room")) return 5;
   if (name.includes("room") || name.includes("core texture")) return 2;
   if (name.includes("motif")) return horror ? 3 : 1;
   if (name.includes("low pressure")) return 4;
@@ -3269,6 +3291,7 @@ function layerMixPriority(layer: ConceptLayer, horror: boolean) {
 function layerFrequencyFocus(layer: ConceptLayer, horror: boolean) {
   const name = layer.name.toLowerCase();
   if (name.includes("low pressure")) return ["sub restraint", "low-mid cleanup", "mono compatibility"];
+  if (name.includes("distant room")) return ["noise-floor control", "narrow low-mid pocket", "soft high-pass before shared space"];
   if (name.includes("degraded") || name.includes("memory")) return horror ? ["band-limited mids", "rolled-off top", "controlled low cut"] : ["midrange identity", "soft top"];
   if (name.includes("room") || name.includes("texture")) return ["low-mid resonance control", "wide ambience", "high-pass before reverb"];
   if (name.includes("mechanical")) return ["harshness control", "transient containment", "narrow resonances"];
@@ -3285,6 +3308,9 @@ function layerSpatialTreatment(layer: ConceptLayer) {
   }
   if (name.includes("low pressure")) {
     return { position: "center", width: "mono_or_near_mono", motion: "subtle swell only" };
+  }
+  if (name.includes("distant room")) {
+    return { position: "far_background", width: "wide_but_low", motion: "barely perceptible level and bandwidth breathing" };
   }
   if (name.includes("mechanical") || name.includes("reverse")) {
     return { position: layer.mix.pan > 0 ? "right_detail" : "left_detail", width: "medium", motion: "short throws around section changes" };

@@ -218,6 +218,11 @@ export function toFileUri(filePath: string) {
   return `file://${absolute}`;
 }
 
+function resolvePathPreservingWindowsAbsolute(filePath: string) {
+  const normalized = filePath.replaceAll("\\", "/");
+  return /^[A-Za-z]:\//.test(normalized) ? normalized : path.resolve(filePath);
+}
+
 function getIndent(line: string) {
   return line.match(/^ */)?.[0].length ?? 0;
 }
@@ -306,8 +311,8 @@ export function buildHypernimbusDockerProfilePlan(options: {
   backupPath?: string;
 } = {}): DockerProfilePlan {
   const profile = validateDockerProfileId(options.profile ?? HYPERNIMBUS_PROFILE_ID);
-  const catalogPath = path.resolve(options.catalogPath ?? ABLETON_DOCKER_CATALOG);
-  const backupPath = path.resolve(options.backupPath ?? path.join(LOCAL_PATHS.diagnostics, "runtime", "docker-mcp", `${profile}.before.yaml`));
+  const catalogPath = resolvePathPreservingWindowsAbsolute(options.catalogPath ?? ABLETON_DOCKER_CATALOG);
+  const backupPath = resolvePathPreservingWindowsAbsolute(options.backupPath ?? path.join(LOCAL_PATHS.diagnostics, "runtime", "docker-mcp", `${profile}.before.yaml`));
   const catalogRef = toFileUri(catalogPath);
   const enableArgs = HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.flatMap((tool) => ["--enable", `ableton-mcp.${tool}`]);
 

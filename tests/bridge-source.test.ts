@@ -20,8 +20,8 @@ describe("Max for Live bridge source", () => {
   it("has syntax-valid bridge scripts", async () => {
     const httpScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-http.js");
     const liveApiScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-liveapi.js");
-    await execFileAsync("C:\\Program Files\\nodejs\\node.exe", ["--check", httpScript], { timeout: 10_000 });
-    await execFileAsync("C:\\Program Files\\nodejs\\node.exe", ["--check", liveApiScript], { timeout: 10_000 });
+    await execFileAsync(process.execPath, ["--check", httpScript], { timeout: 10_000 });
+    await execFileAsync(process.execPath, ["--check", liveApiScript], { timeout: 10_000 });
   });
 
   it("keeps Node for Max bridge scripts in CommonJS mode", async () => {

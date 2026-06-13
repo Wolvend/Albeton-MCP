@@ -27,7 +27,7 @@ Ableton app: /Applications/Ableton Live 12 Trial.app
 Ableton library: ~/Music/Ableton
 ```
 
-Linux and WSL default to headless MCP operation. Use environment overrides if you have a custom Ableton-compatible path, or connect to a Windows/macOS host bridge.
+WSL launched from a mounted Windows checkout under `/mnt/<drive>/Users/<name>/...` infers the Windows profile and defaults Ableton paths to the mounted Windows locations, such as `/mnt/c/Users/<name>/Documents/Ableton`. Native Linux defaults to headless MCP operation. Use environment overrides if you have a custom Ableton-compatible path, or connect to a Windows/macOS host bridge.
 
 ## WSL Modes
 

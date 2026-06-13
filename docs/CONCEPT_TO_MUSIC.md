@@ -146,6 +146,7 @@ It creates these layers:
 
 - Degraded Memory
 - Stretched Room
+- Distant Room Tone
 - Low Pressure
 - Mechanical Texture
 - Reversed Fragments
@@ -153,7 +154,7 @@ It creates these layers:
 - Memory Reverb
 - Distant Delay
 
-The preset is intended for slow, degraded, uneasy soundtrack work: tape-like melodic memory, wide empty-room tone, low pressure, mechanical texture, reversed transition fragments, sparse MIDI, long dark reverb, and unstable delay returns.
+The preset is intended for slow, degraded, uneasy soundtrack work: tape-like melodic memory, wide empty-room wash, constant distant room tone, low pressure, mechanical texture, reversed transition fragments, sparse MIDI, long dark reverb, and unstable delay returns.
 
 Agents can inspect the full recipe with `ableton_list_concept_presets` before writing any plan file. The preset response includes the exact safe calls for `ableton_plan_concept_track`, `ableton_search_concept_samples`, and `ableton_plan_full_concept_production`.
 
@@ -168,8 +169,8 @@ The arrangement plan includes:
 - A read-only routing readiness plan that links planned sends to `ableton_get_routing_overview`, dry-run send templates, and approval-time verification.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
 - A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
-- Optional named, shaped, and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`. Sample shaping uses conservative layer-specific gain, transpose/detune, warp mode, and start/end marker actions.
-- Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, and reversed fragments. These can be rendered into staging with `ableton_prepare_concept_audio_layers`.
+- Optional named, shaped, and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Distant Room Tone`, `Mechanical Texture`, or `Reversed Fragments`. Sample shaping uses conservative layer-specific gain, transpose/detune, warp mode, and start/end marker actions.
+- Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, distant room-tone bed, and reversed fragments. These can be rendered into staging with `ableton_prepare_concept_audio_layers`.
 - A staged automation plan for reverb, delay, filter, and volume movement. `ableton_plan_concept_device_automation_readiness` turns these lanes into parameter-discovery calls and dry-run templates; they remain non-writing until the bridge proves support.
 
 Sample placement remains staged until local sample paths are approved. Assignment paths and executable reference audio must come from sample staging, Codex Imports, the Ableton User Library, or Live Recordings; tool responses redact the local path while stored plans retain the executable path. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects. Device chains are stored as reviewable `devicePlan` entries because named device insertion through LiveAPI requires a verified Browser or hot-swap target for the running Ableton version.
