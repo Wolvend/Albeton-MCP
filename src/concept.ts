@@ -1267,10 +1267,10 @@ function arrangementForReport(arrangement: ArrangementPlan): ArrangementPlan {
 
 function actionPhase(action: string) {
   if (action === "ableton_set_tempo") return "global_setup";
-  if (action.includes("_track") || action === "ableton_rename_return_track") return "track_and_return_setup";
-  if (action.includes("_scene")) return "scene_setup";
   if (action === "ableton_create_arrangement_marker") return "arrangement_markers";
   if (action.includes("_volume") || action.includes("_pan") || action === "ableton_set_track_send") return "mixer_setup";
+  if (action.includes("_track") || action === "ableton_rename_return_track") return "track_and_return_setup";
+  if (action.includes("_scene")) return "scene_setup";
   if (action === "ableton_insert_midi_notes") return "midi_motif";
   if (action === "ableton_load_preset_or_sample") return "sample_placement";
   if (action.includes("_clip") || action.includes("transpose")) return "clip_shaping";

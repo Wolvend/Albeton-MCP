@@ -393,6 +393,9 @@ describe("concept-to-music planning", () => {
     expect(actionMatrix.summary.bridgeStatusCounts.write_gated).toBeGreaterThan(0);
     expect(actionMatrix.summary.approvedSamplePlacements).toBeGreaterThan(0);
     expect(actionMatrix.summary.stagedDeviceChains).toBeGreaterThan(0);
+    expect(actionMatrix.actions.find((action) => action.action === "ableton_set_track_volume")?.phase).toBe("mixer_setup");
+    expect(actionMatrix.actions.find((action) => action.action === "ableton_set_return_track_volume")?.phase).toBe("mixer_setup");
+    expect(actionMatrix.actions.find((action) => action.action === "ableton_set_track_send")?.phase).toBe("mixer_setup");
     expect(actionMatrix.exactNextToolCalls.preflight).toMatchObject({
       name: "ableton_preflight_concept_execution",
       arguments: { arrangement_id: arrangement.arrangement.id, check_bridge: true }
