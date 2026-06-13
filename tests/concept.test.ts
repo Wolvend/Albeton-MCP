@@ -74,6 +74,8 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "filter")).toBe(true);
     expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "delay")).toBe(true);
     expect(arrangement.arrangement.automationPlan.every((entry) => entry.execution === "staged")).toBe(true);
+    expect(arrangement.arrangement.devicePlan.some((entry) => entry.layer === "Stretched Room" && entry.devices.includes("Hybrid Reverb"))).toBe(true);
+    expect(arrangement.arrangement.devicePlan.every((entry) => entry.execution === "staged")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_track_volume").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.actions.find((action) => action.action === "ableton_insert_midi_notes")?.payload.notes).toEqual(expect.arrayContaining([
       expect.objectContaining({ pitch: expect.any(Number), start_time: expect.any(Number), duration: expect.any(Number) })

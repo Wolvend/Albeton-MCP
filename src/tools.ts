@@ -123,6 +123,27 @@ async function typedBridgeWrite(action: string, args: any, plan: Record<string, 
   return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
 }
 
+async function unsupportedLiveApiWrite(action: string, args: any, plan: Record<string, unknown>, reason: string) {
+  const nextSteps = [
+    "Use ableton_browse_live_devices and live read tools to inspect the target first.",
+    "Use the user-enabled UI driver fallback only when foreground control is intentional.",
+    "Retry with dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 only if the bridge for this Ableton version reports support."
+  ];
+  if (args.dry_run !== false) {
+    return {
+      ok: true,
+      dry_run: true,
+      unsupported: true,
+      action,
+      plan,
+      reason,
+      nextSteps
+    };
+  }
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
+  return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown>, plan, expectedUnsupported: true };
+}
+
 function isPathWithin(candidate: string, root: string) {
   const relative = path.relative(path.resolve(root), path.resolve(candidate));
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
@@ -422,8 +443,8 @@ toolDefs.push(
   { name: "ableton_set_track_volume", description: "Set a track volume parameter through the gated LiveAPI bridge.", inputSchema: { track_index: TrackIndex, value: z.number().min(0).max(1), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_set_track_volume", args, { target: "track_volume", track_index: args.track_index, value: args.value }) },
   { name: "ableton_set_track_pan", description: "Set a track pan parameter through the gated LiveAPI bridge.", inputSchema: { track_index: TrackIndex, value: z.number().min(-1).max(1), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_set_track_pan", args, { target: "track_pan", track_index: args.track_index, value: args.value }) },
   { name: "ableton_set_track_send", description: "Set a track send amount through the gated LiveAPI bridge.", inputSchema: { track_index: TrackIndex, send_index: z.number().int().min(0), value: z.number().min(0).max(1), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_set_track_send", args, { target: "track_send", track_index: args.track_index, send_index: args.send_index, value: args.value }) },
-  { name: "ableton_insert_instrument", description: "Request an Ableton-native instrument insertion; bridge returns unsupported unless reliable insertion is available.", inputSchema: { track_index: TrackIndex, device: z.string().min(1).max(128), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_insert_instrument", args, { target: "instrument_device", track_index: args.track_index, device: args.device }) },
-  { name: "ableton_insert_effect", description: "Request an Ableton-native effect insertion; bridge returns unsupported unless reliable insertion is available.", inputSchema: { track_index: TrackIndex, device: z.string().min(1).max(128), position: z.number().int().min(0).optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_insert_effect", args, { target: "effect_device", track_index: args.track_index, device: args.device, position: args.position ?? "append" }) },
+  { name: "ableton_insert_instrument", description: "Request an Ableton-native instrument insertion; bridge returns unsupported unless reliable insertion is available.", inputSchema: { track_index: TrackIndex, device: z.string().min(1).max(128), ...DryRun }, annotations: rw, handler: async (args) => unsupportedLiveApiWrite("ableton_insert_instrument", args, { target: "instrument_device", track_index: args.track_index, device: args.device }, "LiveAPI does not expose a reliable named-device insertion path without a verified Browser/hot-swap target in this bridge context.") },
+  { name: "ableton_insert_effect", description: "Request an Ableton-native effect insertion; bridge returns unsupported unless reliable insertion is available.", inputSchema: { track_index: TrackIndex, device: z.string().min(1).max(128), position: z.number().int().min(0).optional(), ...DryRun }, annotations: rw, handler: async (args) => unsupportedLiveApiWrite("ableton_insert_effect", args, { target: "effect_device", track_index: args.track_index, device: args.device, position: args.position ?? "append" }, "LiveAPI does not expose a reliable named-effect insertion path without a verified Browser/hot-swap target in this bridge context.") },
   { name: "ableton_load_preset_or_sample", description: "Create an audio clip from an approved local sample path; preset/device loading remains unsupported unless the bridge can prove it.", inputSchema: { path: z.string().min(1), track_index: TrackIndex.default(0), clip_slot_index: ClipSlotIndex.default(0), mode: z.enum(["audio_clip"]).default("audio_clip"), name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => loadPresetOrSample(args) },
   { name: "ableton_set_device_parameter", description: "Set a device parameter through the gated LiveAPI bridge.", inputSchema: { track_index: TrackIndex, device_index: DeviceIndex.default(0), parameter_index: ParameterIndex, value: z.number(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_set_device_parameter", args, { target: "device_parameter", track_index: args.track_index, device_index: args.device_index, parameter_index: args.parameter_index, value: args.value }) },
   { name: "ableton_map_macro", description: "Plan a rack macro mapping; bridge returns unsupported until a reliable LiveAPI mapping path is available.", inputSchema: { track_index: TrackIndex, rack_device_index: DeviceIndex, macro_index: ParameterIndex, target_device_index: DeviceIndex, target_parameter_index: ParameterIndex, ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_map_macro", args, { target: "macro_mapping", track_index: args.track_index, rack_device_index: args.rack_device_index, macro_index: args.macro_index, target_device_index: args.target_device_index, target_parameter_index: args.target_parameter_index }) },

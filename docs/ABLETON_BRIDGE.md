@@ -64,7 +64,7 @@ The bridge currently covers broad read visibility plus common write-gated operat
 - Audio clip creation from an approved local sample path with `ableton_load_preset_or_sample` in `audio_clip` mode.
 - MIDI note insertion with `ableton_insert_midi_notes` when the loaded Ableton/Max LiveAPI context supports the modern note API.
 
-The bridge returns explicit `unsupported: true` results for operations that are not reliable in the current LiveAPI context, including generic device/preset insertion and automation writes that cannot be proven for the selected target. MCP clients should treat those responses as setup or capability limits, not as success.
+The bridge returns explicit `unsupported: true` results for operations that are not reliable in the current LiveAPI context, including generic device/preset insertion and automation writes that cannot be proven for the selected target. MCP dry-runs for `ableton_insert_instrument` and `ableton_insert_effect` also report this limitation up front, because named device insertion needs a verified Browser or hot-swap target for the running Ableton version. MCP clients should treat those responses as setup or capability limits, not as success.
 
 ## Queueing and fallback
 

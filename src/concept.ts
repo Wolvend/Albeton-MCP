@@ -80,6 +80,15 @@ type ArrangementPlan = {
     clip_slot_index: number;
     name: string | null;
   }>;
+  devicePlan: Array<{
+    layer: string;
+    devices: string[];
+    target: "track" | "return";
+    track_created_offset?: number;
+    return_created_offset?: number;
+    execution: "staged";
+    reason: string;
+  }>;
   automationPlan: Array<{
     layer: string;
     automation: string;
@@ -663,6 +672,17 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       reason: "Creates an audio clip from an approved local sample assigned to this stored concept layer."
     }))
   ];
+  const devicePlan: ArrangementPlan["devicePlan"] = layerTargets
+    .filter((target) => target.layer.deviceChain.length > 0)
+    .map((target) => ({
+      layer: target.layer.name,
+      devices: [...target.layer.deviceChain],
+      target: target.layer.type === "return" ? "return" : "track",
+      ...(target.trackOffset === null ? {} : { track_created_offset: target.trackOffset }),
+      ...(target.returnOffset === null ? {} : { return_created_offset: target.returnOffset }),
+      execution: "staged",
+      reason: "LiveAPI device insertion requires a verified browser/hot-swap target in this Ableton version; keep this as a review plan or use the user-enabled UI driver fallback."
+    }));
   const automationPlan: ArrangementPlan["automationPlan"] = plan.layers.flatMap((layer) => layer.automation.map((automation) => ({
       layer: layer.name,
       automation,
@@ -682,10 +702,11 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       clip_slot_index: assignment.clip_slot_index,
       name: assignment.name
     })),
+    devicePlan,
     automationPlan,
     notes: [
       "Created-track placeholders are resolved from a live snapshot immediately before real execution, so the plan can append to a non-empty set.",
-      "Sample placement and device insertion remain staged until local sample paths and LiveAPI device support are verified.",
+      "Sample placement can be executed from approved local sample paths; device insertion remains staged until a reliable LiveAPI browser or user-enabled UI path is verified.",
       "Automation is represented in the concept plan and should be applied only where bridge support returns success."
     ]
   };

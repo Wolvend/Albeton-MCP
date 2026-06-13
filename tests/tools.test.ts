@@ -48,6 +48,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_create_scene).toHaveProperty("scene_index");
     expect(registeredToolSchemas.ableton_set_track_volume).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_set_track_volume).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_insert_instrument).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_insert_instrument).toHaveProperty("device");
+    expect(registeredToolSchemas.ableton_insert_effect).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_insert_effect).toHaveProperty("device");
     expect(registeredToolSchemas.ableton_set_device_parameter).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_set_device_parameter).toHaveProperty("parameter_index");
     expect(registeredToolSchemas.ableton_duplicate_clip).not.toHaveProperty("payload");
