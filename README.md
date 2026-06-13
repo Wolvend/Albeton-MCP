@@ -32,7 +32,7 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
-| Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, sample-search plan, mix plan, arrangement skeleton, and delivery plan. |
+| Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, sample-search plan, mix plan, arrangement skeleton, execution manifest, and delivery plan. |
 | Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
 | Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
 | Safety/evals | Run security checks, runtime reports, bridge mock checks, sample license tests, and full MCP verification. |
@@ -254,8 +254,8 @@ Release check: passed
 Safe sweep: passed
 Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 192 tools, 3 resources, 2 prompts
-All-tool contract sweep: 192 registered tools, 192 safe calls
+MCP verifier: 193 tools, 3 resources, 2 prompts
+All-tool contract sweep: 193 registered tools, 193 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
 Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles

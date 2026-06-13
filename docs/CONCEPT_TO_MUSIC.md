@@ -87,22 +87,28 @@ Fast path:
    - Checks the stored arrangement action counts, bridge reachability, created-track placeholder resolution, staged review items, and likely clip-slot blockers.
    - Reports `readyForRealWrite=false` unless a bridge snapshot is checked successfully and no blockers are found.
 
-14. `ableton_plan_concept_device_automation_readiness`
+14. `ableton_render_concept_execution_manifest`
+   - Read-only.
+   - Groups a stored arrangement's executable actions by production phase, redacts local sample paths, summarizes created-track/return/scene placeholders, and lists exact dry-run, preflight, approval, and real-execution tool calls.
+   - Does not contact Ableton, approve execution, download samples, write files, or use UI/mouse control.
+   - Use this when an agent needs a concrete execution manifest before asking for approval or running preflight.
+
+15. `ableton_plan_concept_device_automation_readiness`
    - Read-only.
    - Converts staged `devicePlan` and `automationPlan` entries into discovery calls, dry-run templates, target hints, and explicit unsupported/support status.
    - Does not insert devices, write automation, move the mouse, or approve execution.
 
-15. `ableton_create_concept_execution_approval_bundle`
+16. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
    - Packages the redacted concept, redacted arrangement, preflight result, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
-16. `ableton_execute_concept_plan`
+17. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-17. `ableton_render_delivery_plan`
+18. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -181,6 +187,7 @@ ableton_export_concept_midi_motif with dry_run=true
 ableton_prepare_concept_audio_layers with dry_run=true
 ableton_build_arrangement_from_prepared_audio after real layer preparation
 ableton_preflight_concept_execution with check_bridge=true
+ableton_render_concept_execution_manifest
 ableton_plan_concept_device_automation_readiness
 ableton_create_concept_execution_approval_bundle
 ableton_execute_concept_plan with dry_run=true

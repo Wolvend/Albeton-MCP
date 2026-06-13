@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { LOCAL_PATHS } from "../src/config.js";
+import { buildLayeredArrangementPlan, planConceptTrack } from "../src/concept.js";
 
 const gzip = promisify(zlib.gzip);
 
@@ -34,6 +35,13 @@ async function ensureFixtures() {
 }
 
 const fixtures = await ensureFixtures();
+const safeConcept = await planConceptTrack({
+  concept: "safe sweep liminal concept manifest",
+  target_duration_seconds: 90,
+  intensity: 6,
+  sources: ["local_library"]
+});
+const safeArrangement = await buildLayeredArrangementPlan(safeConcept.plan.id);
 
 const calls: SweepCall[] = [
   { name: "ableton_mcp_health", arguments: {} },
@@ -136,7 +144,8 @@ const calls: SweepCall[] = [
   { name: "ableton_suggest_arrangement", arguments: { brief: "safe sweep" } },
   { name: "ableton_suggest_mix_actions", arguments: { issue: "muddy low mids" } },
   { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep" } } },
-  { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } }
+  { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } },
+  { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: safeArrangement.arrangement.id } }
 ];
 
 const transport = new StdioClientTransport({ command: "node", args: ["dist/src/index.js"] });

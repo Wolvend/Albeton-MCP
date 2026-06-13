@@ -108,6 +108,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_build_layered_arrangement_plan",
   "ableton_preflight_concept_execution",
   "ableton_create_concept_execution_approval_bundle",
+  "ableton_render_concept_execution_manifest",
   "ableton_plan_concept_device_automation_readiness",
   "ableton_render_concept_timeline",
   "ableton_render_concept_mix_plan",

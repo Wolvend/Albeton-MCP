@@ -56,6 +56,10 @@ export type ConceptExecutionApprovalBundleOptions = ConceptExecutionPreflightOpt
 
 export type ConceptDeviceAutomationReadinessOptions = ConceptExecutionPreflightOptions;
 
+export type ConceptExecutionManifestOptions = {
+  arrangement_id: string;
+};
+
 type ConceptLayer = {
   name: string;
   type: "audio" | "midi" | "return";
@@ -846,6 +850,44 @@ function arrangementForReport(arrangement: ArrangementPlan): ArrangementPlan {
       ...action,
       payload: redactActionPayload(action.payload)
     }))
+  };
+}
+
+function actionPhase(action: string) {
+  if (action === "ableton_set_tempo") return "global_setup";
+  if (action.includes("_track") || action === "ableton_rename_return_track") return "track_and_return_setup";
+  if (action.includes("_scene")) return "scene_setup";
+  if (action === "ableton_create_arrangement_marker") return "arrangement_markers";
+  if (action.includes("_volume") || action.includes("_pan") || action === "ableton_set_track_send") return "mixer_setup";
+  if (action === "ableton_insert_midi_notes") return "midi_motif";
+  if (action === "ableton_load_preset_or_sample") return "sample_placement";
+  if (action.includes("_clip") || action.includes("transpose")) return "clip_shaping";
+  return "other";
+}
+
+function actionPlaceholderSummary(action: ArrangementAction) {
+  return {
+    track_created_offset: typeof action.payload.track_created_offset === "number",
+    return_created_offset: typeof action.payload.return_created_offset === "number",
+    scene_created_offset: typeof action.payload.scene_created_offset === "number"
+  };
+}
+
+function actionNeedsApprovedSample(action: ArrangementAction) {
+  return action.action === "ableton_load_preset_or_sample" && typeof action.payload.path === "string";
+}
+
+function actionForExecutionReport(action: ArrangementAction, index: number) {
+  return {
+    index,
+    action: action.action,
+    phase: actionPhase(action.action),
+    safeToExecute: action.safeToExecute,
+    reason: action.reason,
+    payload: redactActionPayload(action.payload),
+    placeholders: actionPlaceholderSummary(action),
+    requiresApprovedLocalSample: actionNeedsApprovedSample(action),
+    executionGate: action.safeToExecute ? "ABLETON_MCP_ENABLE_WRITE=1 plus dry_run=false" : "not_executable"
   };
 }
 
@@ -2230,6 +2272,96 @@ export async function createConceptExecutionApprovalBundle(options: ConceptExecu
       "This bundle does not send write commands to Ableton.",
       "This bundle does not use UI or mouse control.",
       "Stored executable local paths are redacted in this response."
+    ]
+  };
+}
+
+export async function renderConceptExecutionManifest(options: ConceptExecutionManifestOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const actionReports = arrangement.actions.map(actionForExecutionReport);
+  const phases = [...new Set(actionReports.map((action) => action.phase))].map((phase) => {
+    const actions = actionReports.filter((action) => action.phase === phase);
+    return {
+      phase,
+      actionCount: actions.length,
+      executableActionCount: actions.filter((action) => action.safeToExecute).length,
+      actions
+    };
+  });
+  const placeholderCounts = actionReports.reduce((counts, action) => ({
+    track: counts.track + (action.placeholders.track_created_offset ? 1 : 0),
+    returnTrack: counts.returnTrack + (action.placeholders.return_created_offset ? 1 : 0),
+    scene: counts.scene + (action.placeholders.scene_created_offset ? 1 : 0)
+  }), { track: 0, returnTrack: 0, scene: 0 });
+
+  return {
+    manifestType: "concept_execution_manifest",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      title: sanitizeRemoteSampleText(concept.concept, 500),
+      style: concept.style,
+      tempo: concept.tempo,
+      key: concept.key,
+      sections: concept.sections.map((section) => section.name),
+      layerCount: concept.layers.length
+    },
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      remoteHttpExposure: false,
+      executionPath: "stored_arrangement_id_only",
+      arbitraryBridgePayloads: false,
+      localPathsRedacted: true
+    },
+    gates: {
+      dryRunFirst: true,
+      requiredForRealExecution: ["ABLETON_MCP_ENABLE_WRITE=1", "dry_run=false", "loaded Max for Live bridge", "successful ableton_preflight_concept_execution"],
+      notGrantedByThisManifest: true
+    },
+    actionSummary: {
+      total: arrangement.actions.length,
+      executable: arrangement.actions.filter((action) => action.safeToExecute).length,
+      stagedDeviceChains: arrangement.devicePlan.length,
+      stagedAutomationTargets: arrangement.automationPlan.length,
+      samplePlacements: arrangement.actions.filter(actionNeedsApprovedSample).length,
+      placeholderCounts
+    },
+    phases,
+    stagedReview: {
+      devicePlan: arrangement.devicePlan,
+      automationPlan: arrangement.automationPlan,
+      readinessToolCall: {
+        name: "ableton_plan_concept_device_automation_readiness",
+        arguments: { arrangement_id: arrangement.id, check_bridge: false }
+      }
+    },
+    exactToolCalls: {
+      dryRunExecution: {
+        name: "ableton_execute_concept_plan",
+        arguments: { arrangement_id: arrangement.id, dry_run: true }
+      },
+      preflightWithBridge: {
+        name: "ableton_preflight_concept_execution",
+        arguments: { arrangement_id: arrangement.id, check_bridge: true }
+      },
+      approvalBundle: {
+        name: "ableton_create_concept_execution_approval_bundle",
+        arguments: { arrangement_id: arrangement.id, check_bridge: true }
+      },
+      realExecutionAfterApproval: {
+        name: "ableton_execute_concept_plan",
+        arguments: { arrangement_id: arrangement.id, dry_run: false }
+      }
+    },
+    nextSteps: [
+      "Review phases and stagedReview before touching Ableton.",
+      "Run dryRunExecution first; it does not contact Ableton.",
+      "Load the Max for Live bridge, then run preflightWithBridge.",
+      "Only run realExecutionAfterApproval after reviewing the approval bundle and intentionally enabling ABLETON_MCP_ENABLE_WRITE=1."
     ]
   };
 }

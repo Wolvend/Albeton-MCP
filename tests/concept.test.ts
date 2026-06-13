@@ -17,6 +17,7 @@ import {
   planConceptTrack,
   preflightConceptExecution,
   prepareConceptAudioLayers,
+  renderConceptExecutionManifest,
   renderConceptMixPlan,
   renderConceptTimeline,
   readArrangementPlan,
@@ -118,6 +119,9 @@ describe("concept-to-music planning", () => {
       arrangement_id: arrangement.arrangement.id,
       check_bridge: false
     });
+    const manifest = await renderConceptExecutionManifest({
+      arrangement_id: arrangement.arrangement.id
+    });
     const timeline = await renderConceptTimeline(planned.plan.id);
     const mixPlan = await renderConceptMixPlan(planned.plan.id);
     const delivery = await renderDeliveryPlan(planned.plan.id);
@@ -174,6 +178,13 @@ describe("concept-to-music planning", () => {
     expect(readiness.summary.realDeviceInsertionSupported).toBe(false);
     expect(readiness.deviceChains.some((entry) => entry.toolCallTemplates.some((call) => call.name === "ableton_insert_effect"))).toBe(true);
     expect(readiness.automationTargets.some((entry) => entry.parameterHints.includes("Cutoff"))).toBe(true);
+    expect(manifest.manifestType).toBe("concept_execution_manifest");
+    expect(manifest.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, arbitraryBridgePayloads: false });
+    expect(manifest.actionSummary.executable).toBeGreaterThan(0);
+    expect(manifest.actionSummary.placeholderCounts.track).toBeGreaterThan(0);
+    expect(manifest.phases.some((phase) => phase.phase === "midi_motif")).toBe(true);
+    expect(manifest.phases.some((phase) => phase.actions.some((action) => action.payload.path === stagedPath))).toBe(false);
+    expect(manifest.exactToolCalls.realExecutionAfterApproval.arguments).toMatchObject({ arrangement_id: arrangement.arrangement.id, dry_run: false });
     expect(timeline.sectionCount).toBe(5);
     expect(timeline.sections.map((section) => section.name)).toContain("Spatial Collapse");
     expect(timeline.sections.some((section) => section.activeLayers.some((layer) => layer.name === "Sparse Motif" && layer.role === "entrance"))).toBe(true);
