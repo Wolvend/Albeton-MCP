@@ -106,7 +106,7 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "ableton_set_automation_point", tool: "ableton_set_automation_point", status: "unsupported", domain: "automation", notes: "LiveAPI breakpoint writing is not exposed reliably from this bridge context." },
   { action: "ableton_simplify_automation", tool: "ableton_simplify_automation", status: "unsupported", domain: "automation", notes: "LiveAPI automation simplification is not exposed reliably from this bridge context." },
   { action: "ableton_quantize_clip", tool: "ableton_quantize_clip", status: "unsupported", domain: "midi", notes: "Quantization enum values vary by context." },
-  { action: "ableton_humanize_midi_clip", tool: "ableton_humanize_midi_clip", status: "unsupported", domain: "midi", notes: "Needs verified note read/rewrite support." }
+  { action: "ableton_humanize_midi_clip", tool: "ableton_humanize_midi_clip", status: "write_gated", domain: "midi", requiresWriteGate: true, dryRunFirst: true, notes: "Uses get_notes_extended, remove_notes_extended, and add_new_notes when the loaded bridge exposes the modern note API." }
 ];
 
 export function getBridgeCapabilityMatrix() {

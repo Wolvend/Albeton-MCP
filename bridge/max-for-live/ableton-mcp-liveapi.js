@@ -824,6 +824,15 @@ function existingMidiNoteCount(result) {
   return result && result.notes instanceof Array ? result.notes.length : null;
 }
 
+function midiNotesForWrite(notes) {
+  var normalized = [];
+  if (!(notes instanceof Array)) return normalized;
+  for (var i = 0; i < notes.length; i += 1) {
+    normalized.push(normalizeMidiNote(notes[i]));
+  }
+  return normalized;
+}
+
 function readExistingMidiNotes(clip, target, timeSpan) {
   var result = safeCall(clip, "get_notes_extended", [0, 128, 0, timeSpan]);
   if (!callSucceeded(result)) {
@@ -852,9 +861,68 @@ function removeExistingMidiNotes(clip, target, timeSpan) {
 
 function restoreExistingMidiNotes(clip, existingNotes) {
   if (existingNotes && existingNotes.notes instanceof Array && existingNotes.notes.length) {
-    return safeCall(clip, "add_new_notes", [{ notes: existingNotes.notes }]);
+    return safeCall(clip, "add_new_notes", [{ notes: midiNotesForWrite(existingNotes.notes) }]);
   }
   return null;
+}
+
+function clampNumber(value, minValue, maxValue) {
+  return Math.max(minValue, Math.min(maxValue, value));
+}
+
+function normalizedSeed(payload, target, noteCount, timingAmount, velocityAmount) {
+  var explicitSeed = payload && payload.seed !== undefined ? Number(payload.seed) : NaN;
+  var seed = isFinite(explicitSeed)
+    ? Math.floor(explicitSeed)
+    : ((target.track_index + 1) * 1000003) + ((target.slot_index + 1) * 9176) + (noteCount * 101) + Math.floor(timingAmount * 100000) + Math.floor(velocityAmount * 1000);
+  seed = seed % 2147483647;
+  if (seed <= 0) seed += 2147483646;
+  return seed;
+}
+
+function nextSeededRandom(state) {
+  state.value = (state.value * 16807) % 2147483647;
+  return (state.value - 1) / 2147483646;
+}
+
+function humanizeMidiNotes(notes, payload, target, timeSpan) {
+  var timingAmount = Number(payload && payload.timing_amount !== undefined ? payload.timing_amount : 0.02);
+  var velocityAmount = Number(payload && payload.velocity_amount !== undefined ? payload.velocity_amount : 5);
+  if (!isFinite(timingAmount) || timingAmount < 0 || timingAmount > 0.25) throw new Error("timing_amount must be between 0 and 0.25 beats.");
+  if (!isFinite(velocityAmount) || velocityAmount < 0 || velocityAmount > 32) throw new Error("velocity_amount must be between 0 and 32.");
+  var normalized = midiNotesForWrite(notes);
+  var seed = normalizedSeed(payload, target, normalized.length, timingAmount, velocityAmount);
+  var state = { value: seed };
+  var rewritten = [];
+  var changed = false;
+  for (var i = 0; i < normalized.length; i += 1) {
+    var note = normalized[i];
+    var timingJitter = (nextSeededRandom(state) * 2 - 1) * timingAmount;
+    var velocityJitter = Math.round((nextSeededRandom(state) * 2 - 1) * velocityAmount);
+    var maxStart = Math.max(0, timeSpan - note.duration);
+    var nextStart = clampNumber(note.start_time + timingJitter, 0, maxStart);
+    var nextVelocity = Math.floor(clampNumber(note.velocity + velocityJitter, 0, 127));
+    var nextNote = {
+      pitch: note.pitch,
+      start_time: nextStart,
+      duration: note.duration,
+      velocity: nextVelocity,
+      mute: note.mute ? 1 : 0
+    };
+    if (note.probability !== undefined) nextNote.probability = note.probability;
+    if (note.velocity_deviation !== undefined) nextNote.velocity_deviation = note.velocity_deviation;
+    if (note.release_velocity !== undefined) nextNote.release_velocity = note.release_velocity;
+    if (nextNote.start_time !== note.start_time || nextNote.velocity !== note.velocity) changed = true;
+    rewritten.push(nextNote);
+  }
+  return {
+    notes: rewritten,
+    original_count: normalized.length,
+    changed: changed,
+    seed: seed,
+    timing_amount: timingAmount,
+    velocity_amount: velocityAmount
+  };
 }
 
 function insertMidiNotes(payload) {
@@ -1259,12 +1327,13 @@ function getClipNotes(payload) {
   var slotIndex = parseClipSlotIndex(payload);
   if (!clipExists(trackIndex, slotIndex)) throw new Error("Clip slot does not contain a clip.");
   var clip = clipByIndexes(trackIndex, slotIndex);
-  var notes = safeCall(clip, "get_notes_extended", [0, 0, 128, 128]);
+  var timeSpan = Math.min(Math.max(Number(safeGet(clip, "length", 128)), 1), 1024);
+  var notes = safeCall(clip, "get_notes_extended", [0, 128, 0, timeSpan]);
   if (!callSucceeded(notes)) {
-    notes = safeCall(clip, "get_notes", [0, 0, 128, 128]);
+    notes = safeCall(clip, "get_notes", [0, 0, timeSpan, 128]);
   }
   if (!callSucceeded(notes)) return unsupported("clip_notes", "MIDI note read methods are unavailable from this LiveAPI context.", { track_index: trackIndex, clip_slot_index: slotIndex, result: notes });
-  return { track_index: trackIndex, clip_slot_index: slotIndex, notes: notes };
+  return { track_index: trackIndex, clip_slot_index: slotIndex, time_span: timeSpan, notes: notes };
 }
 
 function getClipEnvelopes(payload) {
@@ -1323,7 +1392,55 @@ function quantizeClip(payload) {
 function humanizeMidiClip(payload) {
   var target = clipSlotFromPayload(payload);
   if (!clipExists(target.track_index, target.slot_index)) throw new Error("Clip slot does not contain a clip.");
-  return unsupported("ableton_humanize_midi_clip", "MIDI note rewriting needs reviewed get/apply note support for this Ableton version.", { track_index: target.track_index, clip_slot_index: target.slot_index, timing_amount: payload && payload.timing_amount, velocity_amount: payload && payload.velocity_amount });
+  var clip = liveObject(target.clip_path);
+  var isMidiClip = safeGet(clip, "is_midi_clip", null);
+  if (Number(isMidiClip) === 0) {
+    return unsupported("ableton_humanize_midi_clip", "The target clip is not a MIDI clip.", { track_index: target.track_index, clip_slot_index: target.slot_index });
+  }
+  var timeSpan = midiReplacementTimeSpan(payload, clip, []);
+  var existingNotes = readExistingMidiNotes(clip, target, timeSpan);
+  if (existingNotes && existingNotes.unsupported) return unsupported("ableton_humanize_midi_clip", existingNotes.reason, existingNotes.details);
+  if (!existingNotes || !(existingNotes.notes instanceof Array) || existingNotes.notes.length === 0) {
+    return { track_index: target.track_index, clip_slot_index: target.slot_index, humanized: false, note_count: 0, reason: "No MIDI notes found in the target clip." };
+  }
+  var rewritten = humanizeMidiNotes(existingNotes.notes, payload, target, timeSpan);
+  if (!rewritten.changed) {
+    return {
+      track_index: target.track_index,
+      clip_slot_index: target.slot_index,
+      humanized: false,
+      note_count: rewritten.original_count,
+      seed: rewritten.seed,
+      timing_amount: rewritten.timing_amount,
+      velocity_amount: rewritten.velocity_amount,
+      reason: "timing_amount and velocity_amount produced no note changes."
+    };
+  }
+  var removal = removeExistingMidiNotes(clip, target, timeSpan);
+  if (removal && removal.unsupported) return unsupported("ableton_humanize_midi_clip", removal.reason, removal.details);
+  var result = safeCall(clip, "add_new_notes", [{ notes: rewritten.notes }]);
+  if (!callSucceeded(result)) {
+    var restoreResult = restoreExistingMidiNotes(clip, existingNotes);
+    return unsupported("ableton_humanize_midi_clip", "Clip.add_new_notes is unavailable after MIDI humanization rewrite.", {
+      track_index: target.track_index,
+      clip_slot_index: target.slot_index,
+      note_count: rewritten.original_count,
+      removal: removal,
+      restore_result: restoreResult,
+      result: result
+    });
+  }
+  return {
+    track_index: target.track_index,
+    clip_slot_index: target.slot_index,
+    humanized: true,
+    note_count: rewritten.original_count,
+    seed: rewritten.seed,
+    timing_amount: rewritten.timing_amount,
+    velocity_amount: rewritten.velocity_amount,
+    removed_note_range: { from_pitch: 0, pitch_span: 128, from_time: 0, time_span: removal.time_span },
+    result: result
+  };
 }
 
 function bridgeCapabilities() {
@@ -1405,7 +1522,7 @@ function bridgeCapabilities() {
     ["ableton_set_automation_point", "unsupported", "automation"],
     ["ableton_simplify_automation", "unsupported", "automation"],
     ["ableton_quantize_clip", "unsupported", "midi"],
-    ["ableton_humanize_midi_clip", "unsupported", "midi"]
+    ["ableton_humanize_midi_clip", "write_gated", "midi"]
   ];
   var summary = {};
   for (var i = 0; i < actions.length; i += 1) {

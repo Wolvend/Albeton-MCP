@@ -101,7 +101,9 @@ describe("Max for Live bridge source", () => {
       "ableton_duplicate_clip",
       "ableton_move_clip",
       "ableton_quantize_clip",
-      "ableton_humanize_midi_clip"
+      "ableton_humanize_midi_clip",
+      "humanizeMidiNotes",
+      "nextSeededRandom"
     ]) {
       expect(source).toContain(action);
     }
@@ -123,6 +125,33 @@ describe("Max for Live bridge source", () => {
     expect(readIndex).toBeGreaterThanOrEqual(0);
     expect(removeIndex).toBeGreaterThan(readIndex);
     expect(addIndex).toBeGreaterThan(insertSource.indexOf("removeExistingMidiNotes"));
+  });
+
+  it("supports conservative seeded MIDI humanization through note rewrite primitives", async () => {
+    const liveApiScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-liveapi.js");
+    const source = await fs.readFile(liveApiScript, "utf8");
+    const humanizeSource = functionSource(source, "humanizeMidiClip");
+    const removeIndex = humanizeSource.indexOf("removeExistingMidiNotes");
+    const addIndex = humanizeSource.indexOf("add_new_notes");
+
+    expect(source).toContain("function humanizeMidiNotes");
+    expect(source).toContain("function nextSeededRandom");
+    expect(humanizeSource).toContain("readExistingMidiNotes");
+    expect(humanizeSource).toContain("humanizeMidiNotes");
+    expect(humanizeSource).toContain("removeExistingMidiNotes");
+    expect(humanizeSource).toContain("restoreExistingMidiNotes");
+    expect(removeIndex).toBeGreaterThan(humanizeSource.indexOf("humanizeMidiNotes"));
+    expect(addIndex).toBeGreaterThan(removeIndex);
+  });
+
+  it("reads clip notes through the modern bounded pitch/time argument order", async () => {
+    const liveApiScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-liveapi.js");
+    const source = await fs.readFile(liveApiScript, "utf8");
+    const clipNotesSource = functionSource(source, "getClipNotes");
+
+    expect(clipNotesSource).toContain("\"get_notes_extended\", [0, 128, 0, timeSpan]");
+    expect(clipNotesSource).toContain("\"get_notes\", [0, 0, timeSpan, 128]");
+    expect(clipNotesSource).toContain("time_span");
   });
 
   it("uses typed track indexes for targeted read/write bridge actions", async () => {

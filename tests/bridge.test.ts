@@ -29,6 +29,10 @@ describe("bridge mock contract", () => {
       status: "write_gated"
     }));
     expect(matrix.actions).toContainEqual(expect.objectContaining({
+      action: "ableton_humanize_midi_clip",
+      status: "write_gated"
+    }));
+    expect(matrix.actions).toContainEqual(expect.objectContaining({
       action: "automation_summary",
       status: "read_only"
     }));

@@ -149,6 +149,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_extract_automation_summary).toHaveProperty("include_devices");
     expect(registeredToolSchemas.ableton_insert_midi_notes).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_insert_midi_notes).toHaveProperty("notes");
+    expect(registeredToolSchemas.ableton_humanize_midi_clip).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_humanize_midi_clip).toHaveProperty("seed");
+    expect(registeredToolSchemas.ableton_humanize_midi_clip).toHaveProperty("timing_amount");
+    expect(registeredToolSchemas.ableton_humanize_midi_clip).toHaveProperty("velocity_amount");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).toHaveProperty("path");
     expect(registeredToolSchemas.ableton_set_clip_gain).toHaveProperty("gain");
