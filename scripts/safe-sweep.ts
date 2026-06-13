@@ -161,6 +161,7 @@ const calls: SweepCall[] = [
   { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: safeArrangement.arrangement.id } },
+  { name: "ableton_render_concept_device_catalog_matches", arguments: { arrangement_id: safeArrangement.arrangement.id, max_candidates_per_device: 3, include_plugin_presets: false } },
   { name: "ableton_render_concept_automation_map", arguments: { plan_id: safeConcept.plan.id } }
 ];
 

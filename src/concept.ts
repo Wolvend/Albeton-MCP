@@ -4,6 +4,7 @@ import path from "node:path";
 import toneMidi from "@tonejs/midi";
 import { convertAudioFile } from "./analysis.js";
 import { bridgeAction, getBridgeCapabilityMatrix, getBridgeSnapshot, type BridgeActionCapability } from "./bridge.js";
+import { queryLibrary } from "./cache.js";
 import { FLAGS, LOCAL_PATHS, PLATFORM } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
 import { buildSampleAttribution, downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
@@ -79,6 +80,12 @@ export type ConceptRoutingReadinessOptions = ConceptExecutionPreflightOptions;
 
 export type ConceptDeviceChainSpecOptions = {
   arrangement_id: string;
+};
+
+export type ConceptDeviceCatalogMatchOptions = {
+  arrangement_id: string;
+  max_candidates_per_device?: number;
+  include_plugin_presets?: boolean;
 };
 
 export type ConceptExecutionManifestOptions = {
@@ -1745,6 +1752,68 @@ function deviceDefaultParameterHints(device: string) {
 
 function deviceCategory(device: string) {
   return deviceInsertTool(device) === "ableton_insert_instrument" ? "instrument" : "audio_effect";
+}
+
+function normalizeDeviceCatalogText(value: string) {
+  return value.toLowerCase().replace(/\.[a-z0-9]+$/i, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function deviceCatalogTokens(device: string) {
+  return normalizeDeviceCatalogText(device).split(/\s+/).filter((token) => token.length >= 3);
+}
+
+function scoreDeviceCatalogCandidate(device: string, row: Record<string, unknown>) {
+  const normalizedDevice = normalizeDeviceCatalogText(device);
+  const name = String(row.name ?? "");
+  const rowPath = String(row.path ?? "");
+  const normalizedName = normalizeDeviceCatalogText(name);
+  const normalizedPath = normalizeDeviceCatalogText(rowPath);
+  const kind = String(row.kind ?? "");
+  const tokens = deviceCatalogTokens(device);
+  let score = 0;
+
+  if (normalizedName === normalizedDevice) score += 100;
+  if (normalizedName.includes(normalizedDevice)) score += 70;
+  if (normalizedPath.includes(normalizedDevice)) score += 30;
+  for (const token of tokens) {
+    if (normalizedName.includes(token)) score += 8;
+    if (normalizedPath.includes(token)) score += 3;
+  }
+  if (kind === "preset") score += 8;
+  if (kind === "max_device") score += 7;
+  if (kind === "plugin_preset") score += 3;
+
+  return score;
+}
+
+function deviceCatalogKinds(includePluginPresets: boolean) {
+  return new Set([
+    "preset",
+    "max_device",
+    ...(includePluginPresets ? ["plugin_preset"] : [])
+  ]);
+}
+
+async function findDeviceCatalogCandidates(device: string, options: Required<Pick<ConceptDeviceCatalogMatchOptions, "max_candidates_per_device" | "include_plugin_presets">>) {
+  const allowedKinds = deviceCatalogKinds(options.include_plugin_presets);
+  const rows = await queryLibrary(device);
+  return rows
+    .filter((row) => allowedKinds.has(String(row.kind ?? "")))
+    .map((row) => {
+      const score = scoreDeviceCatalogCandidate(device, row);
+      return {
+        score,
+        name: String(row.name ?? ""),
+        kind: String(row.kind ?? ""),
+        path: redactPath(String(row.path ?? "")),
+        size: Number(row.size ?? 0),
+        indexedAt: String(row.indexed_at ?? row.indexedAt ?? ""),
+        metadata: row.metadata ?? {}
+      };
+    })
+    .filter((candidate) => candidate.score > 0)
+    .sort((left, right) => right.score - left.score || left.name.localeCompare(right.name))
+    .slice(0, options.max_candidates_per_device);
 }
 
 function sampleClipShapeForLayer(layerName: string, horror: boolean) {
@@ -3453,6 +3522,88 @@ export async function renderConceptDeviceChainSpec(options: ConceptDeviceChainSp
       "Load Ableton and the Max for Live bridge, then call readinessWithBridge to resolve generated track indexes and inspect automation targets.",
       "Keep dry-run templates non-mutating until ABLETON_MCP_ENABLE_WRITE=1 is intentional and a bridge preflight succeeds.",
       "Use UI/mouse device placement only when ABLETON_MCP_ENABLE_UI_CONTROL=1 is explicitly chosen by the user."
+    ]
+  };
+}
+
+export async function renderConceptDeviceCatalogMatches(options: ConceptDeviceCatalogMatchOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const matchOptions = {
+    max_candidates_per_device: Math.min(Math.max(Math.trunc(options.max_candidates_per_device ?? 3), 1), 10),
+    include_plugin_presets: options.include_plugin_presets === true
+  };
+  const uniqueDevices = [...new Set(arrangement.devicePlan.flatMap((entry) => entry.devices))].sort((left, right) => left.localeCompare(right));
+  const candidateMap = new Map<string, Awaited<ReturnType<typeof findDeviceCatalogCandidates>>>();
+  for (const device of uniqueDevices) {
+    candidateMap.set(device, await findDeviceCatalogCandidates(device, matchOptions));
+  }
+
+  const chains = arrangement.devicePlan.map((entry) => ({
+    layer: entry.layer,
+    target: entry.target,
+    targetResolution: plannedTargetResolution(entry),
+    devices: entry.devices.map((device) => {
+      const candidates = candidateMap.get(device) ?? [];
+      return {
+        name: device,
+        category: deviceCategory(device),
+        insertTool: deviceInsertTool(device),
+        matchStatus: candidates.length > 0 ? "matched_indexed_catalog" : "missing_from_indexed_catalog",
+        candidateCount: candidates.length,
+        bestCandidate: candidates[0] ?? null,
+        candidates,
+        nextStep: candidates.length > 0
+          ? "Use this candidate for human/UI placement review; direct LiveAPI named-device insertion remains unsupported until the bridge proves a Browser/hot-swap path."
+          : "Run ableton_scan_library on an allowed User Library or Factory Pack path, then rerun this match report."
+      };
+    })
+  }));
+
+  const matchedDevices = uniqueDevices.filter((device) => (candidateMap.get(device) ?? []).length > 0);
+  const missingDevices = uniqueDevices.filter((device) => (candidateMap.get(device) ?? []).length === 0);
+
+  return {
+    reportType: "concept_device_catalog_matches",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      style: concept.style
+    },
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      bridgeContact: false,
+      broadScan: false,
+      cacheOnly: true,
+      localPathsRedacted: true,
+      pluginPresetsIncluded: matchOptions.include_plugin_presets
+    },
+    summary: {
+      deviceChains: arrangement.devicePlan.length,
+      uniqueDevices: uniqueDevices.length,
+      matchedDevices: matchedDevices.length,
+      missingDevices: missingDevices.length,
+      totalCandidates: [...candidateMap.values()].reduce((count, candidates) => count + candidates.length, 0),
+      realDeviceInsertionSupported: false,
+      indexedCatalogOnly: true
+    },
+    matchedDevices,
+    missingDevices,
+    chains,
+    exactNextToolCalls: {
+      scanUserLibrary: { name: "ableton_scan_library", arguments: { root: "%USERPROFILE%\\Documents\\Ableton\\User Library", limit: 2000 } },
+      scanFactoryPacks: { name: "ableton_scan_library", arguments: { root: "C:\\ProgramData\\Ableton\\Live 12 Trial", limit: 2000 } },
+      deviceChainSpec: { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: arrangement.id } },
+      readinessWithBridge: { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: arrangement.id, check_bridge: true } }
+    },
+    nextSteps: [
+      "Run the scan calls only when you intentionally want to refresh the bounded allowed-root catalog cache.",
+      "Use matched candidates to review real Ableton-native device availability before UI placement or bridge feature work.",
+      "Do not treat a catalog match as a live insertion; ableton_insert_instrument and ableton_insert_effect still return unsupported until a reliable bridge path exists.",
+      "Keep UI/mouse device placement behind explicit ABLETON_MCP_ENABLE_UI_CONTROL=1 user choice."
     ]
   };
 }

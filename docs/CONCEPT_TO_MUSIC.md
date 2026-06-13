@@ -156,24 +156,30 @@ Fast path:
    - Does not contact Ableton, insert devices, write automation, download files, or use UI/mouse control.
    - Use this before bridge readiness when an agent needs professional device-chain decisions it can inspect and revise.
 
-24. `ableton_plan_concept_device_automation_readiness`
+24. `ableton_render_concept_device_catalog_matches`
+   - Read-only.
+   - Matches staged device-chain names against the already-indexed Ableton catalog cache for `.adg`, `.adv`, `.amxd`, and optionally plugin-preset entries.
+   - Does not scan, contact Ableton, insert devices, write automation, download files, expose local paths, or use UI/mouse control.
+   - Use this after the device-chain spec to see which planned devices have local catalog candidates and which need a bounded `ableton_scan_library` refresh or manual review.
+
+25. `ableton_plan_concept_device_automation_readiness`
    - Read-only.
    - Converts staged `devicePlan` and `automationPlan` entries into discovery calls, dry-run templates, target hints, and explicit unsupported/support status.
    - Does not insert devices, write automation, move the mouse, or approve execution.
 
-25. `ableton_create_concept_execution_approval_bundle`
+26. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
    - Packages the redacted concept, redacted arrangement, preflight result, deterministic `approval_id`, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
-26. `ableton_execute_concept_plan`
+27. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false`, `ABLETON_MCP_ENABLE_WRITE=1`, the matching `approval_id`, `approval_confirmed=true`, and a successful bridge preflight.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
    - Writes a redacted execution journal under `diagnostics\runtime\concept-executions` before live preflight and after each action outcome.
    - Stops immediately with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` if the loaded bridge returns `unsupported: true` for any approved action, so clients do not mistake a bridge limitation for successful execution.
 
-27. `ableton_list_concept_execution_journals`
+28. `ableton_list_concept_execution_journals`
    - Read-only.
    - Lists recent redacted execution journals with status, event counts, failure counts, and exact follow-up calls.
    - Does not accept file paths, scan broadly, or expose raw local sample paths.
@@ -225,6 +231,7 @@ The arrangement plan includes:
 - A read-only mix plan with layer priorities, routing roles, frequency focus, spatial treatment, return use cases, gain-staging, automation targets, and conservative master-bus settings.
 - A read-only routing readiness plan that links planned sends to `ableton_get_routing_overview`, dry-run send templates, and approval-time verification.
 - A read-only device-chain spec that turns staged device choices into layer roles, bus roles, parameter hints, automation links, discovery calls, and dry-run templates.
+- A read-only indexed device catalog match report that maps staged device names to cached Ableton preset/Max-device candidates without scanning or writing.
 - A read-only execution runbook that groups planned actions into practical production phases with gates, dependencies, postconditions, and inspection calls.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
 - A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
@@ -233,6 +240,7 @@ The arrangement plan includes:
 - A staged automation plan for reverb, delay, filter, and volume movement. `ableton_plan_concept_device_automation_readiness` now links each non-MIDI lane to `ableton_extract_automation_summary` so agents can inspect mixer volume, send, and device parameter candidates before any write; automation remains non-writing until the bridge proves support.
 
 Sample placement remains staged until local sample paths are approved. Assignment paths and executable reference audio must come from sample staging, Codex Imports, the Ableton User Library, or Live Recordings; tool responses redact the local path while stored plans retain the executable path. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects. Device chains are stored as reviewable `devicePlan` entries because named device insertion through LiveAPI requires a verified Browser or hot-swap target for the running Ableton version.
+Device catalog matching is cache-only: run `ableton_scan_library` on an allowed User Library or Factory Pack root when you intentionally want to refresh indexed `.adg`, `.adv`, `.amxd`, or plugin-preset metadata, then rerun `ableton_render_concept_device_catalog_matches`.
 
 ## Example
 
@@ -274,6 +282,7 @@ ableton_render_concept_execution_runbook
 ableton_render_concept_attribution_bundle
 ableton_render_concept_production_scorecard
 ableton_render_concept_device_chain_spec
+ableton_render_concept_device_catalog_matches
 ableton_plan_concept_device_automation_readiness
 ableton_create_concept_execution_approval_bundle
 ableton_execute_concept_plan with dry_run=true
@@ -285,7 +294,7 @@ For a local proof that an MCP consumer can run the safe sequence end to end with
 .\launch.ps1 concept-demo -SkipSetup
 ```
 
-The demo uses stdio MCP calls and returns a compact JSON report with generated concept/arrangement ids, layer/action counts, staged device/automation counts, execution runbook phase count, preflight status, and next steps.
+The demo uses stdio MCP calls and returns a compact JSON report with generated concept/arrangement ids, layer/action counts, staged device/automation counts, execution runbook phase count, indexed device catalog match counts, preflight status, and next steps.
 
 With approved local samples:
 

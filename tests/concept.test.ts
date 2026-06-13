@@ -26,6 +26,7 @@ import {
   prepareConceptAudioLayers,
   renderConceptAttributionBundle,
   renderConceptAutomationMap,
+  renderConceptDeviceCatalogMatches,
   renderConceptDeviceChainSpec,
   renderConceptExecutionActionMatrix,
   renderConceptExecutionManifest,
@@ -41,6 +42,7 @@ import {
   stageConceptSamples
 } from "../src/concept.js";
 import { LOCAL_PATHS } from "../src/config.js";
+import { scanLibrary } from "../src/scanner.js";
 
 describe("concept-to-music planning", () => {
   it("extracts unsupported bridge responses from successful bridge envelopes", () => {
@@ -232,6 +234,10 @@ describe("concept-to-music planning", () => {
     await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
     const stagedPath = path.join(LOCAL_PATHS.staging, "concept-assignment-test.wav");
     await fs.writeFile(stagedPath, "fixture audio placeholder");
+    const deviceFixtureDir = path.join(LOCAL_PATHS.projectRoot, "tests", "fixtures", "library", "Devices");
+    await fs.mkdir(deviceFixtureDir, { recursive: true });
+    await fs.writeFile(path.join(deviceFixtureDir, "Hybrid Reverb.adg"), "device fixture placeholder");
+    await scanLibrary(deviceFixtureDir, { limit: 10 });
     await fs.writeFile(`${stagedPath}.attribution.json`, `${JSON.stringify({
       sourceUrl: "https://archive.org/download/example/concept-assignment-test.wav",
       destinationName: "concept-assignment-test.wav",
@@ -256,6 +262,11 @@ describe("concept-to-music planning", () => {
     });
     const deviceChainSpec = await renderConceptDeviceChainSpec({
       arrangement_id: arrangement.arrangement.id
+    });
+    const catalogMatches = await renderConceptDeviceCatalogMatches({
+      arrangement_id: arrangement.arrangement.id,
+      max_candidates_per_device: 3,
+      include_plugin_presets: false
     });
     const readiness = await planConceptDeviceAutomationReadiness({
       arrangement_id: arrangement.arrangement.id,
@@ -354,6 +365,17 @@ describe("concept-to-music planning", () => {
     expect(deviceChainSpec.summary.realAutomationWriteSupported).toBe(false);
     expect(deviceChainSpec.exactNextToolCalls.readinessWithBridge.name).toBe("ableton_plan_concept_device_automation_readiness");
     expect(deviceChainSpec.automationDiscoveryCalls.some((entry) => entry.call.name === "ableton_extract_automation_summary")).toBe(true);
+    expect(catalogMatches.reportType).toBe("concept_device_catalog_matches");
+    expect(catalogMatches.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, bridgeContact: false, cacheOnly: true });
+    expect(catalogMatches.summary.uniqueDevices).toBeGreaterThan(0);
+    expect(catalogMatches.summary.matchedDevices + catalogMatches.summary.missingDevices).toBe(catalogMatches.summary.uniqueDevices);
+    expect(catalogMatches.summary.realDeviceInsertionSupported).toBe(false);
+    expect(catalogMatches.matchedDevices).toContain("Hybrid Reverb");
+    expect(catalogMatches.chains.some((chain) => chain.devices.some((device) =>
+      device.name === "Hybrid Reverb" &&
+      device.bestCandidate?.name === "Hybrid Reverb.adg" &&
+      !String(device.bestCandidate.path).includes(LOCAL_PATHS.projectRoot)
+    ))).toBe(true);
     const stretchedDeviceSpec = deviceChainSpec.chainSpecs.find((entry) => entry.layer === "Stretched Room");
     expect(stretchedDeviceSpec?.devices.map((device) => device.name)).toContain("Hybrid Reverb");
     expect(stretchedDeviceSpec?.devices.some((device) =>
