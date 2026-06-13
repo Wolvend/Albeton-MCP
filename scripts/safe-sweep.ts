@@ -151,7 +151,8 @@ const calls: SweepCall[] = [
   { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: safeArrangement.arrangement.id } },
   { name: "ableton_render_concept_attribution_bundle", arguments: { arrangement_id: safeArrangement.arrangement.id } },
   { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
-  { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } }
+  { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
+  { name: "ableton_render_concept_automation_map", arguments: { plan_id: safeConcept.plan.id } }
 ];
 
 const transport = new StdioClientTransport({ command: "node", args: ["dist/src/index.js"] });

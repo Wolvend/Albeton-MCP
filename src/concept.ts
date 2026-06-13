@@ -202,7 +202,7 @@ type ArrangementPlan = {
   automationPlan: Array<{
     layer: string;
     automation: string;
-    target: "reverb" | "delay" | "filter" | "volume" | "unknown";
+    target: "reverb" | "delay" | "filter" | "volume" | "midi_velocity" | "unknown";
     execution: "staged";
     reason: string;
   }>;
@@ -977,12 +977,13 @@ function bridgeSnapshotResolution(snapshot: unknown): CreatedTrackResolution {
   };
 }
 
-function automationTargetName(automation: string): "reverb" | "delay" | "filter" | "volume" | "unknown" {
+function automationTargetName(automation: string): ArrangementPlan["automationPlan"][number]["target"] {
   const text = automation.toLowerCase();
   if (text.includes("reverb")) return "reverb";
   if (text.includes("delay") || text.includes("feedback")) return "delay";
   if (text.includes("filter") || text.includes("bandwidth") || text.includes("low-pass")) return "filter";
   if (text.includes("volume") || text.includes("fade") || text.includes("swell") || text.includes("mute")) return "volume";
+  if (text.includes("velocity")) return "midi_velocity";
   return "unknown";
 }
 
@@ -997,6 +998,7 @@ function automationParameterHints(target: ArrangementPlan["automationPlan"][numb
   if (target === "delay") return ["Feedback", "Dry/Wet", "Filter"];
   if (target === "reverb") return ["Dry/Wet", "Decay Time", "Size"];
   if (target === "volume") return ["Mixer volume"];
+  if (target === "midi_velocity") return ["MIDI note velocity", "Use ableton_get_clip_notes before editing notes."];
   return ["Use ableton_get_device_parameter_map to choose a reviewed parameter."];
 }
 
@@ -1006,6 +1008,7 @@ function devicesForAutomation(target: ArrangementPlan["automationPlan"][number][
     delay: /echo|delay/i,
     filter: /filter|eq eight/i,
     volume: /utility|compressor/i,
+    midi_velocity: /.^/,
     unknown: /.^/
   } satisfies Record<ArrangementPlan["automationPlan"][number]["target"], RegExp>;
   return devices.filter((device) => patterns[target].test(device));
@@ -3203,6 +3206,84 @@ export async function renderConceptMixPlan(planId: string) {
   };
 }
 
+export async function renderConceptAutomationMap(planId: string) {
+  const plan = await readConceptPlan(planId);
+  const horror = plan.preset === "liminal_backrooms_horror";
+  const lanes = plan.layers
+    .filter((layer) => layer.automation.length > 0)
+    .flatMap((layer) => layer.automation.map((cue, automationIndex) => {
+      const target = automationTargetName(cue);
+      const activeSections = plan.sections
+        .map((section, sectionIndex) => ({ section, sectionIndex }))
+        .filter(({ sectionIndex }) => layerIsActiveInSection(layer, sectionIndex, horror));
+      const points = activeSections.flatMap(({ section, sectionIndex }) =>
+        automationSectionPoints(plan, layer, cue, target, section, sectionIndex, horror)
+      );
+      return {
+        lane_id: `${layer.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${automationIndex}`,
+        layer: layer.name,
+        layerType: layer.type,
+        cue,
+        target,
+        targetLabel: automationTargetLabel(target),
+        candidateDevices: devicesForAutomation(target, layer.deviceChain),
+        parameterHints: automationParameterHints(target),
+        writeSupport: target === "volume"
+          ? "mixer_volume_requires_bridge_preflight"
+          : target === "midi_velocity"
+            ? "note_velocity_requires_clip_note_review"
+            : "requires_device_parameter_map_and_verified_liveapi_support",
+        activeSections: activeSections.map(({ section }) => section.name),
+        points,
+        dryRunTemplates: automationDryRunTemplates(target),
+        reviewNotes: automationReviewNotes(target, cue, layer)
+      };
+    }));
+
+  return {
+    plan_id: plan.id,
+    preset: plan.preset,
+    concept: sanitizeRemoteSampleText(plan.concept, 500),
+    tempo: plan.tempo,
+    key: plan.key,
+    duration_seconds: plan.target_duration_seconds,
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      remoteHttpExposure: false,
+      requiresApprovalForRealWrites: true
+    },
+    summary: {
+      sections: plan.sections.length,
+      layersWithAutomation: new Set(lanes.map((lane) => lane.layer)).size,
+      lanes: lanes.length,
+      points: lanes.reduce((count, lane) => count + lane.points.length, 0),
+      targets: [...new Set(lanes.map((lane) => lane.target))]
+    },
+    sectionMap: plan.sections.map((section, index) => ({
+      name: section.name,
+      start_seconds: section.start_seconds,
+      end_seconds: section.start_seconds + section.duration_seconds,
+      start_beats: beatsFromSeconds(section.start_seconds, plan.tempo),
+      end_beats: beatsFromSeconds(section.start_seconds + section.duration_seconds, plan.tempo),
+      productionFocus: sectionProductionFocus(section, index, horror)
+    })),
+    lanes,
+    exactNextToolCalls: {
+      buildArrangementPlan: { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: plan.id } },
+      deviceAutomationReadiness: { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
+      preflight: { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } }
+    },
+    nextSteps: [
+      "Review the lane points before building the arrangement plan.",
+      "After ableton_build_layered_arrangement_plan, run ableton_plan_concept_device_automation_readiness with check_bridge=true.",
+      "Use ableton_get_device_parameter_map and dry-run automation tools before any write-gated automation attempt.",
+      "Keep real automation writes behind ABLETON_MCP_ENABLE_WRITE=1, the approval bundle, and bridge preflight."
+    ]
+  };
+}
+
 export async function renderConceptTimeline(planId: string) {
   const plan = await readConceptPlan(planId);
   const horror = plan.preset === "liminal_backrooms_horror";
@@ -3264,6 +3345,123 @@ export async function renderConceptTimeline(planId: string) {
 
 function normalizedLevelToDb(value: number) {
   return Number((20 * Math.log10(Math.max(0.001, value))).toFixed(1));
+}
+
+function beatsFromSeconds(value: number, tempo: number) {
+  return Number(((value / 60) * tempo).toFixed(3));
+}
+
+function clamp01(value: number) {
+  return Number(Math.min(1, Math.max(0, value)).toFixed(3));
+}
+
+function automationTargetLabel(target: ArrangementPlan["automationPlan"][number]["target"]) {
+  if (target === "filter") return "filter cutoff or bandwidth";
+  if (target === "reverb") return "reverb send, dry/wet, decay, or return level";
+  if (target === "delay") return "delay send, feedback, dry/wet, or bandwidth";
+  if (target === "volume") return "track or return volume";
+  if (target === "midi_velocity") return "MIDI note velocity thinning";
+  return "reviewed parameter";
+}
+
+function automationSectionPoints(
+  plan: ConceptPlan,
+  layer: ConceptLayer,
+  cue: string,
+  target: ArrangementPlan["automationPlan"][number]["target"],
+  section: ConceptSection,
+  sectionIndex: number,
+  horror: boolean
+) {
+  const anchors = [
+    { phase: "start", ratio: 0 },
+    { phase: "mid", ratio: 0.5 },
+    { phase: "end", ratio: 1 }
+  ] as const;
+  return anchors.map((anchor) => {
+    const timeSeconds = section.start_seconds + (section.duration_seconds * anchor.ratio);
+    return {
+      section: section.name,
+      phase: anchor.phase,
+      time_seconds: Number(timeSeconds.toFixed(3)),
+      time_beats: beatsFromSeconds(timeSeconds, plan.tempo),
+      value: automationPointValue(plan, layer, cue, target, sectionIndex, anchor.phase, horror),
+      target
+    };
+  });
+}
+
+function automationPointValue(
+  plan: ConceptPlan,
+  layer: ConceptLayer,
+  cue: string,
+  target: ArrangementPlan["automationPlan"][number]["target"],
+  sectionIndex: number,
+  phase: "start" | "mid" | "end",
+  horror: boolean
+) {
+  const text = `${cue} ${layer.name}`.toLowerCase();
+  const sectionProgress = plan.sections.length <= 1 ? 0 : sectionIndex / (plan.sections.length - 1);
+  const phaseValue = phase === "start" ? 0 : phase === "mid" ? 0.5 : 1;
+  const intensity = clamp01(plan.intensity / 10);
+
+  if (target === "filter") {
+    if (text.includes("closing") || text.includes("narrowing") || text.includes("low-pass")) {
+      return clamp01(0.78 - (sectionProgress * 0.42) - (phaseValue * 0.12) - (intensity * 0.08));
+    }
+    return clamp01(0.42 + (Math.sin((sectionIndex + phaseValue) * Math.PI) * 0.12) + (horror ? 0.04 : 0.1));
+  }
+
+  if (target === "reverb") {
+    const bloom = text.includes("bloom") || text.includes("tail") || text.includes("swell") ? 0.16 * phaseValue : 0;
+    return clamp01(0.28 + (sectionProgress * 0.28) + bloom + (horror ? 0.08 : 0));
+  }
+
+  if (target === "delay") {
+    const throwBoost = text.includes("throw") || text.includes("feedback") ? 0.22 * phaseValue : 0.08 * phaseValue;
+    const collapseBoost = horror && sectionIndex >= 2 ? 0.12 : 0;
+    return clamp01(0.12 + throwBoost + collapseBoost + (sectionProgress * 0.16));
+  }
+
+  if (target === "volume") {
+    if (text.includes("mute")) return phase === "mid" && sectionIndex % 2 === 0 ? 0.05 : clamp01(layer.mix.volume);
+    if (text.includes("fade")) return clamp01(layer.mix.volume * (1 - (sectionProgress * 0.28)) * (1 - (phaseValue * 0.1)));
+    if (text.includes("swell")) return clamp01((layer.mix.volume * 0.6) + (phaseValue * 0.28) + (sectionProgress * 0.08));
+    return clamp01(layer.mix.volume);
+  }
+
+  if (target === "midi_velocity") {
+    return clamp01(0.72 - (sectionProgress * 0.32) - (phaseValue * 0.12));
+  }
+
+  return 0.5;
+}
+
+function automationDryRunTemplates(target: ArrangementPlan["automationPlan"][number]["target"]) {
+  if (target === "midi_velocity") {
+    return [
+      { name: "ableton_get_clip_notes", arguments: { track_index: 0, clip_slot_index: 0 } },
+      { name: "ableton_humanize_midi_clip", arguments: { track_index: 0, clip_slot_index: 0, velocity_amount: 4, timing_amount: 0.01, dry_run: true } }
+    ];
+  }
+  return [
+    { name: "ableton_get_device_parameter_map", arguments: { track_index: 0, device_index: 0 } },
+    { name: "ableton_create_automation_envelope", arguments: { track_index: 0, device_index: 0, parameter_index: 0, dry_run: true } },
+    { name: "ableton_set_automation_point", arguments: { track_index: 0, device_index: 0, parameter_index: 0, time: 0, value: 0.5, dry_run: true } }
+  ];
+}
+
+function automationReviewNotes(target: ArrangementPlan["automationPlan"][number]["target"], cue: string, layer: ConceptLayer) {
+  const notes = [
+    `Cue: ${cue}`,
+    `Layer role: ${layer.role}`
+  ];
+  if (target === "filter") notes.push("Confirm cutoff units and parameter range from ableton_get_device_parameter_map before writing.");
+  if (target === "reverb" || target === "delay") notes.push("Prefer send or return-level automation when device parameter writes are unsupported.");
+  if (target === "volume") notes.push("Use mixer volume automation only after bridge preflight resolves the generated track index.");
+  if (target === "midi_velocity") notes.push("Review existing clip notes before destructive velocity edits.");
+  if (target === "unknown") notes.push("Treat as a production note until a reviewed parameter target is chosen.");
+  return notes;
 }
 
 function layerBusRole(layer: ConceptLayer, horror: boolean) {

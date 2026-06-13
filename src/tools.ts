@@ -37,6 +37,7 @@ import {
   preflightConceptExecution,
   prepareConceptAudioLayers,
   renderConceptAttributionBundle,
+  renderConceptAutomationMap,
   renderConceptMixPlan,
   renderConceptExecutionManifest,
   renderConceptProductionScorecard,
@@ -725,6 +726,7 @@ toolDefs.push(
   { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default and real execution requires a matching approval bundle id.", inputSchema: { arrangement_id: ArrangementPlanId, approval_id: z.string().regex(/^approval-[a-f0-9]{16}$/).optional(), approval_confirmed: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run, approval_id: args.approval_id, approval_confirmed: args.approval_confirmed }) as any }) },
   { name: "ableton_render_concept_timeline", description: "Render a stored concept plan as a section-by-section layer timeline without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, timeline: await renderConceptTimeline(args.plan_id) as any }) },
   { name: "ableton_render_concept_mix_plan", description: "Render a stored concept plan into layer-by-layer mix, routing, automation, and gain-staging guidance without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, mixPlan: await renderConceptMixPlan(args.plan_id) as any }) },
+  { name: "ableton_render_concept_automation_map", description: "Render deterministic section-by-section automation lane shapes for a stored concept plan without writes.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, automationMap: await renderConceptAutomationMap(args.plan_id) as any }) },
   { name: "ableton_render_delivery_plan", description: "Plan final master/stem export settings for a stored concept plan without rendering.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, delivery: await renderDeliveryPlan(args.plan_id) as any }) },
 
   { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1).max(2000) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },

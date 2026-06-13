@@ -20,6 +20,7 @@ import {
   preflightConceptExecution,
   prepareConceptAudioLayers,
   renderConceptAttributionBundle,
+  renderConceptAutomationMap,
   renderConceptExecutionManifest,
   renderConceptMixPlan,
   renderConceptProductionScorecard,
@@ -151,6 +152,7 @@ describe("concept-to-music planning", () => {
     });
     const timeline = await renderConceptTimeline(planned.plan.id);
     const mixPlan = await renderConceptMixPlan(planned.plan.id);
+    const automationMap = await renderConceptAutomationMap(planned.plan.id);
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
@@ -273,6 +275,11 @@ describe("concept-to-music planning", () => {
     expect(mixPlan.returns.some((entry) => entry.useCases.some((useCase) => useCase.toLowerCase().includes("tail")))).toBe(true);
     expect(mixPlan.masterBus).toMatchObject({ sampleRate: 48000, bitDepth: "24", normalize: false, targetPeakDb: -6 });
     expect(mixPlan.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false });
+    expect(automationMap.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false });
+    expect(automationMap.summary.targets).toEqual(expect.arrayContaining(["reverb", "delay", "filter", "midi_velocity"]));
+    expect(automationMap.lanes.some((lane) => lane.layer === "Distant Room Tone" && lane.points.some((point) => point.time_seconds === 0))).toBe(true);
+    expect(automationMap.lanes.some((lane) => lane.dryRunTemplates.some((call) => call.name === "ableton_get_device_parameter_map"))).toBe(true);
+    expect(automationMap.exactNextToolCalls.deviceAutomationReadiness.name).toBe("ableton_plan_concept_device_automation_readiness");
     expect(delivery.export.sampleRate).toBe(48000);
   });
 

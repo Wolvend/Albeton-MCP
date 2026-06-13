@@ -33,6 +33,7 @@ describe("MCP tool behavior", () => {
       expect(safeToolAllowlist.endpoint).toBe("http://127.0.0.1:17366/mcp");
       expect(tools).toEqual(expect.arrayContaining([
         "ableton_plan_concept_track",
+        "ableton_render_concept_automation_map",
         "ableton_render_concept_execution_manifest",
         "ableton_mcp_get_safe_tool_allowlist"
       ]));

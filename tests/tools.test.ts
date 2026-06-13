@@ -71,6 +71,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_execute_concept_plan");
     expect(registeredToolNames).toContain("ableton_render_concept_timeline");
     expect(registeredToolNames).toContain("ableton_render_concept_mix_plan");
+    expect(registeredToolNames).toContain("ableton_render_concept_automation_map");
     expect(registeredToolNames).toContain("ableton_render_delivery_plan");
     expect(registeredToolNames).toContain("ableton_list_concept_plans");
     expect(registeredToolNames).toContain("ableton_get_concept_plan");
@@ -156,5 +157,6 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("approval_confirmed");
     expect(registeredToolSchemas.ableton_render_concept_timeline).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_render_concept_mix_plan).toHaveProperty("plan_id");
+    expect(registeredToolSchemas.ableton_render_concept_automation_map).toHaveProperty("plan_id");
   });
 });

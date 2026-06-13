@@ -307,6 +307,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-0000000000000000", dry_run: true } },
     { name: "ableton_render_concept_timeline", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_render_concept_mix_plan", arguments: { plan_id: conceptPlanId } },
+    { name: "ableton_render_concept_automation_map", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_render_delivery_plan", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_generate_session_plan", arguments: { brief: "contract sweep" } },
     { name: "ableton_generate_midi_clip_plan", arguments: { key: "C minor", bars: 4, style: "electronic" } },
