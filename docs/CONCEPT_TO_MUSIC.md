@@ -257,6 +257,14 @@ ableton_create_concept_execution_approval_bundle
 ableton_execute_concept_plan with dry_run=true
 ```
 
+For a local proof that an MCP consumer can run the safe sequence end to end without Ableton writes, downloads, or UI control:
+
+```powershell
+.\launch.ps1 concept-demo -SkipSetup
+```
+
+The demo uses stdio MCP calls and returns a compact JSON report with generated concept/arrangement ids, layer/action counts, staged device/automation counts, preflight status, and next steps.
+
 With approved local samples:
 
 ```text

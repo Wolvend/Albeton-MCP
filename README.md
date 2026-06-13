@@ -74,6 +74,7 @@ Use these launch modes:
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
 | Live smoke | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge and routing readiness with read-only and dry-run calls only. |
+| Concept demo | `.\launch.ps1 concept-demo` | Runs a no-write MCP client workflow from a liminal brief through concept, arrangement, action matrix, approval dry-run, and delivery plan. |
 | UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
 
 Pass `-SkipSetup` after first setup when you want fast startup from existing `dist` and installed bridge files. Generated client configs use this fast path by default, so rerun `.\launch.ps1 setup` after code updates that need a rebuild or bridge reinstall.
@@ -247,7 +248,7 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 22 files, 82 tests passed
+Tests: 23 files, 85 tests passed
 Lint: passed
 Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed
@@ -258,7 +259,7 @@ MCP verifier: 206 tools, 3 resources, 2 prompts
 All-tool contract sweep: 206 registered tools, 206 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; layer sample curation available through ableton_curate_concept_samples; execution action review available through ableton_render_concept_execution_action_matrix
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; layer sample curation available through ableton_curate_concept_samples; execution action review available through ableton_render_concept_execution_action_matrix; full safe client workflow demo available through .\launch.ps1 concept-demo
 Audit: 0 vulnerabilities
 ```
 

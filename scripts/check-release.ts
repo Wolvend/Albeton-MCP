@@ -55,7 +55,7 @@ const packageJson = JSON.parse(await fs.readFile(path.join(PROJECT_ROOT, "packag
   engines?: Record<string, string>;
 };
 
-const scriptChecks = ["build", "test", "lint", "verify:mcp", "doctor", "configure:clients", "docker:hypernimbus:plan", "docker:hypernimbus:apply", "docker:hypernimbus:verify", "sweep:safe", "sweep:all", "live-smoke"];
+const scriptChecks = ["build", "test", "lint", "verify:mcp", "doctor", "configure:clients", "docker:hypernimbus:plan", "docker:hypernimbus:apply", "docker:hypernimbus:verify", "sweep:safe", "sweep:all", "live-smoke", "demo:concept"];
 const missingScripts = scriptChecks.filter((script) => !packageJson.scripts?.[script]);
 
 const ok = missing.length === 0 && missingScripts.length === 0;

@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 22 test files and 82 tests passed, including bridge capability matrix checks, bridge send-summary source checks, typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only concept sample curation checks, read-only concept execution action matrix checks, read-only concept execution manifest checks, read-only concept attribution bundle checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, concept execution unsupported-bridge response detection, redacted concept execution journal writing and inspection, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, production-readiness and agent music-session workflow reporting across gates, clients, bridge state, concept workflow, and safety posture, track-send discovery schema checks, OpenClaw client config documentation checks, safe HyperNimbus/OpenClaw allowlist reporting checks, Docker MCP profile allowlist parsing checks, risky-tool drift rejection checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 23 test files and 85 tests passed, including bridge capability matrix checks, bridge send-summary source checks, typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only concept sample curation checks, read-only concept execution action matrix checks, read-only concept execution manifest checks, read-only concept attribution bundle checks, agent music dry-run launcher and safe sequence checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, concept execution unsupported-bridge response detection, redacted concept execution journal writing and inspection, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, production-readiness and agent music-session workflow reporting across gates, clients, bridge state, concept workflow, and safety posture, track-send discovery schema checks, OpenClaw client config documentation checks, safe HyperNimbus/OpenClaw allowlist reporting checks, Docker MCP profile allowlist parsing checks, risky-tool drift rejection checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -132,7 +132,7 @@ The host HTTP service can be started with:
 .\launch.ps1 docker -SkipSetup
 ```
 
-For this verification run, the host HTTP service was restarted after the latest build so Docker could query the rebuilt 206-tool server. A direct Streamable HTTP MCP probe reported `toolCount: 206`, `hasAgentMusicSession: true`, `hasConceptSampleCuration: true`, `hasExecutionActionMatrix: true`, `hasClientBootstrapBundle: true`, `hasAttributionBundle: true`, `hasAutomationMap: true`, and `hasExecutionJournals: true`.
+For this verification run, the host HTTP service was restarted after the latest build so Docker could query the rebuilt 206-tool server. A direct Streamable HTTP MCP probe reported `toolCount: 206`, `hasConceptDemoTools: true`, and `hasSafeAllowlist: true`.
 
 Health result:
 
@@ -168,6 +168,14 @@ openclaw mcp tools ableton-mcp --include "$safeTools"
 openclaw mcp doctor ableton-mcp --probe
 ```
 
+## Concept Demo
+
+```powershell
+.\launch.ps1 concept-demo -SkipSetup
+```
+
+Result: succeeded. The stdio MCP consumer workflow generated a safe backrooms/liminal concept plan and arrangement plan without downloads, Ableton writes, UI control, or remote HTTP. The report included 9 layers, 5 sections, 79 planned write-gated actions, 9 staged device chains, 19 staged automation targets, `dry_run=true` execution confirmation, and `readyForRealWrite: false`.
+
 ## WSL
 
 ```powershell
@@ -175,6 +183,12 @@ wsl.exe -d Ubuntu --cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp -e bash -lc 'ABL
 ```
 
 Result: succeeded under WSL with 206 tools, 3 resources, and 2 prompts. It ran tests, lint, doctor, release check, safe sweep, all-tool sweep, MCP verifier, and npm audit. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+
+```powershell
+wsl.exe -d Ubuntu --cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp -e bash -lc 'ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh concept-demo --skip-setup'
+```
+
+Result: succeeded with the same safe no-write concept workflow report as Windows.
 
 ```powershell
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh live-smoke'

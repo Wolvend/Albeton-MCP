@@ -149,6 +149,7 @@ Modes:
   sweep            Run safe read-only/dry-run MCP sweep.
   sweep-all        Run exhaustive safe contract sweep for every registered tool.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
+  concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
   bridge-listener  Start bridge setup listener for Ableton bridge setup.
@@ -243,6 +244,10 @@ case "$MODE" in
   live-smoke)
     run_setup
     npm run live-smoke
+    ;;
+  concept-demo)
+    run_setup
+    npm run demo:concept
     ;;
   inspect)
     run_setup
