@@ -8,11 +8,24 @@ import { fetchAllowedSampleUrl } from "./network.js";
 import { readJsonBounded } from "./network.js";
 import { isImportTarget, redactPath, resolveSafePath } from "./security.js";
 
-const allowedLicenses = ["CC0", "Creative Commons 0", "CC BY", "Attribution", "Public Domain", "Public Domain Mark"];
+const allowedLicenses = ["CC0", "Creative Commons 0", "creativecommons.org/publicdomain/zero", "CC BY", "creativecommons.org/licenses/by", "Attribution", "Public Domain", "Public Domain Mark"];
 const MAX_ATTRIBUTION_SIDECARS = 500;
 const MAX_ATTRIBUTION_BYTES = 128_000;
+const IA_AUDIO_EXTENSIONS = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg", ".opus"]);
+const MAX_IA_AUDIO_FILES = 100;
 
 type AttributionReportItem = ReturnType<typeof attributionSummary>;
+
+type InternetArchiveFile = {
+  name?: unknown;
+  format?: unknown;
+  size?: unknown;
+  length?: unknown;
+  md5?: unknown;
+  sha1?: unknown;
+  crc32?: unknown;
+  source?: unknown;
+};
 
 export function normalizeLicense(input: string | null | undefined) {
   const license = input?.trim() || "unknown";
@@ -57,6 +70,65 @@ function sanitizeAttributionText(value: unknown, maxLength = 240) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+function archiveDownloadUrl(identifier: string, fileName: string) {
+  const encodedIdentifier = encodeURIComponent(identifier);
+  const encodedName = fileName.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+  return `https://archive.org/download/${encodedIdentifier}/${encodedName}`;
+}
+
+function numericValue(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function extractInternetArchiveAudioFiles(metadata: unknown, identifierInput?: string) {
+  const item = metadata as { metadata?: Record<string, unknown>; files?: InternetArchiveFile[] };
+  const identifier = sanitizeAttributionText(identifierInput ?? item.metadata?.identifier, 120);
+  if (!identifier || !/^[a-zA-Z0-9_.-]+$/.test(identifier)) {
+    throw new AbletonMcpError("Internet Archive identifier is missing or invalid.", "IA_IDENTIFIER_INVALID", ["Use an identifier returned by ableton_search_internet_archive_audio."]);
+  }
+  const licensePolicy = normalizeLicense(String(item.metadata?.licenseurl ?? item.metadata?.license ?? ""));
+  const files = Array.isArray(item.files) ? item.files : [];
+  return files
+    .filter((file) => typeof file.name === "string")
+    .map((file) => {
+      const name = sanitizeAttributionText(file.name, 500);
+      const extension = path.extname(name).toLowerCase();
+      if (!IA_AUDIO_EXTENSIONS.has(extension)) return null;
+      const url = archiveDownloadUrl(identifier, name);
+      return {
+        source: "internet_archive",
+        identifier,
+        name,
+        format: sanitizeAttributionText(file.format, 120) || null,
+        extension,
+        size: numericValue(file.size),
+        duration: numericValue(file.length),
+        hashes: {
+          md5: sanitizeAttributionText(file.md5, 80) || null,
+          sha1: sanitizeAttributionText(file.sha1, 80) || null,
+          crc32: sanitizeAttributionText(file.crc32, 80) || null
+        },
+        sourceType: sanitizeAttributionText(file.source, 80) || null,
+        url,
+        licensePolicy,
+        attribution: buildSampleAttribution({
+          sourceUrl: url,
+          destinationName: path.basename(name),
+          metadata: {
+            license: licensePolicy.license,
+            licenseurl: item.metadata?.licenseurl,
+            creator: item.metadata?.creator,
+            title: item.metadata?.title,
+            identifier
+          }
+        })
+      };
+    })
+    .filter((file): file is NonNullable<typeof file> => file !== null)
+    .slice(0, MAX_IA_AUDIO_FILES);
 }
 
 function attributionSummary(record: Record<string, unknown>, sidecarPath: string, mediaPath: string, scope: string) {
@@ -193,6 +265,15 @@ export async function getInternetArchiveMetadata(identifier: string) {
   const response = await fetch(`https://archive.org/metadata/${encodeURIComponent(identifier)}`, { signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new AbletonMcpError(`Internet Archive metadata failed with HTTP ${response.status}.`, "IA_METADATA_ERROR");
   return readJsonBounded(response);
+}
+
+export async function listInternetArchiveAudioFiles(identifier: string) {
+  const metadata = await getInternetArchiveMetadata(identifier);
+  return {
+    source: "internet_archive",
+    identifier,
+    audioFiles: extractInternetArchiveAudioFiles(metadata, identifier)
+  };
 }
 
 export async function downloadSample(url: string, destinationName: string, metadata: Record<string, unknown>) {

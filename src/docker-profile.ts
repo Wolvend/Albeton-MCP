@@ -65,6 +65,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_search_freesound",
   "ableton_search_internet_archive_audio",
   "ableton_get_remote_sample_metadata",
+  "ableton_list_internet_archive_audio_files",
   "ableton_preview_remote_sample",
   "ableton_analyze_audio_file",
   "ableton_normalize_sample_metadata",

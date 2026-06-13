@@ -7,10 +7,10 @@ This report records the latest verification pass for the Ableton MCP production 
 ## Current Surface
 
 ```text
-Tools: 158
+Tools: 159
 Resources: 3
 Prompts: 2
-HyperNimbus Docker MCP enabled tools: 103
+HyperNimbus Docker MCP enabled tools: 104
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 21 test files and 52 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged automation actions, local sample assignment redaction, sample attribution record checks, and bounded attribution-report sidecar scanning.
+Result: succeeded. Vitest reported 21 test files and 53 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged automation actions, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, and Internet Archive audio file candidate extraction.
 
 ```powershell
 npm run lint
@@ -59,13 +59,13 @@ Result: succeeded. Release check found no missing required files or scripts. It 
 npm run sweep:safe
 ```
 
-Result: succeeded. Safe sweep called 78 read-only and dry-run tools with 0 unexpected failures.
+Result: succeeded. Safe sweep called 79 read-only and dry-run tools with 0 unexpected failures, including `ableton_list_internet_archive_audio_files`.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 158 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> dry-run execution.
+Result: succeeded. All-tool contract sweep called all 159 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> dry-run execution.
 
 The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode. Concept arrangement plans now include created-track placeholders for volume, pan, reverb/delay sends, sparse MIDI motifs, approved local sample assignments, and staged automation metadata; real execution resolves those placeholders from a live snapshot immediately before write-gated bridge calls.
 
@@ -73,13 +73,13 @@ The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 158 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 159 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
 ```
 
-Result: succeeded. npm reported 0 vulnerabilities after updating the dev `esbuild` lockfile entries to the patched 0.28.1 line.
+Result: succeeded. npm reported 0 vulnerabilities.
 
 ## Docker MCP
 
@@ -87,7 +87,7 @@ Result: succeeded. npm reported 0 vulnerabilities after updating the dev `esbuil
 npm run docker:hypernimbus:verify
 ```
 
-Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server with the 103-tool safe allowlist.
+Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server with the 104-tool safe allowlist.
 
 The profile now includes:
 
@@ -111,6 +111,8 @@ The host HTTP service was started with:
 .\launch.ps1 docker -SkipSetup
 ```
 
+The host HTTP service was restarted after the latest build so Docker could query the rebuilt 159-tool server.
+
 Health result:
 
 ```text
@@ -133,7 +135,7 @@ Docker gateway dry-run:
 docker mcp gateway run --profile hypernimbus --dry-run --block-secrets --block-network
 ```
 
-Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 103 tools.
+Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 104 tools.
 
 OpenClaw docs/config were updated and tested for Streamable HTTP consumer setup:
 
@@ -149,7 +151,7 @@ openclaw mcp doctor ableton-mcp --probe
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL with 158 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL with 159 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ## Live Bridge Smoke
 
@@ -173,6 +175,7 @@ Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` du
 - HyperNimbus uses the safe tool allowlist.
 - Downloads, writes, and UI/mouse control remain disabled by default.
 - Remote sample metadata and concept sample preview URLs are sanitized or validated against the approved sample URL policy before being returned.
+- `ableton_list_internet_archive_audio_files` extracts bounded Internet Archive audio candidates from item metadata, validates item identifiers, constructs `archive.org/download` URLs, preserves attribution metadata, and recognizes common Creative Commons URL license forms.
 - Real staged sample downloads now persist sidecar attribution with source URL, destination name, license policy, creator/title/identifier metadata, checksum, byte count, and staging time.
 - `ableton_generate_attribution_report` now reads only bounded `.attribution.json` sidecars from sample staging and Codex Imports, redacts local paths, and sanitizes remote title/creator text for display.
 - Docker/OpenClaw/client docs now treat Ableton MCP as the permission owner for write/download/UI gates.

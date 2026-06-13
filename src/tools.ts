@@ -13,7 +13,7 @@ import { paginate } from "./response.js";
 import { getRuntimeReport, runTool, type RuntimeTool, type ToolAnnotations } from "./runtime.js";
 import { getScanStatus, scanLibrary } from "./scanner.js";
 import { queryLibrary } from "./cache.js";
-import { downloadSample, generateAttributionReport, getInternetArchiveMetadata, importSampleToLibrary, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
+import { downloadSample, generateAttributionReport, getInternetArchiveMetadata, importSampleToLibrary, listInternetArchiveAudioFiles, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
 import { downloadPluginPackage, planPluginDownload, pluginInstallInstructions, searchPluginCatalog } from "./plugins.js";
 import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
 import { getUiDriverRuntimeState, pingUiDriver, uiDriverAction } from "./ui-driver.js";
@@ -467,6 +467,10 @@ toolDefs.push(
   { name: "ableton_search_freesound", description: "Search Freesound for licensed sample metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchFreesound(args.query, args.page, args.pageSize) }) },
   { name: "ableton_search_internet_archive_audio", description: "Search Internet Archive public audio metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchInternetArchiveAudio(args.query, args.page, args.pageSize) }) },
   { name: "ableton_get_remote_sample_metadata", description: "Get Internet Archive item metadata by identifier.", inputSchema: { source: z.enum(["internet_archive"]).default("internet_archive"), identifier: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_.-]+$/) }, annotations: webro, handler: async (args) => ({ ok: true, metadata: await getInternetArchiveMetadata(args.identifier) as any }) },
+  { name: "ableton_list_internet_archive_audio_files", description: "List safe downloadable audio file candidates for an Internet Archive item.", inputSchema: { identifier: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_.-]+$/), ...Page }, annotations: webro, handler: async (args) => {
+    const files = await listInternetArchiveAudioFiles(args.identifier);
+    return { ok: true, remote: { ...files, ...paginate(files.audioFiles, args.page, args.pageSize) } };
+  } },
   { name: "ableton_preview_remote_sample", description: "Return preview metadata only; never downloads.", inputSchema: { url: z.string().url(), license: z.string().optional() }, annotations: webro, handler: async (args) => ({ ok: true, preview: { url: assertAllowedSampleUrl(args.url), license: normalizeLicense(args.license), downloadEnabled: FLAGS.downloads } }) },
   { name: "ableton_download_sample", description: "Download an allowed licensed sample into staging when downloads are enabled.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, download: await downloadSample(args.url, args.destinationName, args.metadata) }) },
   { name: "ableton_analyze_audio_file", description: "Analyze allowed local audio file with ffprobe.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAudioFile(args.path) }) },

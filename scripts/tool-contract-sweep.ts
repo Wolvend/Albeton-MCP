@@ -209,6 +209,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_search_freesound", arguments: { query: "kick", page: 1, pageSize: 1 }, expected: "any" },
     { name: "ableton_search_internet_archive_audio", arguments: { query: "piano", page: 1, pageSize: 1 }, expected: "any" },
     { name: "ableton_get_remote_sample_metadata", arguments: { source: "internet_archive", identifier: "opensource_audio" }, expected: "any" },
+    { name: "ableton_list_internet_archive_audio_files", arguments: { identifier: "opensource_audio", page: 1, pageSize: 5 }, expected: "any" },
     { name: "ableton_preview_remote_sample", arguments: { url: "https://archive.org/download/opensource_audio/opensource_audio_meta.xml", license: "CC0" } },
     { name: "ableton_download_sample", arguments: { url: "https://archive.org/download/opensource_audio/opensource_audio_meta.xml", destinationName: "sample.wav", metadata: { license: "CC0" } }, expected: "any" },
     { name: "ableton_analyze_audio_file", arguments: { path: fixtures.audioPath } },
