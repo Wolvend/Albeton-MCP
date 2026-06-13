@@ -40,6 +40,16 @@ describe("tool catalog", () => {
   });
 
   it("uses typed schemas for newer bridge workflow tools", () => {
+    expect(registeredToolSchemas.ableton_set_tempo).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_set_tempo).toHaveProperty("tempo");
+    expect(registeredToolSchemas.ableton_create_audio_track).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_create_audio_track).toHaveProperty("name");
+    expect(registeredToolSchemas.ableton_create_scene).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_create_scene).toHaveProperty("scene_index");
+    expect(registeredToolSchemas.ableton_set_track_volume).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_set_track_volume).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_set_device_parameter).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_set_device_parameter).toHaveProperty("parameter_index");
     expect(registeredToolSchemas.ableton_duplicate_clip).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_duplicate_clip).toHaveProperty("track_index");
     expect(registeredToolSchemas.ableton_duplicate_clip).toHaveProperty("clip_slot_index");

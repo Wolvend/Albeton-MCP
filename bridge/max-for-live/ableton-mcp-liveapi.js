@@ -580,9 +580,9 @@ function fireClip(payload) {
 }
 
 function stopClip(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var slotIndex = parseIndex(payload, "slot_index");
+  if (slotIndex === null) slotIndex = parseIndex(payload, "clip_slot_index");
   if (slotIndex === null) {
     return { track_index: trackIndex, result: safeCall(liveObject("live_set tracks " + trackIndex), "stop_all_clips") };
   }
@@ -615,8 +615,7 @@ function renameClip(payload) {
 }
 
 function setMixerParameter(payload, parameterName, minValue, maxValue) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var value = Number(payload && payload.value);
   if (!isFinite(value) || value < minValue || value > maxValue) {
     throw new Error(parameterName + " value must be between " + minValue + " and " + maxValue + ".");
@@ -627,8 +626,7 @@ function setMixerParameter(payload, parameterName, minValue, maxValue) {
 }
 
 function setTrackSend(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var sendIndex = parseRequiredIndex(payload, "send_index");
   var value = Number(payload && payload.value);
   if (!isFinite(value) || value < 0 || value > 1) throw new Error("Send value must be between 0 and 1.");
@@ -638,11 +636,12 @@ function setTrackSend(payload) {
 }
 
 function setDeviceParameter(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var deviceIndex = parseIndex(payload, "device_id");
+  if (deviceIndex === null) deviceIndex = parseIndex(payload, "device_index");
   if (deviceIndex === null) deviceIndex = 0;
   var parameterIndex = parseIndex(payload, "parameter_id");
+  if (parameterIndex === null) parameterIndex = parseIndex(payload, "parameter_index");
   if (parameterIndex === null) throw new Error("parameter_id is required.");
   var value = Number(payload && payload.value);
   if (!isFinite(value)) throw new Error("Parameter value must be numeric.");

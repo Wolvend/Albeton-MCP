@@ -8,6 +8,8 @@ Use this command to inspect the live catalog:
 npm run inspect
 ```
 
+Core Live control tools expose field-level schemas for agent planning and validation. For example, tempo uses `tempo`, track/scene creation uses `name` and optional indexes, clip tools use `track_index` and `clip_slot_index`, mixer tools use bounded `value`, and device parameter writes use explicit track/device/parameter indexes. Real writes still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1`.
+
 ## Main tool groups
 
 | Group | Examples |
