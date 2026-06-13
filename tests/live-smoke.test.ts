@@ -25,6 +25,9 @@ describe("live smoke workflow", () => {
     expect(dryRunWrite?.arguments).toMatchObject({ dry_run: true });
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_capture_screenshot");
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_download_sample");
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_mcp_get_objective_readiness_report");
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_mcp_get_objective_readiness_report")?.arguments)
+      .toMatchObject({ check_bridge: false });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_mcp_get_launch_readiness_audit");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_mcp_get_launch_readiness_audit")?.arguments)
       .toMatchObject({ check_bridge: false });
@@ -42,12 +45,24 @@ describe("live smoke workflow", () => {
       name: call.name,
       ok: true,
       isError: false,
-      structuredContent: call.name === "ableton_mcp_get_launch_readiness_audit"
+      structuredContent: call.name === "ableton_mcp_get_objective_readiness_report"
+        ? {
+            objectiveReadiness: {
+              overallStatus: "ready_for_live_reads_and_dry_runs",
+              okForDefaultClientUse: true,
+              okForFullLiveMusicProduction: false,
+              summary: {
+                hardFailures: [],
+                pendingRuntime: ["real_execution_gate"]
+              }
+            }
+          }
+        : call.name === "ableton_mcp_get_launch_readiness_audit"
         ? {
             launchReadiness: {
               mode: "ready_for_live_read_dry_run",
               okForDefaultClientUse: true,
-              summary: { safeToolCount: 138 },
+              summary: { safeToolCount: 139 },
               liveControlCoverage: {
                 summary: { areas: 9, writeGatedSupported: 4, unsupported: 1 },
                 areas: [
@@ -79,10 +94,17 @@ describe("live smoke workflow", () => {
     expect(report.counts.scenes).toBe(3);
     expect(report.counts.devices).toBe(1);
     expect(report.counts.routingRows).toBe(2);
+    expect(report.objectiveReadiness).toMatchObject({
+      overallStatus: "ready_for_live_reads_and_dry_runs",
+      okForDefaultClientUse: true,
+      okForFullLiveMusicProduction: false,
+      hardFailures: [],
+      pendingRuntime: ["real_execution_gate"]
+    });
     expect(report.launchReadiness).toMatchObject({
       mode: "ready_for_live_read_dry_run",
       okForDefaultClientUse: true,
-      safeToolCount: 138,
+      safeToolCount: 139,
       liveControlCoverage: {
         areas: 9,
         writeGatedSupported: 4,

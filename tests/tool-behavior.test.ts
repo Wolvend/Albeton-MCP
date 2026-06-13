@@ -114,6 +114,57 @@ describe("MCP tool behavior", () => {
     });
   }, INTEGRATION_TIMEOUT_MS);
 
+  it("reports objective readiness without claiming live bridge completion", async () => {
+    await withClient(async (client) => {
+      const structured = await callStructured(client, "ableton_mcp_get_objective_readiness_report", { check_bridge: false });
+      const report = structured.objectiveReadiness as Record<string, any>;
+      const requirements = report.requirements as Record<string, any>[];
+
+      expect(structured.ok).toBe(true);
+      expect(report.objective).toContain("Primary secured Ableton MCP");
+      expect(report.overallStatus).toMatch(/ready_for_|needs_attention/);
+      expect(report.okForDefaultClientUse).toBe(true);
+      expect(report.okForMusicPlanningAndDryRun).toBe(true);
+      expect(report.okForFullLiveMusicProduction).toBe(false);
+      expect(report.summary.safeToolCount).toBeGreaterThan(100);
+      expect(report.summary.bridgeReachable).toBe(false);
+      expect(report.blockingProof.join("\n")).toContain("Max for Live bridge");
+      expect(requirements.map((requirement) => requirement.id)).toEqual(expect.arrayContaining([
+        "secure_default_runtime",
+        "hypernimbus_openclaw_safe_profile",
+        "concept_to_music_workflow",
+        "background_liveapi_bridge",
+        "real_execution_gate",
+        "optional_ui_mouse_control"
+      ]));
+      expect(requirements.find((requirement) => requirement.id === "hypernimbus_openclaw_safe_profile")).toMatchObject({
+        status: "pass",
+        evidence: {
+          includesObjectiveReport: true,
+          excludesRealExecution: true,
+          excludesUiSession: true
+        },
+        verificationCommand: "npm run docker:hypernimbus:verify"
+      });
+      expect(requirements.find((requirement) => requirement.id === "background_liveapi_bridge")).toMatchObject({
+        status: "pending_runtime",
+        evidence: {
+          checked: false,
+          reachable: null
+        }
+      });
+      expect(requirements.find((requirement) => requirement.id === "real_execution_gate")).toMatchObject({
+        status: "dry_run_only"
+      });
+      expect(report.firstAgentCalls.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_mcp_get_objective_readiness_report",
+        "ableton_plan_agent_music_session",
+        "ableton_plan_full_concept_production"
+      ]));
+      expect(report.guardrails).toContain("This report is read-only and should not be treated as live-write proof.");
+    });
+  }, INTEGRATION_TIMEOUT_MS);
+
   it("reports the safe HyperNimbus/OpenClaw tool allowlist without enabling risky tools", async () => {
     await withClient(async (client) => {
       const structured = await callStructured(client, "ableton_mcp_get_safe_tool_allowlist", {});
@@ -131,6 +182,7 @@ describe("MCP tool behavior", () => {
         "ableton_render_concept_automation_map",
         "ableton_plan_concept_device_ui_placement",
         "ableton_render_concept_execution_manifest",
+        "ableton_mcp_get_objective_readiness_report",
         "ableton_mcp_get_launch_readiness_audit",
         "ableton_mcp_get_safe_tool_allowlist"
       ]));
@@ -209,6 +261,7 @@ describe("MCP tool behavior", () => {
       expect(bootstrap.server).toBe("ableton-mcp");
       expect(bootstrap.transportDefaults.streamableHttp.url).toBe("http://127.0.0.1:17366/mcp");
       expect(bootstrap.safeToolAllowlist.tools).toContain("ableton_mcp_get_client_bootstrap_bundle");
+      expect(bootstrap.safeToolAllowlist.tools).toContain("ableton_mcp_get_objective_readiness_report");
       expect(bootstrap.safeToolAllowlist.tools).toContain("ableton_mcp_get_launch_readiness_audit");
       expect(bootstrap.clients.openclaw.commands.join("\n")).toContain("openclaw mcp doctor ableton-mcp --probe");
       expect(bootstrap.clients.openRouter.note).toContain("host app");
@@ -223,6 +276,7 @@ describe("MCP tool behavior", () => {
         "ableton_begin_concept_device_ui_session"
       ]));
       expect(bootstrap.recommendedAgentWorkflow.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_mcp_get_objective_readiness_report",
         "ableton_mcp_get_launch_readiness_audit",
         "ableton_plan_full_concept_production",
         "ableton_curate_concept_samples",

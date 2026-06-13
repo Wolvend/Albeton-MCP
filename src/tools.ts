@@ -571,7 +571,7 @@ function clientBootstrapBundle() {
       codex: {
         mode: "stdio",
         configHint: profiles.stdio,
-        firstCalls: ["ableton_mcp_get_launch_readiness_audit", "ableton_get_production_readiness", "ableton_mcp_get_safe_tool_allowlist", "ableton_list_concept_presets"]
+        firstCalls: ["ableton_mcp_get_objective_readiness_report", "ableton_mcp_get_launch_readiness_audit", "ableton_get_production_readiness", "ableton_mcp_get_safe_tool_allowlist", "ableton_list_concept_presets"]
       },
       claudeDesktop: {
         mode: "stdio",
@@ -620,6 +620,7 @@ function clientBootstrapBundle() {
       }
     },
     recommendedAgentWorkflow: [
+      { name: "ableton_mcp_get_objective_readiness_report", arguments: { check_bridge: false } },
       { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false } },
       { name: "ableton_plan_agent_music_session", arguments: { concept: "describe the place, feeling, or soundtrack brief", client: "codex", include_sample_search: true, check_bridge: false } },
       { name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
@@ -1205,6 +1206,219 @@ async function launchReadinessAudit(checkBridge: boolean) {
   };
 }
 
+async function objectiveReadinessReport(checkBridge: boolean) {
+  const readiness = await productionReadinessReport(checkBridge) as Record<string, any>;
+  const bridgeReachable = readiness.bridge?.reachable === true;
+  const safeAllowlist = safeToolAllowlistReport();
+  const safeTools = safeAllowlist.tools as readonly string[];
+  const connectionProfiles = clientConnectionProfiles() as Record<string, any>;
+  const httpPrivateNetwork = (connectionProfiles.httpPrivateNetwork ?? {}) as Record<string, any>;
+  const coverage = liveControlCoverageReport();
+  const capabilityMatrix = getBridgeCapabilityMatrix();
+  const remoteHttpSafe = httpPrivateNetwork.enabled !== true || httpPrivateNetwork.tokenConfigured === true;
+  const safeDefaults = !FLAGS.write && !FLAGS.downloads && !FLAGS.uiControl && remoteHttpSafe;
+  const clientSafe = safeAllowlist.count >= 100
+    && safeAllowlist.endpoint.startsWith("http://127.0.0.1:")
+    && safeTools.includes("ableton_plan_agent_music_session")
+    && safeTools.includes("ableton_mcp_get_launch_readiness_audit")
+    && safeTools.includes("ableton_mcp_get_objective_readiness_report")
+    && !safeTools.includes("ableton_execute_concept_plan")
+    && !safeTools.includes("ableton_begin_concept_device_ui_session");
+  const writeGatedSupported = Number(coverage.summary.writeGatedSupported ?? 0);
+  const unsupported = Number(coverage.summary.unsupported ?? 0);
+  const requirements = [
+    {
+      id: "secure_default_runtime",
+      status: safeDefaults ? "pass" : "fail",
+      evidence: {
+        writeEnabled: FLAGS.write,
+        downloadsEnabled: FLAGS.downloads,
+        uiControlEnabled: FLAGS.uiControl,
+        remoteHttpEnabled: httpPrivateNetwork.enabled === true,
+        remoteHttpTokenConfigured: httpPrivateNetwork.tokenConfigured === true,
+        arbitraryShell: false,
+        arbitraryUrlFetch: false,
+        broadFilesystemScan: false
+      },
+      reason: "Default clients must be able to plan, inspect, and dry-run without writes, downloads, or UI/mouse control."
+    },
+    {
+      id: "hypernimbus_openclaw_safe_profile",
+      status: clientSafe ? "pass" : "fail",
+      evidence: {
+        profile: safeAllowlist.profile,
+        endpoint: safeAllowlist.endpoint,
+        safeToolCount: safeAllowlist.count,
+        includesObjectiveReport: safeTools.includes("ableton_mcp_get_objective_readiness_report"),
+        excludesRealExecution: !safeTools.includes("ableton_execute_concept_plan"),
+        excludesUiSession: !safeTools.includes("ableton_begin_concept_device_ui_session")
+      },
+      verificationCommand: "npm run docker:hypernimbus:verify",
+      reason: "Docker MCP and OpenClaw-style consumers should see only read, planning, search, status, diagnostics, and dry-run-safe tools by default."
+    },
+    {
+      id: "multi_client_bootstrap",
+      status: "pass",
+      evidence: {
+        clients: ["Codex", "Claude Desktop", "Docker MCP", "HyperNimbus", "OpenClaw", "OpenRouter host apps", "Gemini host apps", "llama.cpp wrappers", "Antigravity"],
+        firstCall: "ableton_mcp_get_objective_readiness_report",
+        stdio: process.platform === "win32" ? ".\\launch.ps1 stdio -SkipSetup" : "./launch.sh stdio --skip-setup",
+        http: safeAllowlist.endpoint
+      },
+      reason: "Clients have one bootstrap path plus one machine-readable objective report before doing music work."
+    },
+    {
+      id: "concept_to_music_workflow",
+      status: readiness.conceptToMusic?.planningReady && readiness.conceptToMusic?.dryRunExecutionReady ? "pass" : "fail",
+      evidence: {
+        preset: readiness.conceptToMusic?.preset,
+        planningReady: readiness.conceptToMusic?.planningReady,
+        metadataSearchReady: readiness.conceptToMusic?.metadataSearchReady,
+        dryRunExecutionReady: readiness.conceptToMusic?.dryRunExecutionReady,
+        exactNextToolCalls: readiness.conceptToMusic?.exactNextToolCalls
+      },
+      reason: "A client can convert a liminal place or feeling into concept, sample, arrangement, mix, automation, approval, and delivery plans without side effects."
+    },
+    {
+      id: "liminal_backrooms_horror_pipeline",
+      status: "pass",
+      evidence: {
+        preset: "liminal_backrooms_horror",
+        tools: [
+          "ableton_plan_reference_audio_intake",
+          "ableton_plan_source_audio_transformation",
+          "ableton_plan_concept_track",
+          "ableton_plan_full_concept_production",
+          "ableton_curate_concept_samples",
+          "ableton_build_layered_arrangement_plan",
+          "ableton_render_concept_device_chain_spec",
+          "ableton_render_concept_automation_map",
+          "ableton_render_delivery_plan"
+        ]
+      },
+      reason: "The primary creative workflow is explicitly shaped for backrooms, liminal, horror, and degraded-memory cue building."
+    },
+    {
+      id: "background_liveapi_bridge",
+      status: bridgeReachable ? "pass" : "pending_runtime",
+      evidence: {
+        checked: readiness.bridge?.checked,
+        reachable: readiness.bridge?.reachable,
+        runtime: readiness.bridge?.runtime,
+        defaultControl: capabilityMatrix.defaultControl
+      },
+      blocksWhenPending: ["live snapshots", "real Live reads", "approved real writes"],
+      reason: "Background LiveAPI bridge control is the default Ableton control path; UI/mouse remains optional and separate."
+    },
+    {
+      id: "live_control_coverage",
+      status: writeGatedSupported >= 4 && unsupported <= 2 ? "pass" : "needs_review",
+      evidence: {
+        areas: coverage.summary.areas,
+        writeGatedSupported,
+        partiallySupported: coverage.summary.partiallySupported,
+        unsupported,
+        unsupportedBoundaries: coverage.unsupportedBoundaries
+      },
+      reason: "The bridge exposes real typed read and write-gated operations while declaring unsupported LiveAPI boundaries instead of faking success."
+    },
+    {
+      id: "real_execution_gate",
+      status: readiness.conceptToMusic?.realExecutionReady ? "pass" : "dry_run_only",
+      evidence: {
+        realExecutionReady: readiness.conceptToMusic?.realExecutionReady,
+        missingForRealExecution: readiness.conceptToMusic?.missingForRealExecution,
+        writeEnabled: FLAGS.write,
+        bridgeReachable
+      },
+      reason: "Full arrangement execution must require a loaded bridge, explicit write gate, dry_run=false, approval id, and approval confirmation."
+    },
+    {
+      id: "optional_ui_mouse_control",
+      status: !FLAGS.uiControl && !safeTools.includes("ableton_begin_concept_device_ui_session") ? "gated_optional" : "needs_review",
+      evidence: {
+        enabledByDefault: FLAGS.uiControl,
+        excludedFromSafeToolAllowlist: !safeTools.includes("ableton_begin_concept_device_ui_session"),
+        requiredGate: "ABLETON_MCP_ENABLE_UI_CONTROL=1 plus user-started UI driver"
+      },
+      reason: "Foreground UI/mouse control can exist for user-chosen workflows but must not overlap default background bridge execution."
+    },
+    {
+      id: "verification_surface",
+      status: "pass",
+      evidence: {
+        commands: [
+          "npm run build",
+          "npm test",
+          "npm run lint",
+          "npm run doctor",
+          "npm run release:check",
+          "npm run sweep:safe",
+          "npm run sweep:all",
+          "npm run verify:mcp",
+          "npm run docker:hypernimbus:verify",
+          "npm audit --audit-level=moderate",
+          process.platform === "win32" ? ".\\launch.ps1 live-smoke -SkipSetup" : "./launch.sh live-smoke --skip-setup"
+        ]
+      },
+      reason: "The repo has repeatable local, MCP, Docker-profile, sweep, audit, and live-smoke verification commands."
+    }
+  ];
+  const hardFailures = requirements.filter((requirement) => requirement.status === "fail").map((requirement) => requirement.id);
+  const pendingRuntime = requirements.filter((requirement) => ["pending_runtime", "dry_run_only"].includes(requirement.status)).map((requirement) => requirement.id);
+  const optionalGated = requirements.filter((requirement) => requirement.status === "gated_optional").map((requirement) => requirement.id);
+  const overallStatus = hardFailures.length > 0
+    ? "needs_attention"
+    : readiness.conceptToMusic?.realExecutionReady
+      ? "ready_for_user_approved_live_writes"
+      : bridgeReachable
+        ? "ready_for_live_reads_and_dry_runs"
+        : "ready_for_default_clients_pending_live_bridge";
+
+  return {
+    objective: "Primary secured Ableton MCP for HyperNimbus Docker profile, Codex, OpenClaw, and other MCP clients.",
+    overallStatus,
+    checkBridge,
+    okForDefaultClientUse: hardFailures.length === 0 && safeDefaults && clientSafe,
+    okForMusicPlanningAndDryRun: hardFailures.length === 0,
+    okForFullLiveMusicProduction: readiness.conceptToMusic?.realExecutionReady === true,
+    requirements,
+    summary: {
+      hardFailures,
+      pendingRuntime,
+      optionalGated,
+      safeToolCount: safeAllowlist.count,
+      bridgeReachable,
+      liveRunning: readiness.liveRunning,
+      liveControlCoverage: coverage.summary,
+      bridgeCapabilitySummary: capabilityMatrix.summary
+    },
+    blockingProof: bridgeReachable ? [] : [
+      "Live Max for Live bridge proof is pending because the local bridge listener is not reachable from this MCP process.",
+      "Real Ableton reads/writes require Ableton Live open with the Ableton MCP Bridge Max for Live device loaded on 127.0.0.1:17364."
+    ],
+    nextCommands: [
+      process.platform === "win32" ? ".\\launch.ps1 setup" : "./launch.sh setup",
+      process.platform === "win32" ? ".\\launch.ps1 check -SkipSetup" : "./launch.sh check --skip-setup",
+      process.platform === "win32" ? ".\\launch.ps1 docker -SkipSetup" : "./launch.sh docker --skip-setup",
+      "npm run docker:hypernimbus:verify",
+      process.platform === "win32" ? ".\\launch.ps1 live-smoke -SkipSetup" : "./launch.sh live-smoke --skip-setup"
+    ],
+    firstAgentCalls: [
+      { name: "ableton_mcp_get_objective_readiness_report", arguments: { check_bridge: false } },
+      { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false } },
+      { name: "ableton_plan_agent_music_session", arguments: { concept: "describe the place, feeling, or cue", client: "codex", check_bridge: false } },
+      { name: "ableton_plan_full_concept_production", arguments: { concept: "describe the place, feeling, or cue", include_sample_search: true } }
+    ],
+    guardrails: [
+      "This report is read-only and should not be treated as live-write proof.",
+      "Do not expose HTTP publicly; use loopback or Tailscale/private-network mode with bearer token.",
+      "Do not enable writes, downloads, or UI/mouse control in default client profiles.",
+      "Run live-smoke with Ableton open and the Max for Live bridge loaded before claiming live Ableton control is complete."
+    ]
+  };
+}
+
 const toolDefs: ToolDef[] = [
   { name: "ableton_find_installation", description: "Find configured Ableton Live and Max paths for this host platform.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
@@ -1260,6 +1474,7 @@ const toolDefs: ToolDef[] = [
   } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
   { name: "ableton_mcp_get_safe_tool_allowlist", description: "Return the HyperNimbus/OpenClaw safe tool allowlist as structured data and CSV without changing client configuration.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, safeToolAllowlist: safeToolAllowlistReport() }) },
+  { name: "ableton_mcp_get_objective_readiness_report", description: "Return a read-only objective-level readiness report for secured Ableton MCP use across HyperNimbus Docker, Codex, OpenClaw, and other MCP clients.", inputSchema: { check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, objectiveReadiness: await objectiveReadinessReport(args.check_bridge) }) },
   { name: "ableton_mcp_get_launch_readiness_audit", description: "Return a concise read-only launch audit for client profiles, safe defaults, concept workflow readiness, bridge state, and optional UI control gates.", inputSchema: { check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, launchReadiness: await launchReadinessAudit(args.check_bridge) }) },
   { name: "ableton_plan_agent_music_session", description: "Return a safe step-by-step agent workflow for turning a mood/place brief into a layered Ableton production without side effects.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), reference_path: z.string().min(1).optional(), client: AgentMusicClient, include_sample_search: z.boolean().default(true), include_audio_preparation: z.boolean().default(true), check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, workflow: await agentMusicSessionPlan(args) }) },
   { name: "ableton_get_production_readiness", description: "Summarize Ableton MCP readiness for professional music-production work.", inputSchema: { check_bridge: z.boolean().default(true) }, annotations: ro, handler: async (args) => ({ ok: true, readiness: await productionReadinessReport(args.check_bridge) }) },

@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-214 tools
+215 tools
 3 resources
 2 prompts
 ```
@@ -47,6 +47,7 @@ Control-mode tools:
 
 - `ableton_control_mode_status`: reports background bridge default, UI fallback gate, and overlap policy.
 - `ableton_get_production_readiness`: reports current planning/live-control status across gates, HyperNimbus/OpenClaw/Codex client profiles, bridge reachability, concept-to-music readiness, safety posture, and exact next calls. Use `check_bridge=false` for a non-probing report.
+- `ableton_mcp_get_objective_readiness_report`: returns the objective-level readiness report for default client safety, HyperNimbus/OpenClaw profile state, multi-client bootstrap support, concept-to-music workflow readiness, LiveAPI bridge reachability, live-control coverage, real-execution gates, optional UI/mouse control, verification commands, and remaining blockers.
 - `ableton_mcp_get_launch_readiness_audit`: returns a compact read-only checklist covering safe defaults, client profile allowlist state, concept workflow readiness, bridge reachability, optional UI-driver gating, LiveAPI music-control coverage, dry-run smoke calls, and exact next calls.
 - `ableton_plan_agent_music_session`: returns a side-effect-free phase plan for Codex, HyperNimbus, OpenClaw, Claude, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity to turn a mood/place brief into concept, sample, arrangement, approval, and delivery calls.
 - `ableton_bridge_status`: reports loopback host/port, serialized queue state, and last bridge action.

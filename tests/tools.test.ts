@@ -19,6 +19,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_mcp_get_client_connection_profiles");
     expect(registeredToolNames).toContain("ableton_mcp_get_client_bootstrap_bundle");
     expect(registeredToolNames).toContain("ableton_mcp_get_safe_tool_allowlist");
+    expect(registeredToolNames).toContain("ableton_mcp_get_objective_readiness_report");
     expect(registeredToolNames).toContain("ableton_mcp_get_launch_readiness_audit");
     expect(registeredToolNames).toContain("ableton_plan_agent_music_session");
     expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");
@@ -97,6 +98,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_set_tempo).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_get_bridge_capabilities).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_get_production_readiness).toHaveProperty("check_bridge");
+    expect(registeredToolSchemas.ableton_mcp_get_objective_readiness_report).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_mcp_get_launch_readiness_audit).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_plan_agent_music_session).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_plan_agent_music_session).toHaveProperty("client");

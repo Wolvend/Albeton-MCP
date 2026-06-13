@@ -33,6 +33,13 @@ export type LiveSmokeReport = {
   ok: boolean;
   bridgeReachable: boolean;
   dryRunWriteConfirmed: boolean;
+  objectiveReadiness: {
+    overallStatus: string | null;
+    okForDefaultClientUse: boolean | null;
+    okForFullLiveMusicProduction: boolean | null;
+    hardFailures: string[];
+    pendingRuntime: string[];
+  };
   launchReadiness: {
     mode: string | null;
     okForDefaultClientUse: boolean | null;
@@ -57,6 +64,7 @@ export type LiveSmokeReport = {
 };
 
 export const liveSmokeCalls: SmokeCall[] = [
+  { name: "ableton_mcp_get_objective_readiness_report", arguments: { check_bridge: false }, required: true },
   { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false }, required: true },
   { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false }, required: true },
   { name: "ableton_live_status", arguments: {}, required: true },
@@ -122,6 +130,14 @@ function booleanAt(value: unknown, paths: string[][]): boolean | null {
   return null;
 }
 
+function stringArrayAt(value: unknown, paths: string[][]): string[] {
+  for (const path of paths) {
+    const candidate = getNested(value, path);
+    if (Array.isArray(candidate) && candidate.every((item) => typeof item === "string")) return candidate;
+  }
+  return [];
+}
+
 function resultByName(results: SmokeResult[], name: string) {
   return results.find((result) => result.name === name);
 }
@@ -154,6 +170,7 @@ function collectSetupHints(results: SmokeResult[]) {
 }
 
 export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
+  const objectiveReadiness = resultByName(results, "ableton_mcp_get_objective_readiness_report")?.structuredContent;
   const launchReadiness = resultByName(results, "ableton_mcp_get_launch_readiness_audit")?.structuredContent;
   const bridgeCapabilities = resultByName(results, "ableton_get_bridge_capabilities")?.structuredContent;
   const snapshot = resultByName(results, "ableton_get_full_snapshot")?.structuredContent;
@@ -185,6 +202,13 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
     ok: requiredFailures.length === 0 && bridgeReachable && dryRunWriteConfirmed,
     bridgeReachable,
     dryRunWriteConfirmed,
+    objectiveReadiness: {
+      overallStatus: stringAt(objectiveReadiness, [["objectiveReadiness", "overallStatus"]]),
+      okForDefaultClientUse: booleanAt(objectiveReadiness, [["objectiveReadiness", "okForDefaultClientUse"]]),
+      okForFullLiveMusicProduction: booleanAt(objectiveReadiness, [["objectiveReadiness", "okForFullLiveMusicProduction"]]),
+      hardFailures: stringArrayAt(objectiveReadiness, [["objectiveReadiness", "summary", "hardFailures"]]),
+      pendingRuntime: stringArrayAt(objectiveReadiness, [["objectiveReadiness", "summary", "pendingRuntime"]])
+    },
     launchReadiness: {
       mode: stringAt(launchReadiness, [["launchReadiness", "mode"]]),
       okForDefaultClientUse: booleanAt(launchReadiness, [["launchReadiness", "okForDefaultClientUse"]]),

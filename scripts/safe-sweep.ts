@@ -49,6 +49,7 @@ const calls: SweepCall[] = [
   { name: "ableton_mcp_get_client_connection_profiles", arguments: {} },
   { name: "ableton_mcp_get_client_bootstrap_bundle", arguments: {} },
   { name: "ableton_mcp_get_safe_tool_allowlist", arguments: {} },
+  { name: "ableton_mcp_get_objective_readiness_report", arguments: { check_bridge: false } },
   { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false } },
   { name: "ableton_mcp_run_path_security_test", arguments: {} },
   { name: "ableton_mcp_run_sample_license_test", arguments: {} },
