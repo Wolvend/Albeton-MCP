@@ -7,6 +7,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_get_environment");
     expect(registeredToolNames).toContain("ableton_control_mode_status");
     expect(registeredToolNames).toContain("ableton_bridge_status");
+    expect(registeredToolNames).toContain("ableton_bridge_setup_status");
     expect(registeredToolNames).toContain("ableton_get_bridge_capabilities");
     expect(registeredToolNames).toContain("ableton_ui_driver_status");
     expect(registeredToolNames).toContain("ableton_ui_control_consent_status");
@@ -97,6 +98,7 @@ describe("tool catalog", () => {
   it("uses typed schemas for newer bridge workflow tools", () => {
     expect(registeredToolSchemas.ableton_set_tempo).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_get_bridge_capabilities).toHaveProperty("check_bridge");
+    expect(registeredToolSchemas.ableton_bridge_setup_status).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_get_production_readiness).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_mcp_get_objective_readiness_report).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_mcp_get_launch_readiness_audit).toHaveProperty("check_bridge");

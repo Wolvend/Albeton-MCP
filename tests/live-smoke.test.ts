@@ -14,10 +14,15 @@ describe("live smoke workflow", () => {
     const launchSh = fs.readFileSync(path.join(projectRoot, "launch.sh"), "utf8");
 
     expect(packageJson.scripts["live-smoke"]).toBe("node dist/scripts/live-smoke.js");
+    expect(packageJson.scripts["bridge:status"]).toBe("node dist/scripts/bridge-setup-status.js");
     expect(launchPs1).toContain('"live-smoke"');
     expect(launchPs1).toContain("npm.cmd run live-smoke");
+    expect(launchPs1).toContain('"bridge-status"');
+    expect(launchPs1).toContain("npm.cmd run bridge:status");
     expect(launchSh).toContain("live-smoke)");
     expect(launchSh).toContain("npm run live-smoke");
+    expect(launchSh).toContain("bridge-status)");
+    expect(launchSh).toContain("npm run bridge:status");
   });
 
   it("keeps the write probe dry-run only", () => {
@@ -33,6 +38,9 @@ describe("live smoke workflow", () => {
       .toMatchObject({ check_bridge: false });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_bridge_capabilities");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_get_bridge_capabilities")?.arguments)
+      .toMatchObject({ check_bridge: false });
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_bridge_setup_status");
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_bridge_setup_status")?.arguments)
       .toMatchObject({ check_bridge: false });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_live_state");
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_routing_overview");
@@ -62,7 +70,7 @@ describe("live smoke workflow", () => {
             launchReadiness: {
               mode: "ready_for_live_read_dry_run",
               okForDefaultClientUse: true,
-              summary: { safeToolCount: 139 },
+              summary: { safeToolCount: 140 },
               liveControlCoverage: {
                 summary: { areas: 9, writeGatedSupported: 4, unsupported: 1 },
                 areas: [
@@ -74,6 +82,8 @@ describe("live smoke workflow", () => {
           }
         : call.name === "ableton_get_bridge_capabilities"
           ? { capabilities: { summary: { read_only: 10, write_gated: 20, unsupported: 4, diagnostic: 2 } } }
+        : call.name === "ableton_bridge_setup_status"
+          ? { bridgeSetup: { status: "ready", install: { ready: true }, live: { running: true }, bridge: { checked: false, reachable: null } } }
         : call.name === "ableton_get_full_snapshot"
         ? { snapshot: { data: { state: { track_count: 4, scene_count: 9 }, tracks: [{}, {}], scenes: [{}, {}, {}] } } }
         : call.name === "ableton_duplicate_clip"
@@ -104,7 +114,7 @@ describe("live smoke workflow", () => {
     expect(report.launchReadiness).toMatchObject({
       mode: "ready_for_live_read_dry_run",
       okForDefaultClientUse: true,
-      safeToolCount: 139,
+      safeToolCount: 140,
       liveControlCoverage: {
         areas: 9,
         writeGatedSupported: 4,
@@ -112,6 +122,13 @@ describe("live smoke workflow", () => {
         nativeDeviceInsertion: "unsupported_by_current_bridge",
         automationBreakpointWrites: "partially_supported"
       }
+    });
+    expect(report.bridgeSetup).toMatchObject({
+      status: "ready",
+      installReady: true,
+      liveRunning: true,
+      checked: false,
+      reachable: null
     });
     expect(report.bridgeCapabilitySummary).toMatchObject({ read_only: 10, write_gated: 20, unsupported: 4, diagnostic: 2 });
     expect(report.setupHints).toEqual([]);

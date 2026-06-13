@@ -6,6 +6,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { analyzeAbletonSet, analyzeAudioFile, convertAudioFile } from "./analysis.js";
 import { bridgeAction, getBridgeCapabilityMatrix, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
+import { getBridgeSetupStatus } from "./bridge-setup.js";
 import { FLAGS, LOCAL_PATHS, PLATFORM } from "./config.js";
 import { environmentSnapshot } from "./environment.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
@@ -1448,6 +1449,7 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_live_status", description: "Detect whether Ableton Live is running.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, status: { liveRunning: (await environmentSnapshot()).liveRunning, processes: (await environmentSnapshot()).abletonProcesses } }) },
   { name: "ableton_bridge_install_instructions", description: "Return Max for Live bridge setup steps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: { type: "max-for-live", path: redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), files: ["Ableton MCP Bridge.amxd", "ableton-mcp-bridge.maxpat", "ableton-mcp-http.js", "ableton-mcp-liveapi.js", "ableton-mcp-status.js", "package.json"], persistentPresetFolder: "%USERPROFILE%\\Documents\\Ableton\\User Library\\Presets\\MIDI Effects\\Max MIDI Effect", persistentDevice: "Ableton MCP Bridge.amxd", persistentSet: "%USERPROFILE%\\Documents\\Ableton\\Ableton MCP Bridge Set\\Ableton MCP Bridge Set Project\\Ableton MCP Bridge Set.als", steps: ["Run npm run bridge:install after npm run build.", "Open Ableton Live.", "Create or open a Live Set.", "Load Ableton MCP Bridge from User Library > Presets > MIDI Effects > Max MIDI Effect.", "Confirm the Max console says: Ableton MCP HTTP bridge listening on 127.0.0.1:17364.", "Run ableton_bridge_ping."] } }) },
   { name: "ableton_bridge_install_plan", description: "Plan the automatic Max for Live bridge file install into the Ableton User Library.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeInstall: await getBridgeInstallPlan({ dryRun: true }) }) },
+  { name: "ableton_bridge_setup_status", description: "Report installed bridge file freshness, Ableton process state, and optional loopback bridge reachability.", inputSchema: { check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, bridgeSetup: await getBridgeSetupStatus(args.check_bridge) }) },
   { name: "ableton_install_bridge_files", description: "Copy required bridge companion files into the Ableton User Library preset folder.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => {
     if (args.dry_run !== false) return { ok: true, bridgeInstall: await installBridgeFiles({ dryRun: true }) };
     requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Installing Ableton bridge files");

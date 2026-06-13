@@ -152,6 +152,7 @@ Modes:
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
+  bridge-status    Report bridge install freshness, Ableton process state, and listener status.
   bridge-listener  Start bridge setup listener for Ableton bridge setup.
   help             Show this help.
 
@@ -265,6 +266,10 @@ case "$MODE" in
     export ABLETON_MCP_ENABLE_UI_CONTROL=1
     run_setup
     exec node dist/scripts/ableton-ui-driver.js
+    ;;
+  bridge-status)
+    run_setup
+    npm run bridge:status -- --check-bridge
     ;;
   bridge-listener)
     run_setup

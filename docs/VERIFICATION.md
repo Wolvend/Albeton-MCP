@@ -74,13 +74,13 @@ Native WSL Node can verify the MCP server, but it may not reach the Windows-only
 Expected current results:
 
 ```text
-Tests: 24 files, 101 tests passed
-MCP verifier: 215 tools, 3 resources, 2 prompts
-All-tool contract sweep: 215 registered tools, 215 contract calls
+Tests: 24 files, 103 tests passed
+MCP verifier: 216 tools, 3 resources, 2 prompts
+All-tool contract sweep: 216 registered tools, 216 contract calls
 Audit: 0 vulnerabilities
 ```
 
-`npm run docker:hypernimbus:verify` should also report `expectedAllowedTools: 139`, `observedAllowedTools: 139`, and empty `missingSafeTools`, `unexpectedAbletonTools`, and `unexpectedRiskyTools` arrays.
+`npm run docker:hypernimbus:verify` should also report `expectedAllowedTools: 140`, `observedAllowedTools: 140`, and empty `missingSafeTools`, `unexpectedAbletonTools`, and `unexpectedRiskyTools` arrays.
 
 ## Check the Max for Live bridge
 
@@ -94,13 +94,14 @@ Then call:
 
 ```text
 ableton_bridge_ping
+ableton_bridge_setup_status
 ableton_get_live_state
 ableton_get_full_snapshot
 ```
 
 If the bridge is not loaded, these tools should return `BRIDGE_UNREACHABLE` with setup steps.
 
-The live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_ping`, `ableton_get_live_state`, `ableton_get_full_snapshot`, track/scene/device listing, `ableton_get_routing_overview`, `ableton_control_mode_status`, and one `dry_run=true` write probe. It reports objective status, launch mode, safe tool count, LiveAPI control coverage, bridge capability summary, track/scene/device counts, and send-matrix row counts when the bridge is loaded. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
+The live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_setup_status`, `ableton_bridge_ping`, `ableton_get_live_state`, `ableton_get_full_snapshot`, track/scene/device listing, `ableton_get_routing_overview`, `ableton_control_mode_status`, and one `dry_run=true` write probe. It reports objective status, launch mode, safe tool count, bridge setup status, LiveAPI control coverage, bridge capability summary, track/scene/device counts, and send-matrix row counts when the bridge is loaded. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
 
 ## Check the UI driver
 

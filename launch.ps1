@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-smoke", "concept-demo", "inspect", "ui-driver", "bridge-listener", "help")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-smoke", "concept-demo", "inspect", "ui-driver", "bridge-status", "bridge-listener", "help")]
   [string]$Mode = "stdio",
   [switch]$SkipSetup,
   [switch]$NoBuild,
@@ -51,6 +51,7 @@ Modes:
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
+  bridge-status    Report bridge install freshness, Ableton process state, and listener status.
   bridge-listener  Start bridge setup listener for Ableton bridge setup.
   help             Show this help.
 
@@ -212,6 +213,11 @@ switch ($Mode) {
     $env:ABLETON_MCP_ENABLE_UI_CONTROL = "1"
     Invoke-Setup
     & node dist/scripts/ableton-ui-driver.js
+    exit $LASTEXITCODE
+  }
+  "bridge-status" {
+    Invoke-Setup
+    & npm.cmd run bridge:status -- --check-bridge
     exit $LASTEXITCODE
   }
   "bridge-listener" {

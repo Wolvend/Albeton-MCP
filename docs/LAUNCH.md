@@ -34,6 +34,7 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `docker` | `.\launch.ps1 docker` | Builds, installs bridge files, then starts `dist/src/http.js` at `127.0.0.1:17366/mcp`. |
 | `http` | `.\launch.ps1 http` | Alias for `docker`; useful for non-Docker Streamable HTTP clients. |
 | `install` | `.\launch.ps1 install` | Builds and installs the Max for Live bridge preset files only. |
+| `bridge-status` | `.\launch.ps1 bridge-status -SkipSetup` | Reports installed bridge file freshness, Ableton process state, and listener reachability. |
 | `setup` | `.\launch.ps1 setup` | Builds, installs bridge files, and writes generated Codex, Claude, Cursor, WSL, local HTTP, and Tailscale HTTP client configs. |
 | `verify` | `.\launch.ps1 verify` | Builds, installs bridge files, then runs `npm run verify:mcp`. |
 | `check` | `.\launch.ps1 check` | Builds, tests, lints, runs doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
@@ -57,7 +58,8 @@ Recommended local sequence:
 ```powershell
 .\launch.ps1 setup
 .\launch.ps1 check -SkipSetup
-# Open Ableton and load the bridge device.
+# Open Ableton and load the bridge device if bridge-status reports device_not_loaded.
+.\launch.ps1 bridge-status -SkipSetup
 .\launch.ps1 live-smoke -SkipSetup
 ```
 

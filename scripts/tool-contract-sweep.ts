@@ -196,6 +196,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_live_status", arguments: {} },
     { name: "ableton_bridge_install_instructions", arguments: {} },
     { name: "ableton_bridge_install_plan", arguments: {} },
+    { name: "ableton_bridge_setup_status", arguments: { check_bridge: false } },
     { name: "ableton_install_bridge_files", arguments: { dry_run: true } },
     { name: "ableton_bridge_ping", arguments: {}, expected: "any" },
     { name: "ableton_bridge_status", arguments: {} },

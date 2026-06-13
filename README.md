@@ -70,6 +70,7 @@ Use these launch modes:
 | Regular MCP | `.\launch.ps1 stdio` | Starts the local stdio MCP server for Codex, Claude Desktop, Cursor, or another regular MCP client. |
 | Docker MCP | `.\launch.ps1 docker` | Starts the local Streamable HTTP MCP transport at `http://127.0.0.1:17366/mcp` for Docker MCP catalogs. |
 | Bridge install | `.\launch.ps1 install` | Installs the Ableton Max for Live preset and companion files without starting a server. |
+| Bridge status | `.\launch.ps1 bridge-status -SkipSetup` | Verifies installed bridge file hashes, Ableton process state, and the local Max listener. |
 | Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
@@ -248,18 +249,18 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 24 files, 101 tests passed
+Tests: 24 files, 103 tests passed
 Lint: passed
 Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed
 Safe sweep: passed
 Live smoke: reports launch readiness and LiveAPI coverage; returns structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 215 tools, 3 resources, 2 prompts
-All-tool contract sweep: 215 registered tools, 215 safe calls
-Docker-mode HTTP: restarted node dist/src/http.js on 127.0.0.1:17366; direct Streamable HTTP probe reports 215 tools
+MCP verifier: 216 tools, 3 resources, 2 prompts
+All-tool contract sweep: 216 registered tools, 216 safe calls
+Docker-mode HTTP: restarted node dist/src/http.js on 127.0.0.1:17366; direct Streamable HTTP probe reports 216 tools
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; objective readiness available through ableton_mcp_get_objective_readiness_report; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; launch readiness audit available through ableton_mcp_get_launch_readiness_audit; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake and source-audio transformation planning available through ableton_plan_reference_audio_intake and ableton_plan_source_audio_transformation; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; indexed device catalog matching available through ableton_render_concept_device_catalog_matches; user-gated UI placement planning available through ableton_plan_concept_device_ui_placement; execution action review available through ableton_render_concept_execution_action_matrix; execution rehearsal available through ableton_render_concept_execution_runbook; full safe client workflow demo available through .\launch.ps1 concept-demo
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; objective readiness available through ableton_mcp_get_objective_readiness_report; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; bridge setup status available through ableton_bridge_setup_status; launch readiness audit available through ableton_mcp_get_launch_readiness_audit; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake and source-audio transformation planning available through ableton_plan_reference_audio_intake and ableton_plan_source_audio_transformation; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; indexed device catalog matching available through ableton_render_concept_device_catalog_matches; user-gated UI placement planning available through ableton_plan_concept_device_ui_placement; execution action review available through ableton_render_concept_execution_action_matrix; execution rehearsal available through ableton_render_concept_execution_runbook; full safe client workflow demo available through .\launch.ps1 concept-demo
 Audit: 0 vulnerabilities
 ```
 

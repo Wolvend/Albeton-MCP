@@ -198,6 +198,24 @@ describe("MCP tool behavior", () => {
     });
   }, INTEGRATION_TIMEOUT_MS);
 
+  it("reports bridge setup status without probing or driving Ableton by default", async () => {
+    await withClient(async (client) => {
+      const structured = await callStructured(client, "ableton_bridge_setup_status", { check_bridge: false });
+      const setup = structured.bridgeSetup as Record<string, any>;
+
+      expect(structured.ok).toBe(true);
+      expect(setup.status).toMatch(/bridge_files_need_install|ableton_not_running|installed_pending_bridge_check|ready/);
+      expect(setup.install.files.length).toBeGreaterThanOrEqual(5);
+      expect(setup.install.files[0]).toHaveProperty("sourceMatchesTarget");
+      expect(setup.live).toHaveProperty("running");
+      expect(setup.bridge).toMatchObject({
+        checked: false,
+        reachable: null
+      });
+      expect(setup.nextSteps.length).toBeGreaterThan(0);
+    });
+  }, INTEGRATION_TIMEOUT_MS);
+
   it("returns offline device browsing guidance with an opt-in bridge discovery path", async () => {
     await withClient(async (client) => {
       const structured = await callStructured(client, "ableton_browse_live_devices", {

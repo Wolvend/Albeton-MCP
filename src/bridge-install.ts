@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { LOCAL_PATHS } from "./config.js";
@@ -24,6 +25,23 @@ export function defaultBridgePresetDir() {
   return path.join(LOCAL_PATHS.userLibrary, "Presets", "MIDI Effects", "Max MIDI Effect");
 }
 
+async function fileDigest(filePath: string) {
+  try {
+    const [stat, data] = await Promise.all([fs.stat(filePath), fs.readFile(filePath)]);
+    return {
+      exists: true,
+      size: stat.size,
+      sha256: createHash("sha256").update(data).digest("hex")
+    };
+  } catch {
+    return {
+      exists: false,
+      size: 0,
+      sha256: null
+    };
+  }
+}
+
 export async function getBridgeInstallPlan(options: BridgeInstallOptions = {}) {
   const sourceDir = bridgeSourceDir();
   const targetDir = path.resolve(options.targetDir ?? defaultBridgePresetDir());
@@ -47,6 +65,59 @@ export async function getBridgeInstallPlan(options: BridgeInstallOptions = {}) {
     files: sourceChecks,
     missingSources: sourceChecks.filter((file) => !file.exists).map((file) => file.fileName),
     dryRun: options.dryRun !== false
+  };
+}
+
+export async function getBridgeInstallStatus(options: BridgeInstallOptions = {}) {
+  const plan = await getBridgeInstallPlan({ ...options, dryRun: true });
+  const files = await Promise.all(plan.files.map(async (file) => {
+    const [source, target] = await Promise.all([fileDigest(file.source), fileDigest(file.target)]);
+    return {
+      fileName: file.fileName,
+      source: {
+        path: redactPath(file.source),
+        ...source
+      },
+      target: {
+        path: redactPath(file.target),
+        ...target
+      },
+      sourceMatchesTarget: source.exists && target.exists && source.sha256 === target.sha256
+    };
+  }));
+  const missingSources = files.filter((file) => !file.source.exists).map((file) => file.fileName);
+  const missingTargets = files.filter((file) => !file.target.exists).map((file) => file.fileName);
+  const mismatchedTargets = files
+    .filter((file) => file.source.exists && file.target.exists && !file.sourceMatchesTarget)
+    .map((file) => file.fileName);
+  const ready = missingSources.length === 0 && missingTargets.length === 0 && mismatchedTargets.length === 0;
+  return {
+    ok: true,
+    ready,
+    status: ready
+      ? "installed_current"
+      : missingSources.length > 0
+        ? "missing_source_files"
+        : missingTargets.length > 0
+          ? "not_installed"
+          : "installed_stale",
+    sourceDir: redactPath(plan.sourceDir),
+    targetDir: plan.redactedTargetDir,
+    files,
+    missingSources,
+    missingTargets,
+    mismatchedTargets,
+    nextSteps: ready
+      ? [
+        "Open Ableton Live.",
+        "Load Ableton MCP Bridge from User Library > Presets > MIDI Effects > Max MIDI Effect.",
+        "Run ableton_bridge_setup_status with check_bridge=true or run live-smoke."
+      ]
+      : [
+        "Run npm run build.",
+        "Run npm run bridge:install or .\\launch.ps1 install.",
+        "Recheck ableton_bridge_setup_status."
+      ]
   };
 }
 

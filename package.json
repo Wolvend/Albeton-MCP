@@ -18,6 +18,7 @@
     "ui-driver:dev": "tsx scripts/ableton-ui-driver.ts",
     "bridge:install": "node dist/scripts/install-ableton-bridge.js --yes",
     "bridge:install:dry-run": "node dist/scripts/install-ableton-bridge.js",
+    "bridge:status": "node dist/scripts/bridge-setup-status.js",
     "bridge:setup-listener": "node dist/scripts/ableton-bridge-setup-listener.js",
     "bridge:setup-listener:dev": "tsx scripts/ableton-bridge-setup-listener.ts",
     "inspect": "npx @modelcontextprotocol/inspector --cli node dist/src/index.js --method tools/list",

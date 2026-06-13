@@ -52,7 +52,7 @@ The current saved Live Set is:
 
 When that set is open, lock the Max device patcher and click `script start` if `ableton_bridge_ping` is not reachable. In normal operation the `node.script ... @autostart 1` object should start the loopback bridge.
 
-MCP clients can call `ableton_bridge_install_plan` for the same dry-run report. `ableton_install_bridge_files` copies the same files when called with `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
+MCP clients can call `ableton_bridge_install_plan` for the same dry-run report. `ableton_install_bridge_files` copies the same files when called with `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`. `ableton_bridge_setup_status` is read-only and reports source/target SHA-256 matches, Ableton process state, and optional loopback reachability with `check_bridge=true`.
 
 ## Current LiveAPI coverage
 

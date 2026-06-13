@@ -71,6 +71,7 @@ const calls: SweepCall[] = [
   { name: "ableton_ui_driver_status", arguments: {} },
   { name: "ableton_bridge_install_instructions", arguments: {} },
   { name: "ableton_bridge_install_plan", arguments: {} },
+  { name: "ableton_bridge_setup_status", arguments: { check_bridge: false } },
   { name: "ableton_get_scan_status", arguments: {} },
   { name: "ableton_search_library", arguments: { query: "", page: 1, pageSize: 5 } },
   { name: "ableton_search_samples", arguments: { query: "", page: 1, pageSize: 5 } },

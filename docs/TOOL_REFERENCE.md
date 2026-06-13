@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-215 tools
+216 tools
 3 resources
 2 prompts
 ```
@@ -51,6 +51,7 @@ Control-mode tools:
 - `ableton_mcp_get_launch_readiness_audit`: returns a compact read-only checklist covering safe defaults, client profile allowlist state, concept workflow readiness, bridge reachability, optional UI-driver gating, LiveAPI music-control coverage, dry-run smoke calls, and exact next calls.
 - `ableton_plan_agent_music_session`: returns a side-effect-free phase plan for Codex, HyperNimbus, OpenClaw, Claude, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity to turn a mood/place brief into concept, sample, arrangement, approval, and delivery calls.
 - `ableton_bridge_status`: reports loopback host/port, serialized queue state, and last bridge action.
+- `ableton_bridge_setup_status`: reports installed bridge file freshness using SHA-256 source/target comparisons, Ableton process state, and optional listener reachability when `check_bridge=true`.
 - `ableton_get_bridge_capabilities`: reports read-only, write-gated, unsupported, and diagnostic bridge actions; `check_bridge=true` compares against the loaded Max for Live bridge when available.
 - `ableton_list_track_sends`: reads selected or indexed track send parameters and return-track names so agents can route layers before using write-gated send changes.
 - `ableton_get_routing_overview`: reads tracks, returns, master state, and the send matrix in one call so agents can plan layered reverb/delay/texture routing quickly.

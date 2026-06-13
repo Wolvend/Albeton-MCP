@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { getBridgeInstallPlan, installBridgeFiles } from "../src/bridge-install.js";
+import { getBridgeInstallPlan, getBridgeInstallStatus, installBridgeFiles } from "../src/bridge-install.js";
 
 let tempDir: string | null = null;
 
@@ -35,5 +35,24 @@ describe("bridge installer", () => {
     for (const fileName of ["Ableton MCP Bridge.amxd", "ableton-mcp-http.js", "ableton-mcp-liveapi.js", "ableton-mcp-status.js", "package.json"]) {
       await expect(fs.stat(path.join(tempDir, fileName))).resolves.toBeTruthy();
     }
+  });
+
+  it("reports missing, stale, and current bridge install status with file hashes", async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ableton-bridge-status-"));
+    const before = await getBridgeInstallStatus({ targetDir: tempDir });
+
+    expect(before.ready).toBe(false);
+    expect(before.status).toBe("not_installed");
+    expect(before.missingTargets).toContain("ableton-mcp-liveapi.js");
+
+    await installBridgeFiles({ dryRun: false, targetDir: tempDir });
+    const after = await getBridgeInstallStatus({ targetDir: tempDir });
+
+    expect(after.ready).toBe(true);
+    expect(after.status).toBe("installed_current");
+    expect(after.missingTargets).toEqual([]);
+    expect(after.mismatchedTargets).toEqual([]);
+    expect(after.files.every((file) => file.sourceMatchesTarget)).toBe(true);
+    expect(after.files.find((file) => file.fileName === "ableton-mcp-liveapi.js")?.source.sha256).toMatch(/^[a-f0-9]{64}$/);
   });
 });

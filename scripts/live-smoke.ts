@@ -52,6 +52,13 @@ export type LiveSmokeReport = {
       automationBreakpointWrites: string | null;
     };
   };
+  bridgeSetup: {
+    status: string | null;
+    installReady: boolean | null;
+    liveRunning: boolean | null;
+    checked: boolean | null;
+    reachable: boolean | null;
+  };
   bridgeCapabilitySummary: Record<string, unknown> | null;
   counts: {
     tracks: number | null;
@@ -69,6 +76,7 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false }, required: true },
   { name: "ableton_live_status", arguments: {}, required: true },
   { name: "ableton_bridge_status", arguments: {}, required: true },
+  { name: "ableton_bridge_setup_status", arguments: { check_bridge: false }, required: true },
   { name: "ableton_bridge_ping", arguments: {}, required: true },
   { name: "ableton_get_live_state", arguments: {}, required: true },
   { name: "ableton_get_full_snapshot", arguments: {}, required: true },
@@ -173,6 +181,7 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
   const objectiveReadiness = resultByName(results, "ableton_mcp_get_objective_readiness_report")?.structuredContent;
   const launchReadiness = resultByName(results, "ableton_mcp_get_launch_readiness_audit")?.structuredContent;
   const bridgeCapabilities = resultByName(results, "ableton_get_bridge_capabilities")?.structuredContent;
+  const bridgeSetup = resultByName(results, "ableton_bridge_setup_status")?.structuredContent;
   const snapshot = resultByName(results, "ableton_get_full_snapshot")?.structuredContent;
   const tracks = resultByName(results, "ableton_list_tracks")?.structuredContent;
   const scenes = resultByName(results, "ableton_list_scenes")?.structuredContent;
@@ -220,6 +229,13 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
         nativeDeviceInsertion: coverageAreaStatus(launchReadiness, "native_device_insertion"),
         automationBreakpointWrites: coverageAreaStatus(launchReadiness, "automation_breakpoint_writes")
       }
+    },
+    bridgeSetup: {
+      status: stringAt(bridgeSetup, [["bridgeSetup", "status"]]),
+      installReady: booleanAt(bridgeSetup, [["bridgeSetup", "install", "ready"]]),
+      liveRunning: booleanAt(bridgeSetup, [["bridgeSetup", "live", "running"]]),
+      checked: booleanAt(bridgeSetup, [["bridgeSetup", "bridge", "checked"]]),
+      reachable: booleanAt(bridgeSetup, [["bridgeSetup", "bridge", "reachable"]])
     },
     bridgeCapabilitySummary: asRecord(getNested(bridgeCapabilities, ["capabilities", "summary"])) ?? null,
     counts,
