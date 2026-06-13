@@ -59,6 +59,46 @@ describe("MCP tool behavior", () => {
     });
   }, INTEGRATION_TIMEOUT_MS);
 
+  it("reports a launch readiness audit for safe agent startup decisions", async () => {
+    await withClient(async (client) => {
+      const structured = await callStructured(client, "ableton_mcp_get_launch_readiness_audit", { check_bridge: false });
+      const audit = structured.launchReadiness as Record<string, any>;
+      const checks = audit.checks as Record<string, any>[];
+
+      expect(structured.ok).toBe(true);
+      expect(audit.mode).toMatch(/ready_for_|needs_attention/);
+      expect(audit.okForDefaultClientUse).toBe(true);
+      expect(audit.summary.safeToolCount).toBeGreaterThan(100);
+      expect(audit.summary.bridgeReachable).toBe(false);
+      expect(checks.map((check) => check.id)).toEqual(expect.arrayContaining([
+        "safe_defaults",
+        "client_profiles",
+        "concept_workflow",
+        "background_live_bridge",
+        "optional_ui_driver"
+      ]));
+      expect(checks.find((check) => check.id === "background_live_bridge")).toMatchObject({
+        status: "warn",
+        evidence: {
+          checked: false,
+          reachable: null
+        }
+      });
+      expect(checks.find((check) => check.id === "optional_ui_driver")).toMatchObject({
+        status: "pass",
+        evidence: {
+          enabledByDefault: false,
+          excludedFromSafeToolAllowlist: true
+        }
+      });
+      expect(audit.guardrails).toContain("This audit is read-only.");
+      expect(audit.exactNextToolCalls.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_plan_agent_music_session",
+        "ableton_plan_full_concept_production"
+      ]));
+    });
+  }, INTEGRATION_TIMEOUT_MS);
+
   it("reports the safe HyperNimbus/OpenClaw tool allowlist without enabling risky tools", async () => {
     await withClient(async (client) => {
       const structured = await callStructured(client, "ableton_mcp_get_safe_tool_allowlist", {});
@@ -76,6 +116,7 @@ describe("MCP tool behavior", () => {
         "ableton_render_concept_automation_map",
         "ableton_plan_concept_device_ui_placement",
         "ableton_render_concept_execution_manifest",
+        "ableton_mcp_get_launch_readiness_audit",
         "ableton_mcp_get_safe_tool_allowlist"
       ]));
       expect(tools).not.toContain("ableton_execute_concept_plan");
@@ -153,6 +194,7 @@ describe("MCP tool behavior", () => {
       expect(bootstrap.server).toBe("ableton-mcp");
       expect(bootstrap.transportDefaults.streamableHttp.url).toBe("http://127.0.0.1:17366/mcp");
       expect(bootstrap.safeToolAllowlist.tools).toContain("ableton_mcp_get_client_bootstrap_bundle");
+      expect(bootstrap.safeToolAllowlist.tools).toContain("ableton_mcp_get_launch_readiness_audit");
       expect(bootstrap.clients.openclaw.commands.join("\n")).toContain("openclaw mcp doctor ableton-mcp --probe");
       expect(bootstrap.clients.openRouter.note).toContain("host app");
       expect(bootstrap.clients.llamaCpp.note).toContain("wrapper");
@@ -166,6 +208,7 @@ describe("MCP tool behavior", () => {
         "ableton_begin_concept_device_ui_session"
       ]));
       expect(bootstrap.recommendedAgentWorkflow.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_mcp_get_launch_readiness_audit",
         "ableton_plan_full_concept_production",
         "ableton_curate_concept_samples",
         "ableton_render_concept_device_chain_spec",

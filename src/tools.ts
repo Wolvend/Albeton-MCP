@@ -571,7 +571,7 @@ function clientBootstrapBundle() {
       codex: {
         mode: "stdio",
         configHint: profiles.stdio,
-        firstCalls: ["ableton_get_production_readiness", "ableton_mcp_get_safe_tool_allowlist", "ableton_list_concept_presets"]
+        firstCalls: ["ableton_mcp_get_launch_readiness_audit", "ableton_get_production_readiness", "ableton_mcp_get_safe_tool_allowlist", "ableton_list_concept_presets"]
       },
       claudeDesktop: {
         mode: "stdio",
@@ -620,6 +620,7 @@ function clientBootstrapBundle() {
       }
     },
     recommendedAgentWorkflow: [
+      { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false } },
       { name: "ableton_plan_agent_music_session", arguments: { concept: "describe the place, feeling, or soundtrack brief", client: "codex", include_sample_search: true, check_bridge: false } },
       { name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
       { name: "ableton_list_concept_presets", arguments: {} },
@@ -706,6 +707,7 @@ async function agentMusicSessionPlan(args: {
       phase: "readiness",
       objective: "Decide whether this run is offline planning, live read/dry-run, or gated write-ready.",
       calls: [
+        { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: args.check_bridge } },
         { name: "ableton_get_production_readiness", arguments: { check_bridge: args.check_bridge } },
         { name: "ableton_control_mode_status", arguments: {} },
         { name: "ableton_mcp_get_safe_tool_allowlist", arguments: {} }
@@ -966,6 +968,117 @@ async function productionReadinessReport(checkBridge: boolean) {
   };
 }
 
+async function launchReadinessAudit(checkBridge: boolean) {
+  const readiness = await productionReadinessReport(checkBridge) as Record<string, any>;
+  const bridgeReachable = readiness.bridge?.reachable === true;
+  const safeAllowlist = safeToolAllowlistReport();
+  const optionalUi = clientBootstrapBundle().optionalGatedWorkflows.conceptDeviceUiSession;
+  const safeTools = safeAllowlist.tools as readonly string[];
+  const checks = [
+    {
+      id: "safe_defaults",
+      status: !FLAGS.write && !FLAGS.downloads && !FLAGS.uiControl ? "pass" : "fail",
+      evidence: {
+        writeEnabled: FLAGS.write,
+        downloadsEnabled: FLAGS.downloads,
+        uiControlEnabled: FLAGS.uiControl
+      },
+      nextStep: "Keep WRITE, DOWNLOADS, and UI_CONTROL disabled in default client profiles."
+    },
+    {
+      id: "client_profiles",
+      status: safeAllowlist.count >= 100
+        && safeAllowlist.endpoint.startsWith("http://127.0.0.1:")
+        && safeTools.includes("ableton_plan_agent_music_session")
+        && !safeTools.includes("ableton_execute_concept_plan")
+        && !safeTools.includes("ableton_begin_concept_device_ui_session")
+        ? "pass"
+        : "fail",
+      evidence: {
+        profile: safeAllowlist.profile,
+        endpoint: safeAllowlist.endpoint,
+        safeToolCount: safeAllowlist.count,
+        excludesRealExecution: !safeTools.includes("ableton_execute_concept_plan"),
+        excludesGatedUiSession: !safeTools.includes("ableton_begin_concept_device_ui_session")
+      },
+      nextStep: "Run npm run docker:hypernimbus:verify after starting local HTTP mode."
+    },
+    {
+      id: "concept_workflow",
+      status: readiness.conceptToMusic?.planningReady && readiness.conceptToMusic?.dryRunExecutionReady ? "pass" : "fail",
+      evidence: {
+        preset: readiness.conceptToMusic?.preset,
+        planningReady: readiness.conceptToMusic?.planningReady,
+        dryRunExecutionReady: readiness.conceptToMusic?.dryRunExecutionReady
+      },
+      nextStep: "Call ableton_plan_agent_music_session or ableton_plan_full_concept_production to start a side-effect-free music workflow."
+    },
+    {
+      id: "background_live_bridge",
+      status: bridgeReachable ? "pass" : checkBridge ? "fail" : "warn",
+      evidence: {
+        checked: readiness.bridge?.checked,
+        reachable: readiness.bridge?.reachable,
+        runtime: readiness.bridge?.runtime
+      },
+      nextStep: bridgeReachable
+        ? "Run live-smoke, then use read tools and dry-run execution before any write gate."
+        : "Open Ableton, load the Max for Live bridge, then run launch.ps1 live-smoke -SkipSetup."
+    },
+    {
+      id: "optional_ui_driver",
+      status: optionalUi.enabledByDefault === false && optionalUi.excludedFromSafeToolAllowlist === true ? "pass" : "fail",
+      evidence: {
+        enabledByDefault: optionalUi.enabledByDefault,
+        excludedFromSafeToolAllowlist: optionalUi.excludedFromSafeToolAllowlist,
+        requiredGate: optionalUi.requiredGate
+      },
+      nextStep: "Use UI/mouse control only after the user starts the UI driver and explicitly enables ABLETON_MCP_ENABLE_UI_CONTROL=1."
+    }
+  ];
+  const failed = checks.filter((check) => check.status === "fail").map((check) => check.id);
+  const warnings = checks.filter((check) => check.status === "warn").map((check) => check.id);
+  const mode = failed.length > 0
+    ? "needs_attention"
+    : warnings.length > 0
+      ? "ready_for_offline_planning"
+      : bridgeReachable
+        ? "ready_for_live_read_dry_run"
+        : "ready_for_offline_planning";
+
+  return {
+    mode,
+    okForDefaultClientUse: failed.length === 0,
+    checkBridge,
+    checks,
+    summary: {
+      passed: checks.filter((check) => check.status === "pass").length,
+      warnings: warnings.length,
+      failed: failed.length,
+      failedChecks: failed,
+      warningChecks: warnings,
+      safeToolCount: safeAllowlist.count,
+      bridgeReachable,
+      liveRunning: readiness.liveRunning
+    },
+    exactNextToolCalls: bridgeReachable ? [
+      { name: "ableton_get_full_snapshot", arguments: {} },
+      { name: "ableton_plan_agent_music_session", arguments: { concept: "describe the place, feeling, or cue", client: "codex", check_bridge: true } },
+      { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-...", approval_id: "approval-...", approval_confirmed: true, dry_run: true } }
+    ] : [
+      { name: "ableton_plan_agent_music_session", arguments: { concept: "describe the place, feeling, or cue", client: "codex", check_bridge: false } },
+      { name: "ableton_plan_full_concept_production", arguments: { concept: "describe the place, feeling, or cue", include_sample_search: true } },
+      { name: "ableton_get_production_readiness", arguments: { check_bridge: true } }
+    ],
+    guardrails: [
+      "This audit is read-only.",
+      "Default client profiles must keep writes, downloads, and UI/mouse control disabled.",
+      "Real Ableton writes require ABLETON_MCP_ENABLE_WRITE=1, dry_run=false, and reviewed approval where applicable.",
+      "Foreground UI/mouse control is a separate user-gated workflow, not part of default agent execution."
+    ]
+  };
+}
+
 const toolDefs: ToolDef[] = [
   { name: "ableton_find_installation", description: "Find configured Ableton Live and Max paths for this host platform.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
@@ -1021,6 +1134,7 @@ const toolDefs: ToolDef[] = [
   } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
   { name: "ableton_mcp_get_safe_tool_allowlist", description: "Return the HyperNimbus/OpenClaw safe tool allowlist as structured data and CSV without changing client configuration.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, safeToolAllowlist: safeToolAllowlistReport() }) },
+  { name: "ableton_mcp_get_launch_readiness_audit", description: "Return a concise read-only launch audit for client profiles, safe defaults, concept workflow readiness, bridge state, and optional UI control gates.", inputSchema: { check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, launchReadiness: await launchReadinessAudit(args.check_bridge) }) },
   { name: "ableton_plan_agent_music_session", description: "Return a safe step-by-step agent workflow for turning a mood/place brief into a layered Ableton production without side effects.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), reference_path: z.string().min(1).optional(), client: AgentMusicClient, include_sample_search: z.boolean().default(true), include_audio_preparation: z.boolean().default(true), check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, workflow: await agentMusicSessionPlan(args) }) },
   { name: "ableton_get_production_readiness", description: "Summarize Ableton MCP readiness for professional music-production work.", inputSchema: { check_bridge: z.boolean().default(true) }, annotations: ro, handler: async (args) => ({ ok: true, readiness: await productionReadinessReport(args.check_bridge) }) },
   { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {

@@ -56,6 +56,7 @@ export function buildAgentMusicDryRunToolPlan(options: AgentMusicDryRunOptions):
   };
 
   return [
+    { phase: "readiness", name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false } },
     { phase: "readiness", name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
     {
       phase: "agent_workflow",

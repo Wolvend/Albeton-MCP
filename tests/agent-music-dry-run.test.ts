@@ -30,6 +30,7 @@ describe("agent music dry-run workflow", () => {
     const serialized = JSON.stringify(plan);
 
     expect(names).toEqual([
+      "ableton_mcp_get_launch_readiness_audit",
       "ableton_get_production_readiness",
       "ableton_plan_agent_music_session",
       "ableton_plan_concept_track",

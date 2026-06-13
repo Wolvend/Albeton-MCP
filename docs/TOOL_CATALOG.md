@@ -1,6 +1,6 @@
 # MCP Tool Catalog
 
-The server currently registers 212 MCP tools.
+The server currently registers 214 MCP tools.
 
 Use this command to inspect the live catalog:
 
@@ -18,7 +18,7 @@ Some LiveAPI write requests are intentionally capability-limited until the runni
 | --- | --- |
 | Environment and setup | `ableton_find_installation`, `ableton_get_environment`, `ableton_validate_config`, `ableton_live_status` |
 | Control mode status | `ableton_control_mode_status`, `ableton_bridge_status`, `ableton_get_bridge_capabilities`, `ableton_ui_driver_status` |
-| Production readiness | `ableton_get_production_readiness` reports planning/live-read/write-ready status across gates, client profiles, bridge reachability, concept workflow, and safety posture; `ableton_plan_agent_music_session` returns the exact safe agent workflow for turning a brief into concept, sample, arrangement, approval, and delivery calls; `ableton_ui_control_consent_status`, `ableton_plan_ui_control_session` |
+| Production readiness | `ableton_mcp_get_launch_readiness_audit` returns a compact read-only launch checklist for agent startup; `ableton_get_production_readiness` reports planning/live-read/write-ready status across gates, client profiles, bridge reachability, concept workflow, and safety posture; `ableton_plan_agent_music_session` returns the exact safe agent workflow for turning a brief into concept, sample, arrangement, approval, and delivery calls; `ableton_ui_control_consent_status`, `ableton_plan_ui_control_session` |
 | Named UI actions | `ableton_list_safe_ui_actions`, `ableton_plan_ui_action_sequence`, `ableton_run_ui_action_sequence` |
 | Library and cache | `ableton_scan_library`, `ableton_search_library`, `ableton_get_scan_status` |
 | Ableton set analysis | `ableton_analyze_set`, `ableton_get_set_summary`, `ableton_compare_sets` |
@@ -32,7 +32,7 @@ Some LiveAPI write requests are intentionally capability-limited until the runni
 | Plugin/package safety | `ableton_validate_plugin_package`, `ableton_scan_vst_folders`, `ableton_check_plugin_license_metadata` |
 | Export planning | `ableton_plan_export_audio`, `ableton_validate_export_settings`, `ableton_prepare_stems_plan` |
 | Composition helpers | `ableton_generate_session_plan`, `ableton_generate_midi_clip_plan`, `ableton_generate_drum_rack_plan`, `ableton_suggest_instrument_chain`, `ableton_suggest_effect_chain`, `ableton_suggest_arrangement`, `ableton_suggest_mix_actions`, `ableton_validate_production_plan` |
-| Client configuration | `ableton_mcp_get_client_connection_profiles`, `ableton_mcp_get_client_bootstrap_bundle`, `ableton_mcp_get_safe_tool_allowlist` |
+| Client configuration | `ableton_mcp_get_client_connection_profiles`, `ableton_mcp_get_client_bootstrap_bundle`, `ableton_mcp_get_safe_tool_allowlist`, `ableton_mcp_get_launch_readiness_audit` |
 | Runtime and evaluation | `ableton_mcp_health`, `ableton_mcp_security_report`, `ableton_mcp_run_eval_suite` |
 
 ## Context exposed through MCP

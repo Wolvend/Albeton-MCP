@@ -78,6 +78,7 @@ describe("HyperNimbus Docker MCP profile plan", () => {
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_bridge_capabilities");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_mcp_get_client_bootstrap_bundle");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_mcp_get_safe_tool_allowlist");
+    expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_mcp_get_launch_readiness_audit");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_plan_agent_music_session");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_execute_concept_plan");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_begin_concept_device_ui_session");
@@ -117,11 +118,13 @@ describe("HyperNimbus Docker MCP profile plan", () => {
   it("parses only the enabled tool block for Ableton MCP profile exports", () => {
     const profile = exportedProfileFor([
       "ableton_find_installation",
+      "ableton_mcp_get_launch_readiness_audit",
       "ableton_mcp_get_safe_tool_allowlist"
     ]);
 
     expect(parseDockerProfileEnabledTools(profile)).toEqual([
       "ableton_find_installation",
+      "ableton_mcp_get_launch_readiness_audit",
       "ableton_mcp_get_safe_tool_allowlist"
     ]);
   });
