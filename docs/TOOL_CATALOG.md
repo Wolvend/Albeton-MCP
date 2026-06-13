@@ -1,6 +1,6 @@
 # MCP Tool Catalog
 
-The server currently registers 197 MCP tools.
+The server currently registers 198 MCP tools.
 
 Use this command to inspect the live catalog:
 

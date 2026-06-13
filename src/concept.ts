@@ -62,6 +62,8 @@ export type ConceptExecutionManifestOptions = {
   arrangement_id: string;
 };
 
+export type ConceptProductionScorecardOptions = ConceptExecutionPreflightOptions;
+
 export type ConceptExecutionOptions = {
   arrangement_id: string;
   dry_run: boolean;
@@ -1947,6 +1949,7 @@ export async function planConceptProduction(options: ConceptProductionPlanInput)
   const arrangement = await buildLayeredArrangementPlan(concept.plan.id, options.sample_assignments ?? []);
   const executionPreview = await executeConceptPlan({ arrangement_id: arrangement.arrangement.id, dry_run: true });
   const delivery = await renderDeliveryPlan(concept.plan.id);
+  const scorecard = await renderConceptProductionScorecard({ arrangement_id: arrangement.arrangement.id, check_bridge: false });
 
   return {
     workflow: "plan_only",
@@ -1959,6 +1962,7 @@ export async function planConceptProduction(options: ConceptProductionPlanInput)
     concept,
     sampleSearch,
     arrangement,
+    scorecard,
     executionPreview,
     delivery,
     nextSteps: [
@@ -2527,6 +2531,334 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
       "Load the Max for Live bridge, then run preflightWithBridge.",
       "Only run realExecutionAfterApproval after reviewing the approval bundle and intentionally enabling ABLETON_MCP_ENABLE_WRITE=1."
     ]
+  };
+}
+
+function productionScoreCheck(
+  id: string,
+  label: string,
+  points: number,
+  maxPoints: number,
+  evidence: Record<string, unknown>,
+  nextSteps: string[] = []
+) {
+  return {
+    id,
+    label,
+    status: points >= maxPoints ? "pass" : points >= maxPoints * 0.5 ? "warning" : "fail",
+    points,
+    maxPoints,
+    evidence,
+    ...(nextSteps.length > 0 ? { nextSteps } : {})
+  };
+}
+
+export async function renderConceptProductionScorecard(options: ConceptProductionScorecardOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const checkBridge = options.check_bridge === true;
+  const timeline = await renderConceptTimeline(concept.id);
+  const mixPlan = await renderConceptMixPlan(concept.id);
+  const delivery = await renderDeliveryPlan(concept.id);
+  const preflight = await preflightConceptExecution({ arrangement_id: arrangement.id, check_bridge: checkBridge }) as {
+    status?: string;
+    readyForRealWrite?: boolean;
+    issues?: Array<{ severity?: string; code?: string; message?: string }>;
+    bridge?: { checked?: boolean; reachable?: boolean | null };
+  };
+  const routing = await planConceptRoutingReadiness({ arrangement_id: arrangement.id, check_bridge: checkBridge }) as {
+    summary?: { plannedSendCount?: number; uniqueReturnTargets?: string[]; writesAbleton?: boolean };
+    bridge?: { checked?: boolean; reachable?: boolean | null };
+    discoveryCalls?: Array<{ name: string; arguments: Record<string, unknown> }>;
+  };
+  const readiness = await planConceptDeviceAutomationReadiness({ arrangement_id: arrangement.id, check_bridge: checkBridge }) as {
+    summary?: {
+      deviceChains?: number;
+      automationTargets?: number;
+      realDeviceInsertionSupported?: boolean;
+      realAutomationWriteSupported?: boolean;
+    };
+    bridge?: { checked?: boolean; reachable?: boolean | null };
+  };
+
+  const audioLayers = concept.layers.filter((layer) => layer.type === "audio");
+  const midiLayers = concept.layers.filter((layer) => layer.type === "midi");
+  const returnLayers = concept.layers.filter((layer) => layer.type === "return");
+  const assignedAudioLayerNames = new Set((arrangement.sampleAssignments ?? []).map((assignment) => assignment.layer.toLowerCase()));
+  const assignedAudioLayers = audioLayers.filter((layer) => assignedAudioLayerNames.has(layer.name.toLowerCase()));
+  const missingAudioLayers = audioLayers
+    .filter((layer) => !assignedAudioLayerNames.has(layer.name.toLowerCase()))
+    .map((layer) => layer.name);
+  const requiredHorrorLayers = concept.preset === "liminal_backrooms_horror"
+    ? ["Degraded Memory", "Stretched Room", "Low Pressure", "Mechanical Texture", "Reversed Fragments", "Sparse Motif", "Memory Reverb", "Distant Delay"]
+    : [];
+  const coveredRequiredHorrorLayers = requiredHorrorLayers.filter((layerName) =>
+    concept.layers.some((layer) => layer.name.toLowerCase() === layerName.toLowerCase())
+  );
+  const actionNames = new Set(arrangement.actions.map((action) => action.action));
+  const actionCount = (name: string) => arrangement.actions.filter((action) => action.action === name).length;
+  const hasAllActions = (names: string[]) => names.every((name) => actionNames.has(name));
+  const unsafeActions = arrangement.actions.filter((action) => !action.safeToExecute);
+  const bridgeIssues = Array.isArray(preflight.issues) ? preflight.issues : [];
+  const blockers = bridgeIssues.filter((issue) => issue.severity === "blocker");
+  const deliveryStems = Array.isArray(delivery.stems) ? delivery.stems : [];
+  const sectionList = Array.isArray(timeline.sections) ? timeline.sections : [];
+
+  const checks = [
+    productionScoreCheck(
+      "layer_architecture",
+      "Layer architecture matches the requested concept.",
+      [
+        concept.layers.length >= 6 ? 3 : 0,
+        audioLayers.length >= 4 ? 4 : audioLayers.length >= 2 ? 2 : 0,
+        midiLayers.length >= 1 ? 2 : 0,
+        returnLayers.length >= 2 ? 3 : returnLayers.length >= 1 ? 1 : 0,
+        requiredHorrorLayers.length === 0 || coveredRequiredHorrorLayers.length === requiredHorrorLayers.length ? 6 : Math.floor((coveredRequiredHorrorLayers.length / Math.max(1, requiredHorrorLayers.length)) * 6)
+      ].reduce((sum, value) => sum + value, 0),
+      18,
+      {
+        totalLayers: concept.layers.length,
+        audioLayers: audioLayers.length,
+        midiLayers: midiLayers.length,
+        returnLayers: returnLayers.length,
+        requiredHorrorLayers,
+        coveredRequiredHorrorLayers
+      },
+      coveredRequiredHorrorLayers.length === requiredHorrorLayers.length
+        ? []
+        : ["Regenerate the concept plan with the liminal/backrooms/horror preset or add missing required layers before execution."]
+    ),
+    productionScoreCheck(
+      "section_arc",
+      "Section map creates a usable musical/video arc.",
+      [
+        concept.sections.length >= 5 ? 4 : concept.sections.length >= 3 ? 2 : 0,
+        Math.abs(concept.sections.reduce((sum, section) => sum + section.duration_seconds, 0) - concept.target_duration_seconds) <= 2 ? 2 : 0,
+        concept.sections.some((section) => /collapse|decay|tail|unresolved/i.test(section.name)) ? 2 : 0,
+        sectionList.every((section) => {
+          const record = section && typeof section === "object" ? section as { activeLayers?: unknown } : {};
+          return Array.isArray(record.activeLayers) && record.activeLayers.length > 0;
+        }) ? 2 : 0
+      ].reduce((sum, value) => sum + value, 0),
+      10,
+      {
+        sectionCount: concept.sections.length,
+        sections: concept.sections.map((section) => section.name),
+        timelineSections: sectionList.length
+      },
+      ["Use ableton_render_concept_timeline to review entrances before real execution."]
+    ),
+    productionScoreCheck(
+      "executable_action_coverage",
+      "Arrangement contains the core executable Ableton operations.",
+      [
+        actionNames.has("ableton_set_tempo") ? 2 : 0,
+        hasAllActions(["ableton_create_audio_track", "ableton_create_midi_track", "ableton_create_return_track"]) ? 3 : 0,
+        hasAllActions(["ableton_create_scene", "ableton_set_scene_color", "ableton_set_scene_tempo", "ableton_set_scene_time_signature"]) ? 3 : 0,
+        actionNames.has("ableton_create_arrangement_marker") ? 2 : 0,
+        hasAllActions(["ableton_set_track_volume", "ableton_set_track_pan", "ableton_set_track_send"]) ? 3 : 0,
+        actionNames.has("ableton_insert_midi_notes") ? 2 : 0,
+        hasAllActions(["ableton_rename_clip", "ableton_set_clip_loop", "ableton_set_clip_color"]) ? 3 : 0
+      ].reduce((sum, value) => sum + value, 0),
+      18,
+      {
+        totalActions: arrangement.actions.length,
+        tempo: actionNames.has("ableton_set_tempo"),
+        trackCreates: actionCount("ableton_create_audio_track") + actionCount("ableton_create_midi_track") + actionCount("ableton_create_return_track"),
+        sceneCreates: actionCount("ableton_create_scene"),
+        midiNoteInsertions: actionCount("ableton_insert_midi_notes"),
+        samplePlacements: actionCount("ableton_load_preset_or_sample"),
+        sendMoves: actionCount("ableton_set_track_send")
+      },
+      ["Use ableton_render_concept_execution_manifest to inspect the exact phase order."]
+    ),
+    productionScoreCheck(
+      "sample_coverage",
+      "Approved audio material is assigned to the planned audio layers.",
+      assignedAudioLayers.length >= audioLayers.length && audioLayers.length > 0
+        ? 12
+        : assignedAudioLayers.length > 0
+          ? 7
+          : concept.reference?.approvedForAudioPlacement
+            ? 6
+            : 3,
+      12,
+      {
+        audioLayers: audioLayers.map((layer) => layer.name),
+        assignedAudioLayers: assignedAudioLayers.map((layer) => layer.name),
+        missingAudioLayers,
+        approvedReferenceAudio: concept.reference?.approvedForAudioPlacement === true
+      },
+      missingAudioLayers.length > 0
+        ? [
+          "Use ableton_search_concept_samples for licensed metadata or choose local samples under approved roots.",
+          "Use ableton_prepare_concept_audio_layers for approved local reference audio, then rebuild the arrangement from the prepared manifest."
+        ]
+        : []
+    ),
+    productionScoreCheck(
+      "routing_and_space",
+      "Return tracks and sends support layered depth.",
+      [
+        returnLayers.length >= 2 ? 3 : returnLayers.length >= 1 ? 1 : 0,
+        actionCount("ableton_set_track_send") >= 4 ? 4 : actionCount("ableton_set_track_send") >= 1 ? 2 : 0,
+        Number(routing.summary?.plannedSendCount ?? 0) > 0 ? 3 : 0,
+        Array.isArray(routing.summary?.uniqueReturnTargets) && routing.summary!.uniqueReturnTargets!.length >= 2 ? 2 : 1
+      ].reduce((sum, value) => sum + value, 0),
+      12,
+      {
+        returnLayers: returnLayers.map((layer) => layer.name),
+        plannedSendActions: actionCount("ableton_set_track_send"),
+        routingSummary: routing.summary ?? null,
+        bridgeChecked: routing.bridge?.checked === true,
+        bridgeReachable: routing.bridge?.reachable ?? null
+      },
+      ["Run ableton_plan_concept_routing_readiness with check_bridge=true after the Max for Live bridge is loaded."]
+    ),
+    productionScoreCheck(
+      "device_and_automation_readiness",
+      "Device chains and automation targets are explicit and reviewable.",
+      [
+        arrangement.devicePlan.length >= concept.layers.length ? 4 : arrangement.devicePlan.length > 0 ? 2 : 0,
+        arrangement.automationPlan.length >= 4 ? 4 : arrangement.automationPlan.length > 0 ? 2 : 0,
+        Number(readiness.summary?.deviceChains ?? 0) > 0 ? 2 : 0,
+        Number(readiness.summary?.automationTargets ?? 0) > 0 ? 2 : 0
+      ].reduce((sum, value) => sum + value, 0),
+      12,
+      {
+        stagedDeviceChains: arrangement.devicePlan.length,
+        stagedAutomationTargets: arrangement.automationPlan.length,
+        bridgeInsertionSupported: readiness.summary?.realDeviceInsertionSupported ?? false,
+        bridgeAutomationSupported: readiness.summary?.realAutomationWriteSupported ?? false,
+        bridgeChecked: readiness.bridge?.checked === true,
+        bridgeReachable: readiness.bridge?.reachable ?? null
+      },
+      ["Keep device insertion and automation staged until discovery proves exact devices and parameters."]
+    ),
+    productionScoreCheck(
+      "execution_safety",
+      "Execution remains gated, dry-run first, and bridge-aware.",
+      [
+        unsafeActions.length === 0 ? 2 : 0,
+        arrangement.actions.every((action) => !action.payload || typeof action.payload === "object") ? 1 : 0,
+        preflight.status === "ready" ? 2 : preflight.status === "bridge_not_checked" ? 1 : 0,
+        FLAGS.write === false && FLAGS.downloads === false && FLAGS.uiControl === false ? 2 : 0,
+        blockers.length === 0 ? 1 : 0
+      ].reduce((sum, value) => sum + value, 0),
+      8,
+      {
+        unsafeActions: unsafeActions.length,
+        preflightStatus: preflight.status ?? null,
+        readyForRealWrite: preflight.readyForRealWrite === true,
+        bridgeChecked: preflight.bridge?.checked === true,
+        bridgeReachable: preflight.bridge?.reachable ?? null,
+        blockers
+      },
+      preflight.status === "bridge_not_checked"
+        ? ["Run ableton_preflight_concept_execution with check_bridge=true after Ableton and the bridge are loaded."]
+        : []
+    ),
+    productionScoreCheck(
+      "delivery_readiness",
+      "Export and stem handoff settings are present.",
+      [
+        delivery.export.sampleRate === 48000 && delivery.export.bitDepth === "24" ? 3 : 0,
+        delivery.export.normalize === false ? 2 : 0,
+        deliveryStems.length >= concept.layers.length ? 3 : 0,
+        mixPlan.masterBus?.targetPeakDb === -6 ? 2 : 0
+      ].reduce((sum, value) => sum + value, 0),
+      10,
+      {
+        export: delivery.export,
+        stemCount: deliveryStems.length,
+        masterBus: mixPlan.masterBus ?? null
+      },
+      ["Generate attribution before publishing if remote samples are used."]
+    )
+  ];
+  const score = checks.reduce((sum, check) => sum + check.points, 0);
+  const maxScore = checks.reduce((sum, check) => sum + check.maxPoints, 0);
+  const status = blockers.length > 0
+    ? "blocked"
+    : score >= 85
+      ? "ready_for_dry_run"
+      : score >= 70
+        ? "needs_samples_or_bridge_review"
+        : "needs_plan_iteration";
+
+  return {
+    scorecardType: "concept_production_scorecard",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      title: sanitizeRemoteSampleText(concept.concept, 500),
+      style: concept.style,
+      tempo: concept.tempo,
+      key: concept.key,
+      duration_seconds: concept.target_duration_seconds
+    },
+    status,
+    score,
+    maxScore,
+    grade: score >= 90 ? "A" : score >= 80 ? "B" : score >= 70 ? "C" : score >= 60 ? "D" : "needs_rework",
+    realExecutionReady: preflight.readyForRealWrite === true,
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      remoteHttpExposure: false,
+      arbitraryBridgePayloads: false,
+      localPathsRedacted: true
+    },
+    summary: {
+      layers: {
+        total: concept.layers.length,
+        audio: audioLayers.length,
+        midi: midiLayers.length,
+        returns: returnLayers.length,
+        assignedAudio: assignedAudioLayers.length,
+        missingAudioLayers
+      },
+      actions: {
+        total: arrangement.actions.length,
+        samplePlacements: actionCount("ableton_load_preset_or_sample"),
+        midiNoteInsertions: actionCount("ableton_insert_midi_notes"),
+        sends: actionCount("ableton_set_track_send"),
+        unsafe: unsafeActions.length
+      },
+      stagedReview: {
+        deviceChains: arrangement.devicePlan.length,
+        automationTargets: arrangement.automationPlan.length
+      },
+      bridge: {
+        checked: checkBridge,
+        preflightStatus: preflight.status ?? null,
+        reachable: preflight.bridge?.reachable ?? null
+      }
+    },
+    checks,
+    exactNextToolCalls: {
+      timeline: { name: "ableton_render_concept_timeline", arguments: { plan_id: concept.id } },
+      mixPlan: { name: "ableton_render_concept_mix_plan", arguments: { plan_id: concept.id } },
+      executionManifest: { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: arrangement.id } },
+      routingReadiness: { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      deviceAutomationReadiness: { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      preflightWithBridge: { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      dryRunExecution: { name: "ableton_execute_concept_plan", arguments: { arrangement_id: arrangement.id, dry_run: true } },
+      approvalBundle: { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: arrangement.id, check_bridge: true } }
+    },
+    nextSteps: status === "ready_for_dry_run"
+      ? [
+        "Run dryRunExecution to review the exact stored execution path.",
+        "Load Ableton and the Max for Live bridge, then run preflightWithBridge.",
+        "Review approvalBundle before enabling ABLETON_MCP_ENABLE_WRITE=1 for any real execution."
+      ]
+      : [
+        "Resolve warning or fail checks before real execution.",
+        "Fill missing audio layers with approved local samples or prepared reference-audio layers.",
+        "Run routingReadiness and deviceAutomationReadiness after the bridge is loaded."
+      ]
   };
 }
 

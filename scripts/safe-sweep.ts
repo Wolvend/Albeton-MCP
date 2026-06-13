@@ -149,6 +149,7 @@ const calls: SweepCall[] = [
   { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep" } } },
   { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } },
   { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: safeArrangement.arrangement.id } },
+  { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } }
 ];
 

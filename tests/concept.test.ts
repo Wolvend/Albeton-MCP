@@ -21,6 +21,7 @@ import {
   prepareConceptAudioLayers,
   renderConceptExecutionManifest,
   renderConceptMixPlan,
+  renderConceptProductionScorecard,
   renderConceptTimeline,
   readArrangementPlan,
   renderDeliveryPlan,
@@ -128,6 +129,10 @@ describe("concept-to-music planning", () => {
     const manifest = await renderConceptExecutionManifest({
       arrangement_id: arrangement.arrangement.id
     });
+    const scorecard = await renderConceptProductionScorecard({
+      arrangement_id: arrangement.arrangement.id,
+      check_bridge: false
+    });
     const timeline = await renderConceptTimeline(planned.plan.id);
     const mixPlan = await renderConceptMixPlan(planned.plan.id);
     const delivery = await renderDeliveryPlan(planned.plan.id);
@@ -212,6 +217,23 @@ describe("concept-to-music planning", () => {
     });
     expect(manifest.exactToolCalls.routingReadiness.name).toBe("ableton_plan_concept_routing_readiness");
     expect(manifest.stagedReview.routingReadinessToolCall.name).toBe("ableton_plan_concept_routing_readiness");
+    expect(scorecard.scorecardType).toBe("concept_production_scorecard");
+    expect(scorecard.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, arbitraryBridgePayloads: false });
+    expect(scorecard.status).toMatch(/ready_for_dry_run|needs_samples_or_bridge_review/);
+    expect(scorecard.score).toBeGreaterThanOrEqual(70);
+    expect(scorecard.summary.layers.missingAudioLayers).toContain("Degraded Memory");
+    expect(scorecard.summary.actions.samplePlacements).toBeGreaterThan(0);
+    expect(scorecard.checks.map((check) => check.id)).toEqual(expect.arrayContaining([
+      "layer_architecture",
+      "sample_coverage",
+      "routing_and_space",
+      "execution_safety"
+    ]));
+    expect(scorecard.exactNextToolCalls.preflightWithBridge.name).toBe("ableton_preflight_concept_execution");
+    expect(scorecard.exactNextToolCalls.dryRunExecution.arguments).toMatchObject({
+      arrangement_id: arrangement.arrangement.id,
+      dry_run: true
+    });
     expect(timeline.sectionCount).toBe(5);
     expect(timeline.sections.map((section) => section.name)).toContain("Spatial Collapse");
     expect(timeline.sections.some((section) => section.activeLayers.some((layer) => layer.name === "Sparse Motif" && layer.role === "entrance"))).toBe(true);
@@ -333,6 +355,8 @@ describe("concept-to-music planning", () => {
     expect(production.sampleSearch).toMatchObject({ skipped: true });
     expect(production.concept.plan.preset).toBe("liminal_backrooms_horror");
     expect(production.arrangement.arrangement.sampleAssignments[0]?.path).not.toBe(stagedPath);
+    expect(production.scorecard.scorecardType).toBe("concept_production_scorecard");
+    expect(production.scorecard.summary.layers.assignedAudio).toBeGreaterThan(0);
     expect(production.executionPreview.dry_run).toBe(true);
     expect(production.executionPreview.arrangement?.id).toBe(production.arrangement.arrangement.id);
     expect(production.delivery.export.sampleRate).toBe(48000);
