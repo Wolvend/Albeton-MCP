@@ -138,6 +138,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_install_bridge_files", arguments: { dry_run: true } },
     { name: "ableton_bridge_ping", arguments: {}, expected: "any" },
     { name: "ableton_bridge_status", arguments: {} },
+    { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false } },
     { name: "ableton_ui_driver_status", arguments: {} },
     { name: "ableton_ui_control_consent_status", arguments: {} },
     { name: "ableton_plan_ui_control_session", arguments: { purpose: "all-tool contract sweep", actions: ["focus", "screenshot"] } },

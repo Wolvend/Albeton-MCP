@@ -55,6 +55,7 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 ## Implemented v1 Actions
 
 - `ping`
+- `bridge_capabilities`
 - `live_state`
 - `transport`
 - `tempo`

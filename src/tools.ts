@@ -4,7 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { analyzeAbletonSet, analyzeAudioFile, convertAudioFile } from "./analysis.js";
-import { bridgeAction, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
+import { bridgeAction, getBridgeCapabilityMatrix, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
 import { FLAGS, LOCAL_PATHS, PLATFORM } from "./config.js";
 import { environmentSnapshot } from "./environment.js";
@@ -125,6 +125,45 @@ async function librarySearch(args: any, kind?: string) {
 
 async function bridgeRead(action: string, payload: Record<string, unknown> = {}) {
   return { ok: true, bridge: await bridgeAction(action, payload) as Record<string, unknown> };
+}
+
+async function bridgeCapabilityReport(checkBridge: boolean) {
+  const capabilities = getBridgeCapabilityMatrix();
+  if (!checkBridge) {
+    return {
+      ok: true,
+      capabilities,
+      bridge: {
+        checked: false,
+        reachable: null,
+        nextStep: "Set check_bridge=true after the Max for Live bridge is loaded to compare live bridge capabilities."
+      }
+    };
+  }
+
+  try {
+    return {
+      ok: true,
+      capabilities,
+      bridge: {
+        checked: true,
+        reachable: true,
+        report: await bridgeAction("bridge_capabilities") as Record<string, unknown>
+      }
+    };
+  } catch (error) {
+    return {
+      ok: true,
+      capabilities,
+      bridge: {
+        checked: true,
+        reachable: false,
+        code: error instanceof AbletonMcpError ? error.code : "BRIDGE_CHECK_FAILED",
+        error: error instanceof Error ? error.message : String(error),
+        nextSteps: error instanceof AbletonMcpError ? error.nextSteps : ["Open Ableton Live and load the Max for Live bridge."]
+      }
+    };
+  }
 }
 
 async function typedBridgeWrite(action: string, args: any, plan: Record<string, unknown>) {
@@ -354,6 +393,7 @@ const toolDefs: ToolDef[] = [
   } },
   { name: "ableton_bridge_ping", description: "Ping the loopback Max for Live bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: await pingBridge() as any }) },
   { name: "ableton_bridge_status", description: "Report loopback bridge host, port, queue, and last command state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridgeStatus: getBridgeRuntimeState() }) },
+  { name: "ableton_get_bridge_capabilities", description: "Report read/write/unsupported LiveAPI bridge capabilities and optionally compare with the live Max for Live bridge.", inputSchema: { check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => bridgeCapabilityReport(args.check_bridge) },
   { name: "ableton_ui_driver_status", description: "Report ChromeDriver-style Ableton UI driver host, port, queue, and last action state.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiDriverStatus: getUiDriverRuntimeState() }) },
   { name: "ableton_ui_control_consent_status", description: "Report whether foreground Ableton UI/mouse control has been intentionally enabled by the user.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, uiControl: uiControlConsentProfile() }) },
   { name: "ableton_plan_ui_control_session", description: "Plan a user-chosen foreground UI/mouse control session without moving the mouse.", inputSchema: { purpose: z.string().min(1).max(500).default("Ableton UI fallback"), actions: z.array(z.enum(["focus", "screenshot", "region_capture", "click", "type"])).max(20).default(["focus", "screenshot"]) }, annotations: ro, handler: async (args) => ({ ok: true, uiPlan: { ...uiControlConsentProfile(args.purpose), requestedActions: args.actions, canExecuteNow: FLAGS.uiControl, nextStep: FLAGS.uiControl ? "Start with ableton_window_status or ableton_capture_screenshot." : "Run .\\launch.ps1 ui-driver or set ABLETON_MCP_ENABLE_UI_CONTROL=1 only when foreground control is intentional." } }) },

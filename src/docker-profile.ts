@@ -13,6 +13,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_bridge_install_plan",
   "ableton_bridge_ping",
   "ableton_bridge_status",
+  "ableton_get_bridge_capabilities",
   "ableton_ui_driver_status",
   "ableton_ui_control_consent_status",
   "ableton_plan_ui_control_session",

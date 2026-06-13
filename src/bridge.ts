@@ -6,6 +6,16 @@ export type BridgeRequest = {
   payload?: Record<string, unknown>;
 };
 
+export type BridgeActionCapability = {
+  action: string;
+  tool?: string;
+  status: "read_only" | "write_gated" | "unsupported" | "diagnostic";
+  domain: string;
+  requiresWriteGate?: boolean;
+  dryRunFirst?: boolean;
+  notes?: string;
+};
+
 const bridgeHost = "127.0.0.1";
 const configuredBridgePort = Number(process.env.ABLETON_MCP_BRIDGE_PORT ?? "17364");
 const bridgePort = Number.isInteger(configuredBridgePort) && configuredBridgePort > 0 && configuredBridgePort <= 65535
@@ -18,6 +28,107 @@ let queuedBridgeWork: Promise<unknown> = Promise.resolve();
 let bridgeQueueDepth = 0;
 let bridgeRequestSequence = 0;
 let lastBridgeAction: { action: string; at: string; durationMs: number; ok: boolean } | null = null;
+
+const bridgeCapabilities: BridgeActionCapability[] = [
+  { action: "ping", tool: "ableton_bridge_ping", status: "diagnostic", domain: "bridge", notes: "Heartbeat and bridge identity only." },
+  { action: "bridge_capabilities", tool: "ableton_get_bridge_capabilities", status: "diagnostic", domain: "bridge", notes: "Static bridge-side capability report." },
+  { action: "live_state", tool: "ableton_get_live_state", status: "read_only", domain: "set" },
+  { action: "full_snapshot", tool: "ableton_get_full_snapshot", status: "read_only", domain: "set" },
+  { action: "snapshot_diff", tool: "ableton_get_snapshot_diff", status: "read_only", domain: "set" },
+  { action: "list_tracks", tool: "ableton_list_tracks", status: "read_only", domain: "tracks" },
+  { action: "list_return_tracks", tool: "ableton_list_return_tracks", status: "read_only", domain: "returns" },
+  { action: "master_track", tool: "ableton_get_master_track", status: "read_only", domain: "master" },
+  { action: "track_mixer", tool: "ableton_get_track_mixer", status: "read_only", domain: "mixer" },
+  { action: "return_track_mixer", tool: "ableton_get_return_track_mixer", status: "read_only", domain: "mixer" },
+  { action: "list_scenes", tool: "ableton_list_scenes", status: "read_only", domain: "scenes" },
+  { action: "list_clips", tool: "ableton_list_clips", status: "read_only", domain: "clips" },
+  { action: "list_clip_slots", tool: "ableton_list_clip_slots", status: "read_only", domain: "clips" },
+  { action: "list_devices", tool: "ableton_list_devices", status: "read_only", domain: "devices" },
+  { action: "list_device_parameters", tool: "ableton_list_device_parameters", status: "read_only", domain: "devices" },
+  { action: "arrangement_markers", tool: "ableton_list_arrangement_markers", status: "read_only", domain: "arrangement" },
+  { action: "clip_notes", tool: "ableton_get_clip_notes", status: "read_only", domain: "clips", notes: "Returns unsupported when the current clip/API cannot expose notes reliably." },
+  { action: "clip_envelopes", tool: "ableton_get_clip_envelopes", status: "unsupported", domain: "automation", notes: "Detailed clip envelope enumeration needs a reviewed LiveAPI mapping." },
+  { action: "device_parameter_map", tool: "ableton_get_device_parameter_map", status: "read_only", domain: "devices" },
+  { action: "automation_summary", tool: "ableton_extract_automation_summary", status: "unsupported", domain: "automation", notes: "Offline set-file summaries are supported; live automation summaries need a reviewed LiveAPI mapping." },
+  { action: "ui_overview", tool: "ableton_get_ui_overview", status: "unsupported", domain: "ui", notes: "Live UI overview is handled by the separate user-enabled UI driver." },
+  { action: "selected_track", tool: "ableton_get_selected_track", status: "read_only", domain: "selection" },
+  { action: "selected_device", tool: "ableton_get_selected_device", status: "read_only", domain: "selection" },
+  { action: "tempo", tool: "ableton_get_tempo", status: "read_only", domain: "transport" },
+  { action: "transport", tool: "ableton_get_transport", status: "read_only", domain: "transport" },
+  { action: "ableton_set_tempo", tool: "ableton_set_tempo", status: "write_gated", domain: "transport", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_transport_control", tool: "ableton_transport_control", status: "write_gated", domain: "transport", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_create_audio_track", tool: "ableton_create_audio_track", status: "write_gated", domain: "tracks", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_create_midi_track", tool: "ableton_create_midi_track", status: "write_gated", domain: "tracks", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_create_return_track", tool: "ableton_create_return_track", status: "write_gated", domain: "returns", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_create_scene", tool: "ableton_create_scene", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_fire_scene", tool: "ableton_fire_scene", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_scene_tempo", tool: "ableton_set_scene_tempo", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_scene_time_signature", tool: "ableton_set_scene_time_signature", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_scene_color", tool: "ableton_set_scene_color", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_create_clip", tool: "ableton_create_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_create_midi_clip", tool: "ableton_create_midi_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_insert_midi_notes", tool: "ableton_insert_midi_notes", status: "write_gated", domain: "midi", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_load_preset_or_sample", tool: "ableton_load_preset_or_sample", status: "write_gated", domain: "samples", requiresWriteGate: true, dryRunFirst: true, notes: "Audio-clip mode only, using approved local paths." },
+  { action: "ableton_set_clip_loop", tool: "ableton_set_clip_loop", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_clip_gain", tool: "ableton_set_clip_gain", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_transpose_clip", tool: "ableton_transpose_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_clip_warp", tool: "ableton_set_clip_warp", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_clip_markers", tool: "ableton_set_clip_markers", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_clip_color", tool: "ableton_set_clip_color", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_fire_clip", tool: "ableton_fire_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_stop_clip", tool: "ableton_stop_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_duplicate_scene", tool: "ableton_duplicate_scene", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_duplicate_clip", tool: "ableton_duplicate_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_move_clip", tool: "ableton_move_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_arm_track", tool: "ableton_arm_track", status: "write_gated", domain: "tracks", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_mute_track", tool: "ableton_mute_track", status: "write_gated", domain: "tracks", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_solo_track", tool: "ableton_solo_track", status: "write_gated", domain: "tracks", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_track_color", tool: "ableton_set_track_color", status: "write_gated", domain: "tracks", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_track_volume", tool: "ableton_set_track_volume", status: "write_gated", domain: "mixer", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_track_pan", tool: "ableton_set_track_pan", status: "write_gated", domain: "mixer", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_track_send", tool: "ableton_set_track_send", status: "write_gated", domain: "mixer", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_return_track_color", tool: "ableton_set_return_track_color", status: "write_gated", domain: "returns", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_return_track_volume", tool: "ableton_set_return_track_volume", status: "write_gated", domain: "mixer", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_return_track_pan", tool: "ableton_set_return_track_pan", status: "write_gated", domain: "mixer", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_master_volume", tool: "ableton_set_master_volume", status: "write_gated", domain: "mixer", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_master_pan", tool: "ableton_set_master_pan", status: "write_gated", domain: "mixer", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_set_device_parameter", tool: "ableton_set_device_parameter", status: "write_gated", domain: "devices", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_rename_track", tool: "ableton_rename_track", status: "write_gated", domain: "tracks", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_rename_return_track", tool: "ableton_rename_return_track", status: "write_gated", domain: "returns", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_rename_scene", tool: "ableton_rename_scene", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_rename_clip", tool: "ableton_rename_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_create_arrangement_marker", tool: "ableton_create_arrangement_marker", status: "write_gated", domain: "arrangement", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_insert_instrument", tool: "ableton_insert_instrument", status: "unsupported", domain: "devices", notes: "Needs a verified Browser/hot-swap target for the running Ableton version." },
+  { action: "ableton_insert_effect", tool: "ableton_insert_effect", status: "unsupported", domain: "devices", notes: "Needs a verified Browser/hot-swap target for the running Ableton version." },
+  { action: "ableton_map_macro", tool: "ableton_map_macro", status: "unsupported", domain: "devices", notes: "Rack macro mapping needs a verified rack/device mapping path for this Ableton version." },
+  { action: "ableton_apply_groove", tool: "ableton_apply_groove", status: "unsupported", domain: "groove", notes: "Groove application needs a verified groove-pool and clip mapping path for this Ableton version." },
+  { action: "ableton_create_automation_envelope", tool: "ableton_create_automation_envelope", status: "unsupported", domain: "automation", notes: "LiveAPI envelope creation is not exposed reliably from this bridge context." },
+  { action: "ableton_set_automation_point", tool: "ableton_set_automation_point", status: "unsupported", domain: "automation", notes: "LiveAPI breakpoint writing is not exposed reliably from this bridge context." },
+  { action: "ableton_simplify_automation", tool: "ableton_simplify_automation", status: "unsupported", domain: "automation", notes: "LiveAPI automation simplification is not exposed reliably from this bridge context." },
+  { action: "ableton_quantize_clip", tool: "ableton_quantize_clip", status: "unsupported", domain: "midi", notes: "Quantization enum values vary by context." },
+  { action: "ableton_humanize_midi_clip", tool: "ableton_humanize_midi_clip", status: "unsupported", domain: "midi", notes: "Needs verified note read/rewrite support." }
+];
+
+export function getBridgeCapabilityMatrix() {
+  const summary = bridgeCapabilities.reduce((acc, entry) => {
+    acc[entry.status] = (acc[entry.status] ?? 0) + 1;
+    return acc;
+  }, {} as Record<BridgeActionCapability["status"], number>);
+  return {
+    protocol: "ableton-mcp-liveapi-v1",
+    host: bridgeHost,
+    port: bridgePort,
+    defaultControl: "background_liveapi_bridge",
+    serialized: true,
+    gates: {
+      writes: "ABLETON_MCP_ENABLE_WRITE=1 and dry_run=false",
+      downloads: "ABLETON_MCP_ENABLE_DOWNLOADS=1",
+      uiControl: "ABLETON_MCP_ENABLE_UI_CONTROL=1"
+    },
+    summary,
+    actions: bridgeCapabilities.map((entry) => ({ ...entry }))
+  };
+}
 
 function assertSafeBridgeAction(action: string) {
   if (!allowedActionPattern.test(action)) {

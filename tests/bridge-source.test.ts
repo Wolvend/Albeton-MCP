@@ -35,6 +35,8 @@ describe("Max for Live bridge source", () => {
     const source = await fs.readFile(liveApiScript, "utf8");
     for (const action of [
       "list_return_tracks",
+      "bridge_capabilities",
+      "bridgeCapabilities",
       "master_track",
       "track_mixer",
       "return_track_mixer",

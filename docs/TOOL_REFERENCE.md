@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-190 tools
+191 tools
 3 resources
 2 prompts
 ```
@@ -30,7 +30,7 @@ Primary groups:
 - Fast live session view
 - Write-gated Live control
 - Automation, groove, and arrangement workflows
-- Bridge discovery for arrangement markers, clip notes, envelopes, and device parameter maps
+- Bridge capability reporting plus discovery for arrangement markers, clip notes, envelopes, and device parameter maps
 - User-choice UI control consent and production readiness checks
 - Named safe UI actions and dry-run action sequences
 - Screenshot and UI tools
@@ -47,6 +47,7 @@ Control-mode tools:
 
 - `ableton_control_mode_status`: reports background bridge default, UI fallback gate, and overlap policy.
 - `ableton_bridge_status`: reports loopback host/port, serialized queue state, and last bridge action.
+- `ableton_get_bridge_capabilities`: reports read-only, write-gated, unsupported, and diagnostic bridge actions; `check_bridge=true` compares against the loaded Max for Live bridge when available.
 - `ableton_ui_driver_status`: reports the ChromeDriver-style Ableton UI driver endpoint and queue state.
 - `ableton_ui_driver_ping`: pings the UI driver when UI control is enabled.
 - `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.

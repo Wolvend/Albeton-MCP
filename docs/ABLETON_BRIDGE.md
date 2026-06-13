@@ -7,7 +7,7 @@ Expected behavior:
 - Listens only on `127.0.0.1`.
 - Accepts JSON requests with `id`, `action`, and optional `payload`.
 - Returns JSON with matching request identity, status, errors, and structured data.
-- Supports `ping`, `full_snapshot`, `snapshot_diff`, and focused LiveAPI actions.
+- Supports `ping`, `bridge_capabilities`, `full_snapshot`, `snapshot_diff`, and focused LiveAPI actions.
 - Newer deep bridge actions use typed MCP schemas and return explicit `unsupported: true` responses when an Ableton LiveAPI operation is not reliable in the current bridge context.
 - Avoids blocking the audio thread.
 
@@ -59,6 +59,7 @@ MCP clients can call `ableton_bridge_install_plan` for the same dry-run report. 
 The bridge currently covers broad read visibility plus common write-gated operations:
 
 - Transport, tempo, play/stop/record state, and full/diff snapshots.
+- Static bridge capability reporting through `ableton_get_bridge_capabilities`; with `check_bridge=true`, the MCP server compares the local matrix with the loaded Max for Live bridge when it is reachable.
 - Track, return, master, scene, clip slot, clip, device, parameter, arrangement locator, and selected-object summaries.
 - Track and return-track creation, scene creation, scene launch, scene tempo/signature setup, scene and return-track renaming, track/return/scene/clip color coding, clip creation, clip launch/stop, loop changes, clip gain, audio clip transpose/detune, audio clip warp settings, start/end marker changes, track and clip renaming, track arm/mute/solo, track mixer volume/pan/send changes, return-track mixer volume/pan changes, master volume/pan changes, and scene/clip duplication or movement.
 - Audio clip creation from an approved local sample path with `ableton_load_preset_or_sample` in `audio_clip` mode.

@@ -1057,8 +1057,114 @@ function humanizeMidiClip(payload) {
   return unsupported("ableton_humanize_midi_clip", "MIDI note rewriting needs reviewed get/apply note support for this Ableton version.", { track_index: target.track_index, clip_slot_index: target.slot_index, timing_amount: payload && payload.timing_amount, velocity_amount: payload && payload.velocity_amount });
 }
 
+function bridgeCapabilities() {
+  var actions = [
+    ["ping", "diagnostic", "bridge"],
+    ["bridge_capabilities", "diagnostic", "bridge"],
+    ["live_state", "read_only", "set"],
+    ["full_snapshot", "read_only", "set"],
+    ["snapshot_diff", "read_only", "set"],
+    ["list_tracks", "read_only", "tracks"],
+    ["list_return_tracks", "read_only", "returns"],
+    ["master_track", "read_only", "master"],
+    ["track_mixer", "read_only", "mixer"],
+    ["return_track_mixer", "read_only", "mixer"],
+    ["list_scenes", "read_only", "scenes"],
+    ["list_clips", "read_only", "clips"],
+    ["list_clip_slots", "read_only", "clips"],
+    ["list_devices", "read_only", "devices"],
+    ["list_device_parameters", "read_only", "devices"],
+    ["arrangement_markers", "read_only", "arrangement"],
+    ["clip_notes", "read_only", "clips"],
+    ["clip_envelopes", "unsupported", "automation"],
+    ["device_parameter_map", "read_only", "devices"],
+    ["automation_summary", "unsupported", "automation"],
+    ["ui_overview", "unsupported", "ui"],
+    ["selected_track", "read_only", "selection"],
+    ["selected_device", "read_only", "selection"],
+    ["tempo", "read_only", "transport"],
+    ["transport", "read_only", "transport"],
+    ["ableton_set_tempo", "write_gated", "transport"],
+    ["ableton_transport_control", "write_gated", "transport"],
+    ["ableton_create_audio_track", "write_gated", "tracks"],
+    ["ableton_create_midi_track", "write_gated", "tracks"],
+    ["ableton_create_return_track", "write_gated", "returns"],
+    ["ableton_create_scene", "write_gated", "scenes"],
+    ["ableton_fire_scene", "write_gated", "scenes"],
+    ["ableton_set_scene_tempo", "write_gated", "scenes"],
+    ["ableton_set_scene_time_signature", "write_gated", "scenes"],
+    ["ableton_set_scene_color", "write_gated", "scenes"],
+    ["ableton_create_clip", "write_gated", "clips"],
+    ["ableton_create_midi_clip", "write_gated", "clips"],
+    ["ableton_insert_midi_notes", "write_gated", "midi"],
+    ["ableton_load_preset_or_sample", "write_gated", "samples"],
+    ["ableton_set_clip_loop", "write_gated", "clips"],
+    ["ableton_set_clip_gain", "write_gated", "clips"],
+    ["ableton_transpose_clip", "write_gated", "clips"],
+    ["ableton_set_clip_warp", "write_gated", "clips"],
+    ["ableton_set_clip_markers", "write_gated", "clips"],
+    ["ableton_set_clip_color", "write_gated", "clips"],
+    ["ableton_fire_clip", "write_gated", "clips"],
+    ["ableton_stop_clip", "write_gated", "clips"],
+    ["ableton_duplicate_scene", "write_gated", "scenes"],
+    ["ableton_duplicate_clip", "write_gated", "clips"],
+    ["ableton_move_clip", "write_gated", "clips"],
+    ["ableton_arm_track", "write_gated", "tracks"],
+    ["ableton_mute_track", "write_gated", "tracks"],
+    ["ableton_solo_track", "write_gated", "tracks"],
+    ["ableton_set_track_color", "write_gated", "tracks"],
+    ["ableton_set_track_volume", "write_gated", "mixer"],
+    ["ableton_set_track_pan", "write_gated", "mixer"],
+    ["ableton_set_track_send", "write_gated", "mixer"],
+    ["ableton_set_return_track_color", "write_gated", "returns"],
+    ["ableton_set_return_track_volume", "write_gated", "mixer"],
+    ["ableton_set_return_track_pan", "write_gated", "mixer"],
+    ["ableton_set_master_volume", "write_gated", "mixer"],
+    ["ableton_set_master_pan", "write_gated", "mixer"],
+    ["ableton_set_device_parameter", "write_gated", "devices"],
+    ["ableton_rename_track", "write_gated", "tracks"],
+    ["ableton_rename_return_track", "write_gated", "returns"],
+    ["ableton_rename_scene", "write_gated", "scenes"],
+    ["ableton_rename_clip", "write_gated", "clips"],
+    ["ableton_create_arrangement_marker", "write_gated", "arrangement"],
+    ["ableton_insert_instrument", "unsupported", "devices"],
+    ["ableton_insert_effect", "unsupported", "devices"],
+    ["ableton_map_macro", "unsupported", "devices"],
+    ["ableton_apply_groove", "unsupported", "groove"],
+    ["ableton_create_automation_envelope", "unsupported", "automation"],
+    ["ableton_set_automation_point", "unsupported", "automation"],
+    ["ableton_simplify_automation", "unsupported", "automation"],
+    ["ableton_quantize_clip", "unsupported", "midi"],
+    ["ableton_humanize_midi_clip", "unsupported", "midi"]
+  ];
+  var summary = {};
+  for (var i = 0; i < actions.length; i += 1) {
+    summary[actions[i][1]] = (summary[actions[i][1]] || 0) + 1;
+  }
+  return {
+    protocol: "ableton-mcp-liveapi-v1",
+    bridge: "ableton-mcp-liveapi",
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    summary: summary,
+    gates: {
+      writes: "MCP must set dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 before sending write actions.",
+      uiFallback: "UI driver remains separate and requires ABLETON_MCP_ENABLE_UI_CONTROL=1."
+    },
+    actions: actions.map(function (entry) {
+      return {
+        action: entry[0],
+        status: entry[1],
+        domain: entry[2],
+        write_gated: entry[1] === "write_gated"
+      };
+    })
+  };
+}
+
 function dispatch(action, payload) {
   if (action === "ping") return { heartbeat: new Date().toISOString(), bridge: "ableton-mcp-liveapi", version: 1 };
+  if (action === "bridge_capabilities") return bridgeCapabilities();
   if (action === "live_state") return liveState();
   if (action === "transport") return { is_playing: safeGet(liveObject("live_set"), "is_playing", null), current_song_time: safeGet(liveObject("live_set"), "current_song_time", null) };
   if (action === "tempo") return { tempo: safeGet(liveObject("live_set"), "tempo", null) };
