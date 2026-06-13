@@ -8,7 +8,7 @@ Use this command to inspect the live catalog:
 npm run inspect
 ```
 
-Core Live control tools expose field-level schemas for agent planning and validation. For example, tempo uses `tempo`, track/scene creation uses `name` and optional indexes, scene launch and scene tempo/signature tools use explicit scene indexes, clip tools use `track_index` and `clip_slot_index`, track/return/master mixer tools use bounded `value`, color tools use bounded RGB integer values, and device parameter writes use explicit track/device/parameter indexes. Real writes still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1`.
+Core Live control tools expose field-level schemas for agent planning and validation. For example, tempo uses `tempo`, track/scene creation uses `name` and optional indexes, scene launch and scene tempo/signature tools use explicit scene indexes, clip tools use `track_index` and `clip_slot_index`, track/return/master mixer tools use bounded `value`, color tools use bounded RGB integer values, and device parameter writes use explicit track/device/parameter indexes. Real writes still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1`; concept-plan execution additionally requires the matching approval bundle id and preflight success.
 
 Some LiveAPI write requests are intentionally capability-limited until the running Ableton bridge proves a reliable path. Device insertion, macro mapping, groove application, automation writes, clip quantization, and MIDI humanization return structured `unsupported: true` dry-run plans with next-step hints instead of fake success.
 

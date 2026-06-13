@@ -100,12 +100,12 @@ Fast path:
 
 16. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
-   - Packages the redacted concept, redacted arrangement, preflight result, required gates, exact next tool calls, and approval checklist.
+   - Packages the redacted concept, redacted arrangement, preflight result, deterministic `approval_id`, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
 17. `ableton_execute_concept_plan`
    - Dry-run by default.
-   - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
+   - Real execution requires `dry_run=false`, `ABLETON_MCP_ENABLE_WRITE=1`, the matching `approval_id`, `approval_confirmed=true`, and a successful bridge preflight.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
 18. `ableton_render_delivery_plan`
@@ -210,6 +210,11 @@ Only after review:
 ```text
 ABLETON_MCP_ENABLE_DOWNLOADS=1
 ABLETON_MCP_ENABLE_WRITE=1
+ableton_execute_concept_plan:
+  arrangement_id: "arrangement-..."
+  dry_run: false
+  approval_id: "approval-..."
+  approval_confirmed: true
 ```
 
 Keep UI/mouse control off unless the user intentionally starts the UI driver for an Ableton-only foreground task.

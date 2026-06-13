@@ -142,6 +142,8 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_render_concept_execution_manifest).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_plan_concept_device_automation_readiness).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");
+    expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("approval_id");
+    expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("approval_confirmed");
     expect(registeredToolSchemas.ableton_render_concept_timeline).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_render_concept_mix_plan).toHaveProperty("plan_id");
   });

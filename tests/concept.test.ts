@@ -172,6 +172,14 @@ describe("concept-to-music planning", () => {
     expect(stored.actions.find((action) => action.action === "ableton_load_preset_or_sample")?.payload.path).toBe(stagedPath);
     expect(dryRun.dry_run).toBe(true);
     expect(dryRun.executableActions).toBeGreaterThan(0);
+    const approvalRequirement = dryRun.approvalRequirement;
+    expect(approvalRequirement).toBeDefined();
+    if (!approvalRequirement) throw new Error("Expected dry-run approval requirement.");
+    expect(approvalRequirement).toMatchObject({
+      requiredForRealExecution: true,
+      approval_confirmed: false
+    });
+    expect(approvalRequirement.approval_id).toMatch(/^approval-[a-f0-9]{16}$/);
     expect(readiness.bridge).toMatchObject({ checked: false, reachable: null });
     expect(readiness.summary.deviceChains).toBeGreaterThan(0);
     expect(readiness.summary.automationTargets).toBeGreaterThan(0);
@@ -184,7 +192,12 @@ describe("concept-to-music planning", () => {
     expect(manifest.actionSummary.placeholderCounts.track).toBeGreaterThan(0);
     expect(manifest.phases.some((phase) => phase.phase === "midi_motif")).toBe(true);
     expect(manifest.phases.some((phase) => phase.actions.some((action) => action.payload.path === stagedPath))).toBe(false);
-    expect(manifest.exactToolCalls.realExecutionAfterApproval.arguments).toMatchObject({ arrangement_id: arrangement.arrangement.id, dry_run: false });
+    expect(manifest.exactToolCalls.realExecutionAfterApproval.arguments).toMatchObject({
+      arrangement_id: arrangement.arrangement.id,
+      dry_run: false,
+      approval_id: approvalRequirement.approval_id,
+      approval_confirmed: true
+    });
     expect(timeline.sectionCount).toBe(5);
     expect(timeline.sections.map((section) => section.name)).toContain("Spatial Collapse");
     expect(timeline.sections.some((section) => section.activeLayers.some((layer) => layer.name === "Sparse Motif" && layer.role === "entrance"))).toBe(true);
@@ -244,9 +257,14 @@ describe("concept-to-music planning", () => {
     });
 
     expect(bundle.approved).toBe(false);
+    expect(bundle.approval_id).toMatch(/^approval-[a-f0-9]{16}$/);
     expect(bundle.approvalRequired).toBe(true);
     expect(bundle.gates.write.required).toBe(true);
-    expect(bundle.exactToolCalls.realExecutionAfterApproval.arguments).toMatchObject({ dry_run: false });
+    expect(bundle.exactToolCalls.realExecutionAfterApproval.arguments).toMatchObject({
+      dry_run: false,
+      approval_id: bundle.approval_id,
+      approval_confirmed: true
+    });
     expect(bundle.exactToolCalls.deviceAutomationReadiness.name).toBe("ableton_plan_concept_device_automation_readiness");
     expect(bundle.preflight.readyForRealWrite).toBe(false);
     expect(bundle.arrangement.actions.some((action) => action.payload.path === stagedPath)).toBe(false);

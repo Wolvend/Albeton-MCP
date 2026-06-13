@@ -60,6 +60,13 @@ export type ConceptExecutionManifestOptions = {
   arrangement_id: string;
 };
 
+export type ConceptExecutionOptions = {
+  arrangement_id: string;
+  dry_run: boolean;
+  approval_id?: string;
+  approval_confirmed?: boolean;
+};
+
 type ConceptLayer = {
   name: string;
   type: "audio" | "midi" | "return";
@@ -260,6 +267,15 @@ export function sanitizeRemoteSampleText(value: unknown, maxLength = 240) {
 function stableId(prefix: string, payload: unknown) {
   const hash = crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 16);
   return `${prefix}-${hash}`;
+}
+
+function conceptExecutionApprovalId(arrangement: ArrangementPlan) {
+  return stableId("approval", {
+    version: 1,
+    arrangementId: arrangement.id,
+    executableActions: arrangement.actions.filter((action) => action.safeToExecute).length,
+    totalActions: arrangement.actions.length
+  });
 }
 
 function safeRemoteSampleUrl(value: unknown) {
@@ -2207,6 +2223,7 @@ export async function createConceptExecutionApprovalBundle(options: ConceptExecu
 
   return {
     bundleType: "concept_execution_approval",
+    approval_id: conceptExecutionApprovalId(arrangement),
     approved: false,
     approvalRequired: true,
     concept: conceptForReport(concept),
@@ -2255,7 +2272,9 @@ export async function createConceptExecutionApprovalBundle(options: ConceptExecu
         name: "ableton_execute_concept_plan",
         arguments: {
           arrangement_id: arrangement.id,
-          dry_run: false
+          dry_run: false,
+          approval_id: conceptExecutionApprovalId(arrangement),
+          approval_confirmed: true
         }
       }
     },
@@ -2319,7 +2338,7 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
     },
     gates: {
       dryRunFirst: true,
-      requiredForRealExecution: ["ABLETON_MCP_ENABLE_WRITE=1", "dry_run=false", "loaded Max for Live bridge", "successful ableton_preflight_concept_execution"],
+      requiredForRealExecution: ["ABLETON_MCP_ENABLE_WRITE=1", "dry_run=false", "matching approval_id from approval bundle", "approval_confirmed=true", "loaded Max for Live bridge", "successful ableton_preflight_concept_execution"],
       notGrantedByThisManifest: true
     },
     actionSummary: {
@@ -2354,7 +2373,12 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
       },
       realExecutionAfterApproval: {
         name: "ableton_execute_concept_plan",
-        arguments: { arrangement_id: arrangement.id, dry_run: false }
+        arguments: {
+          arrangement_id: arrangement.id,
+          dry_run: false,
+          approval_id: conceptExecutionApprovalId(arrangement),
+          approval_confirmed: true
+        }
       }
     },
     nextSteps: [
@@ -2366,18 +2390,51 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
   };
 }
 
-export async function executeConceptPlan(options: { arrangement_id: string; dry_run: boolean }) {
+export async function executeConceptPlan(options: ConceptExecutionOptions) {
   const arrangement = await readArrangementPlan(options.arrangement_id);
+  const approvalId = conceptExecutionApprovalId(arrangement);
   if (options.dry_run !== false) {
     return {
       dry_run: true,
       arrangement: arrangementForReport(arrangement),
       executableActions: arrangement.actions.filter((action) => action.safeToExecute).length,
+      approvalRequirement: {
+        requiredForRealExecution: true,
+        approval_id: approvalId,
+        approval_confirmed: false,
+        approvalBundleToolCall: {
+          name: "ableton_create_concept_execution_approval_bundle",
+          arguments: { arrangement_id: arrangement.id, check_bridge: true }
+        }
+      },
       nextStep: "Set dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 to create the approved session skeleton in Ableton."
     };
   }
   requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Executing concept arrangement plan");
-  const resolution = bridgeSnapshotResolution(await getBridgeSnapshot(false));
+  if (options.approval_id !== approvalId || options.approval_confirmed !== true) {
+    throw new AbletonMcpError(
+      "Concept execution requires the matching approval_id and approval_confirmed=true.",
+      "CONCEPT_EXECUTION_APPROVAL_REQUIRED",
+      [
+        "Call ableton_create_concept_execution_approval_bundle for this arrangement.",
+        "Review the redacted actions, preflight, and staged device/automation plans.",
+        "Retry with the returned approval_id and approval_confirmed=true only after intentional approval."
+      ]
+    );
+  }
+  const preflight = await preflightConceptExecution({ arrangement_id: arrangement.id, check_bridge: true }) as {
+    readyForRealWrite: boolean;
+    bridge?: { resolution?: CreatedTrackResolution | null };
+    nextSteps?: string[];
+  };
+  if (!preflight.readyForRealWrite || !preflight.bridge?.resolution) {
+    throw new AbletonMcpError(
+      "Concept execution preflight is not ready for real writes.",
+      "CONCEPT_EXECUTION_PREFLIGHT_NOT_READY",
+      Array.isArray(preflight.nextSteps) ? preflight.nextSteps.map(String) : ["Load the bridge, rerun preflight, and resolve blockers before real execution."]
+    );
+  }
+  const resolution = preflight.bridge.resolution;
   const results = [];
   for (const action of arrangement.actions) {
     if (!action.safeToExecute) {
