@@ -10,6 +10,7 @@ import {
   getConceptPlanForReport,
   listArrangementPlans,
   listConceptPlans,
+  planConceptProduction,
   planConceptTrack,
   prepareConceptAudioLayers,
   readArrangementPlan,
@@ -116,6 +117,37 @@ describe("concept-to-music planning", () => {
     expect(exported.midi.outputPath).toContain("unsafe_motif.mid");
     expect(exported.midi.outputPath).not.toContain("..");
     expect(exported.nextStep).toMatch(/ABLETON_MCP_ENABLE_WRITE=1/);
+  });
+
+  it("builds a full safe concept production plan without downloads or Ableton writes", async () => {
+    await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+    const stagedPath = path.join(LOCAL_PATHS.staging, "full-production-room-tone.wav");
+    await fs.writeFile(stagedPath, "fixture production room tone");
+
+    const production = await planConceptProduction({
+      concept: "backrooms service corridor with a degraded memory melody",
+      target_duration_seconds: 150,
+      intensity: 8,
+      style: "liminal/backrooms/horror",
+      sources: ["local_library"],
+      include_sample_search: false,
+      sample_assignments: [{
+        layer: "Stretched Room",
+        path: stagedPath,
+        clip_slot_index: 1,
+        name: "Full Production Room Tone"
+      }]
+    });
+
+    expect(production.workflow).toBe("plan_only");
+    expect(production.safety.downloads).toBe("not_performed");
+    expect(production.safety.ableton_writes).toBe("dry_run_only");
+    expect(production.sampleSearch).toMatchObject({ skipped: true });
+    expect(production.concept.plan.preset).toBe("liminal_backrooms_horror");
+    expect(production.arrangement.arrangement.sampleAssignments[0]?.path).not.toBe(stagedPath);
+    expect(production.executionPreview.dry_run).toBe(true);
+    expect(production.executionPreview.arrangement?.id).toBe(production.arrangement.arrangement.id);
+    expect(production.delivery.export.sampleRate).toBe(48000);
   });
 
   it("turns approved reference audio into redacted source-treatment assignments", async () => {

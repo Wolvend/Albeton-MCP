@@ -41,6 +41,12 @@ export type BuildArrangementFromPreparedAudioOptions = {
   sample_assignments?: SampleLayerAssignmentInput[];
 };
 
+export type ConceptProductionPlanInput = ConceptPlanInput & {
+  sample_assignments?: SampleLayerAssignmentInput[];
+  include_sample_search?: boolean;
+  sample_page_size?: number;
+};
+
 type ConceptLayer = {
   name: string;
   type: "audio" | "midi" | "return";
@@ -1334,6 +1340,46 @@ export async function buildArrangementFromPreparedAudio(options: BuildArrangemen
     preparation: preparedAudioManifestForReport(manifest),
     arrangement: arrangement.arrangement,
     storedPath: arrangement.storedPath
+  };
+}
+
+export async function planConceptProduction(options: ConceptProductionPlanInput) {
+  const concept = await planConceptTrack(options);
+  const includeSampleSearch = options.include_sample_search !== false;
+  const sampleSearch = includeSampleSearch
+    ? await searchConceptSamples({
+      plan_id: concept.plan.id,
+      page: 1,
+      pageSize: Math.max(1, Math.min(12, Math.floor(options.sample_page_size ?? 6)))
+    })
+    : {
+      skipped: true,
+      reason: "include_sample_search=false",
+      nextStep: "Call ableton_search_concept_samples with the returned plan_id when remote metadata search is desired."
+    };
+  const arrangement = await buildLayeredArrangementPlan(concept.plan.id, options.sample_assignments ?? []);
+  const executionPreview = await executeConceptPlan({ arrangement_id: arrangement.arrangement.id, dry_run: true });
+  const delivery = await renderDeliveryPlan(concept.plan.id);
+
+  return {
+    workflow: "plan_only",
+    safety: {
+      downloads: "not_performed",
+      ableton_writes: "dry_run_only",
+      ui_control: "not_used",
+      remoteSampleText: "treated_as_untrusted_metadata"
+    },
+    concept,
+    sampleSearch,
+    arrangement,
+    executionPreview,
+    delivery,
+    nextSteps: [
+      "Review the concept plan, sample license metadata, arrangement actions, and dry-run execution preview.",
+      "Stage only approved licensed samples with ableton_stage_concept_samples and ABLETON_MCP_ENABLE_DOWNLOADS=1.",
+      "Use ableton_prepare_concept_audio_layers only for approved local reference audio.",
+      "Execute the stored arrangement only after Ableton bridge live-smoke passes and ABLETON_MCP_ENABLE_WRITE=1 is intentional."
+    ]
   };
 }
 

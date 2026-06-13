@@ -101,6 +101,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_list_arrangement_plans",
   "ableton_get_arrangement_plan",
   "ableton_search_concept_samples",
+  "ableton_plan_full_concept_production",
   "ableton_build_layered_arrangement_plan",
   "ableton_render_delivery_plan",
   "ableton_mcp_health",

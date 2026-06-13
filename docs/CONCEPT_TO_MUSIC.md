@@ -4,6 +4,13 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
 
 ## Tool Flow
 
+Fast path:
+
+- `ableton_plan_full_concept_production`
+  - Takes one brief and creates the stored concept plan, optional sample metadata search, stored arrangement plan, dry-run execution preview, and delivery plan.
+  - Does not download, does not write to Ableton, and does not use UI/mouse control.
+  - Use this first when a client wants "turn this feeling/place into a production plan" in one safe call.
+
 1. `ableton_plan_concept_track`
    - Stores a concept plan under `diagnostics\runtime\concept-plans`.
    - Produces sections, tempo/key, layer roles, search queries, device-chain suggestions, mix targets, and approval checklist.
@@ -116,6 +123,12 @@ ableton_plan_concept_track:
 ```
 
 Then:
+
+```text
+ableton_plan_full_concept_production for the safe one-call plan
+```
+
+Or step-by-step:
 
 ```text
 ableton_search_concept_samples
