@@ -36,6 +36,11 @@ export type PrepareConceptAudioLayersOptions = {
   dry_run: boolean;
 };
 
+export type BuildArrangementFromPreparedAudioOptions = {
+  preparation_id: string;
+  sample_assignments?: SampleLayerAssignmentInput[];
+};
+
 type ConceptLayer = {
   name: string;
   type: "audio" | "midi" | "return";
@@ -144,6 +149,27 @@ type ArrangementPlan = {
     reason: string;
   }>;
   notes: string[];
+};
+
+type PreparedAudioManifest = {
+  id: string;
+  conceptPlanId: string;
+  createdAt: string;
+  outputRoot: string;
+  assignments: SampleLayerAssignmentInput[];
+  rendered: Array<{
+    layer: string;
+    path: string;
+    redactedPath: string;
+    clip_slot_index: number;
+    name: string;
+    treatment: string;
+    preset: string;
+    format: string;
+    checksum: string | null;
+    bytes: number | null;
+    attributionPath: string | null;
+  }>;
 };
 
 type CreatedTrackResolution = {
@@ -581,6 +607,26 @@ function arrangementForReport(arrangement: ArrangementPlan): ArrangementPlan {
   };
 }
 
+function preparedAudioManifestForReport(manifest: PreparedAudioManifest) {
+  return {
+    ...manifest,
+    outputRoot: redactPath(manifest.outputRoot),
+    assignments: manifest.assignments.map((assignment) => ({
+      ...assignment,
+      path: redactPath(assignment.path)
+    })),
+    rendered: manifest.rendered.map((entry) => {
+      const safePath = redactPath(entry.path);
+      return {
+        ...entry,
+        path: safePath,
+        redactedPath: safePath,
+        attributionPath: entry.attributionPath ? redactPath(entry.attributionPath) : null
+      };
+    })
+  };
+}
+
 function conceptForReport(plan: ConceptPlan): ConceptPlan {
   if (!plan.reference) return plan;
   return {
@@ -629,6 +675,12 @@ export async function readArrangementPlan(arrangementId: string): Promise<Arrang
   if (!/^arrangement-[a-f0-9]{16}$/.test(arrangementId)) throw new Error("Invalid arrangement plan id.");
   const filePath = path.join(conceptPlanDir(), `${arrangementId}.json`);
   return JSON.parse(await fs.readFile(filePath, "utf8")) as ArrangementPlan;
+}
+
+export async function readPreparedAudioManifest(preparationId: string): Promise<PreparedAudioManifest> {
+  if (!/^prepared-audio-[a-f0-9]{16}$/.test(preparationId)) throw new Error("Invalid prepared audio id.");
+  const filePath = path.join(conceptPlanDir(), `${preparationId}.json`);
+  return JSON.parse(await fs.readFile(filePath, "utf8")) as PreparedAudioManifest;
 }
 
 async function listStoredPlanFiles(prefix: "concept" | "arrangement") {
@@ -1216,19 +1268,72 @@ export async function prepareConceptAudioLayers(options: PrepareConceptAudioLaye
       conversion: converted,
       sample_assignment: {
         layer: layer.layer,
-        path: redactPath(layer.output),
+        path: layer.output,
         clip_slot_index: layer.clip_slot_index,
         name: layer.name
       }
     });
   }
+  const manifest: PreparedAudioManifest = {
+    id: stableId("prepared-audio", {
+      planId: plan.id,
+      outputs: layerPlans.map((layer) => layer.output)
+    }),
+    conceptPlanId: plan.id,
+    createdAt: new Date().toISOString(),
+    outputRoot: conceptAudioDir(plan.id),
+    assignments: rendered.map((entry) => ({
+      layer: entry.layer,
+      path: entry.sample_assignment.path,
+      clip_slot_index: entry.clip_slot_index,
+      name: entry.name,
+      source: "reference_audio",
+      treatment: entry.treatment,
+      followUp: entry.followUp
+    })),
+    rendered: rendered.map((entry) => {
+      const conversion = entry.conversion as { conversion?: { checksum?: unknown; bytes?: unknown; attributionPath?: unknown } };
+      return {
+        layer: entry.layer,
+        path: entry.sample_assignment.path,
+        redactedPath: redactPath(entry.sample_assignment.path),
+        clip_slot_index: entry.clip_slot_index,
+        name: entry.name,
+        treatment: entry.treatment,
+        preset: conversionPresetForLayer(entry.layer),
+        format,
+        checksum: typeof conversion.conversion?.checksum === "string" ? conversion.conversion.checksum : null,
+        bytes: typeof conversion.conversion?.bytes === "number" ? conversion.conversion.bytes : null,
+        attributionPath: `${entry.sample_assignment.path}.attribution.json`
+      };
+    })
+  };
+  const storedPath = await writeJson(`${manifest.id}.json`, manifest);
+  const report = preparedAudioManifestForReport(manifest);
 
   return {
     dry_run: false,
     plan_id: plan.id,
     outputRoot: redactPath(conceptAudioDir(plan.id)),
-    rendered,
-    sample_assignments: rendered.map((entry) => entry.sample_assignment)
+    preparation_id: manifest.id,
+    storedPath: redactPath(storedPath),
+    rendered: report.rendered,
+    sample_assignments: report.assignments,
+    nextStep: "Use ableton_build_arrangement_from_prepared_audio with preparation_id to build an arrangement plan without exposing local sample paths."
+  };
+}
+
+export async function buildArrangementFromPreparedAudio(options: BuildArrangementFromPreparedAudioOptions) {
+  const manifest = await readPreparedAudioManifest(options.preparation_id);
+  const manualAssignments = options.sample_assignments ?? [];
+  const arrangement = await buildLayeredArrangementPlan(manifest.conceptPlanId, [
+    ...manifest.assignments,
+    ...manualAssignments
+  ]);
+  return {
+    preparation: preparedAudioManifestForReport(manifest),
+    arrangement: arrangement.arrangement,
+    storedPath: arrangement.storedPath
   };
 }
 

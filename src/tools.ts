@@ -20,6 +20,7 @@ import { getUiDriverRuntimeState, pingUiDriver, uiDriverAction } from "./ui-driv
 import { assertAllowedSampleUrl } from "./network.js";
 import {
   buildLayeredArrangementPlan,
+  buildArrangementFromPreparedAudio,
   executeConceptPlan,
   exportConceptMidiMotif,
   getArrangementPlanForReport,
@@ -56,6 +57,7 @@ const AutomationPoint = {
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
 const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
+const PreparedAudioId = z.string().regex(/^prepared-audio-[a-f0-9]{16}$/);
 const ConceptSampleAssignment = z.object({
   layer: z.string().min(1).max(128),
   path: z.string().min(1),
@@ -558,6 +560,7 @@ toolDefs.push(
   { name: "ableton_stage_concept_samples", description: "Stage approved concept samples; dry-run by default and download-gated for real staging.", inputSchema: { samples: z.array(z.object({ url: z.string().url(), destinationName: z.string().min(1).max(160), metadata: z.record(z.unknown()).default({}) })).min(1).max(12), ...DryRun }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, staging: await stageConceptSamples({ samples: args.samples, dry_run: args.dry_run }) as any }) },
   { name: "ableton_build_layered_arrangement_plan", description: "Convert a stored concept plan into a stored Ableton track/scene/action plan.", inputSchema: { plan_id: ConceptPlanId, sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]) }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await buildLayeredArrangementPlan(args.plan_id, args.sample_assignments) as any }) },
   { name: "ableton_prepare_concept_audio_layers", description: "Render approved reference audio into concept layer variants; dry-run by default and never overwrites.", inputSchema: { plan_id: ConceptPlanId, output_prefix: z.string().min(1).max(80).optional(), format: z.enum(["wav", "flac", "mp3"]).default("wav"), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, preparation: await prepareConceptAudioLayers(args) as any }) },
+  { name: "ableton_build_arrangement_from_prepared_audio", description: "Build a stored arrangement plan from a stored prepared-audio manifest without exposing local paths.", inputSchema: { preparation_id: PreparedAudioId, sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]) }, annotations: ro, handler: async (args) => ({ ok: true, preparedArrangement: await buildArrangementFromPreparedAudio(args) as any }) },
   { name: "ableton_export_concept_midi_motif", description: "Render a stored concept plan's sparse motif as a staged MIDI file; dry-run by default and never overwrites.", inputSchema: { plan_id: ConceptPlanId, output_name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, export: await exportConceptMidiMotif(args) as any }) },
   { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default.", inputSchema: { arrangement_id: ArrangementPlanId, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run }) as any }) },
   { name: "ableton_render_delivery_plan", description: "Plan final master/stem export settings for a stored concept plan without rendering.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, delivery: await renderDeliveryPlan(args.plan_id) as any }) },

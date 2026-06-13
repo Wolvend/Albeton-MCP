@@ -36,6 +36,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_stage_concept_samples");
     expect(registeredToolNames).toContain("ableton_build_layered_arrangement_plan");
     expect(registeredToolNames).toContain("ableton_prepare_concept_audio_layers");
+    expect(registeredToolNames).toContain("ableton_build_arrangement_from_prepared_audio");
     expect(registeredToolNames).toContain("ableton_export_concept_midi_motif");
     expect(registeredToolNames).toContain("ableton_execute_concept_plan");
     expect(registeredToolNames).toContain("ableton_render_delivery_plan");
@@ -79,6 +80,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_build_layered_arrangement_plan).toHaveProperty("sample_assignments");
     expect(registeredToolSchemas.ableton_prepare_concept_audio_layers).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_prepare_concept_audio_layers).toHaveProperty("format");
+    expect(registeredToolSchemas.ableton_build_arrangement_from_prepared_audio).toHaveProperty("preparation_id");
     expect(registeredToolSchemas.ableton_export_concept_midi_motif).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_export_concept_midi_motif).toHaveProperty("output_name");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");

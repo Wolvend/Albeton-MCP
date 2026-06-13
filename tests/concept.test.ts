@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildArrangementFromPreparedAudio,
   buildLayeredArrangementPlan,
   executeConceptPlan,
   exportConceptMidiMotif,
@@ -181,6 +182,56 @@ describe("concept-to-music planning", () => {
     expect(conversions.every((entry: any) => String(entry.conversion.output).includes("unsafe_prefix"))).toBe(true);
     expect(conversions.every((entry: any) => !String(entry.conversion.output).includes(".."))).toBe(true);
     expect(preparation.nextStep).toMatch(/ABLETON_MCP_ENABLE_WRITE=1/);
+  });
+
+  it("builds an arrangement from a stored prepared-audio manifest without exposing executable paths", async () => {
+    const planned = await planConceptTrack({
+      concept: "backrooms prepared audio manifest arrangement",
+      target_duration_seconds: 120,
+      intensity: 8,
+      sources: ["local_library"]
+    });
+    await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+    const preparedPath = path.join(LOCAL_PATHS.staging, "prepared-manifest-layer.wav");
+    await fs.writeFile(preparedPath, "fixture prepared layer");
+    const preparationId = "prepared-audio-1111111111111111";
+    const manifestDir = path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-plans");
+    await fs.mkdir(manifestDir, { recursive: true });
+    await fs.writeFile(path.join(manifestDir, `${preparationId}.json`), `${JSON.stringify({
+      id: preparationId,
+      conceptPlanId: planned.plan.id,
+      createdAt: new Date().toISOString(),
+      outputRoot: LOCAL_PATHS.staging,
+      assignments: [{
+        layer: "Degraded Memory",
+        path: preparedPath,
+        clip_slot_index: 0,
+        name: "Prepared Degraded Memory",
+        source: "reference_audio",
+        treatment: "Prepared test layer"
+      }],
+      rendered: [{
+        layer: "Degraded Memory",
+        path: preparedPath,
+        redactedPath: "%USERPROFILE%\\Desktop\\MCP\\ableton-mcp\\samples\\staging\\prepared-manifest-layer.wav",
+        clip_slot_index: 0,
+        name: "Prepared Degraded Memory",
+        treatment: "Prepared test layer",
+        preset: "liminal_memory",
+        format: "wav",
+        checksum: null,
+        bytes: null,
+        attributionPath: null
+      }]
+    }, null, 2)}\n`);
+
+    const built = await buildArrangementFromPreparedAudio({ preparation_id: preparationId });
+    const stored = await readArrangementPlan(built.arrangement.id);
+
+    expect(built.preparation.assignments[0]?.path).not.toBe(preparedPath);
+    expect(built.arrangement.sampleAssignments[0]?.path).not.toBe(preparedPath);
+    expect(stored.sampleAssignments[0]?.path).toBe(preparedPath);
+    expect(built.arrangement.actions.some((action) => action.action === "ableton_load_preset_or_sample")).toBe(true);
   });
 
   it("keeps unapproved reference audio informational instead of executable", async () => {

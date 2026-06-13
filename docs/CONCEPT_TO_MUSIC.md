@@ -47,13 +47,19 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
    - Prepares layer-specific audio files under `samples\staging\concepts\<plan_id>` using the same gated conversion path as `ableton_convert_audio_file`.
    - For the liminal horror preset, maps the source into degraded memory, stretched ambience, and reversed-fragment variants.
    - Real rendering requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`; files are never overwritten.
+   - Stores a preparation manifest so follow-up arrangement planning can use the prepared files without exposing raw local paths to the client.
 
-9. `ableton_execute_concept_plan`
+9. `ableton_build_arrangement_from_prepared_audio`
+   - Reads a stored preparation manifest by `preparation_id`.
+   - Builds a stored arrangement plan using the prepared layer files internally.
+   - Returns redacted paths only.
+
+10. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-10. `ableton_render_delivery_plan`
+11. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -116,6 +122,7 @@ ableton_search_concept_samples
 ableton_build_layered_arrangement_plan
 ableton_export_concept_midi_motif with dry_run=true
 ableton_prepare_concept_audio_layers with dry_run=true
+ableton_build_arrangement_from_prepared_audio after real layer preparation
 ableton_execute_concept_plan with dry_run=true
 ```
 

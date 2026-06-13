@@ -25,6 +25,7 @@ type SweepFixtures = {
   stagedAudioPath: string;
   convertedAudioPath: string;
   pluginPath: string;
+  preparedAudioId: string;
 };
 
 function makeSilentWav() {
@@ -69,6 +70,8 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   const stagedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-tone.wav");
   const convertedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-converted.wav");
   const pluginPath = path.join(dir, "plugin.zip");
+  const conceptPlanId = sweepConceptPlanId(stagedAudioPath);
+  const preparedAudioId = `prepared-audio-${crypto.createHash("sha256").update(JSON.stringify({ conceptPlanId, stagedAudioPath })).digest("hex").slice(0, 16)}`;
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?><Ableton><LiveSet><Tracks><MidiTrack></MidiTrack></Tracks><Scenes><Scene></Scene></Scenes><Manual Value="120"/></LiveSet></Ableton>`;
   await writeIfMissing(setPath, await gzip(Buffer.from(xml, "utf8")));
@@ -77,8 +80,37 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
   await writeIfMissing(stagedAudioPath, makeSilentWav());
   await writeIfMissing(pluginPath, "Ableton MCP plugin package placeholder\n");
+  const manifestDir = path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-plans");
+  await fs.mkdir(manifestDir, { recursive: true });
+  await fs.writeFile(path.join(manifestDir, `${preparedAudioId}.json`), `${JSON.stringify({
+    id: preparedAudioId,
+    conceptPlanId,
+    createdAt: new Date().toISOString(),
+    outputRoot: LOCAL_PATHS.staging,
+    assignments: [{
+      layer: "Degraded Memory",
+      path: stagedAudioPath,
+      clip_slot_index: 0,
+      name: "Contract Prepared Memory",
+      source: "reference_audio",
+      treatment: "Contract sweep prepared audio layer."
+    }],
+    rendered: [{
+      layer: "Degraded Memory",
+      path: stagedAudioPath,
+      redactedPath: stagedAudioPath,
+      clip_slot_index: 0,
+      name: "Contract Prepared Memory",
+      treatment: "Contract sweep prepared audio layer.",
+      preset: "liminal_memory",
+      format: "wav",
+      checksum: null,
+      bytes: null,
+      attributionPath: null
+    }]
+  }, null, 2)}\n`);
 
-  return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath };
+  return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath, preparedAudioId };
 }
 
 function sweepConceptPlanId(referencePath: string) {
@@ -238,6 +270,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_stage_concept_samples", arguments: { samples: [{ url: "https://archive.org/download/opensource_audio/opensource_audio_meta.xml", destinationName: "contract-sweep.wav", metadata: { license: "CC0" } }], dry_run: true } },
     { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: conceptPlanId, sample_assignments: [{ layer: "Stretched Room", path: fixtures.stagedAudioPath, clip_slot_index: 1, name: "Contract Sweep Room Tone" }] } },
     { name: "ableton_prepare_concept_audio_layers", arguments: { plan_id: conceptPlanId, output_prefix: "contract-sweep", format: "wav", dry_run: true } },
+    { name: "ableton_build_arrangement_from_prepared_audio", arguments: { preparation_id: fixtures.preparedAudioId } },
     { name: "ableton_list_arrangement_plans", arguments: { page: 1, pageSize: 5 } },
     { name: "ableton_get_arrangement_plan", arguments: { arrangement_id: "arrangement-0000000000000000" } },
     { name: "ableton_export_concept_midi_motif", arguments: { plan_id: conceptPlanId, output_name: "contract-sweep-motif.mid", dry_run: true } },

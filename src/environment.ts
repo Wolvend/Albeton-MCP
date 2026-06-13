@@ -28,30 +28,50 @@ export async function getLiveProcesses() {
   if (!PLATFORM.isWindows) {
     return [];
   }
-  const { stdout } = await execFileAsync(TOOL_PATHS.powershell, [
-    "-NoProfile",
-    "-Command",
-    "Get-Process | Where-Object { $_.ProcessName -like '*Ableton*' -or $_.Path -like '*Ableton Live*' } | Select-Object ProcessName,Id,Path | ConvertTo-Json -Compress"
-  ], { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot } });
-  if (!stdout.trim()) return [];
-  const parsed = JSON.parse(stdout);
-  return Array.isArray(parsed) ? parsed : [parsed];
+  try {
+    const { stdout } = await execFileAsync(TOOL_PATHS.powershell, [
+      "-NoProfile",
+      "-Command",
+      "Get-Process | Where-Object { $_.ProcessName -like '*Ableton*' -or $_.Path -like '*Ableton Live*' } | Select-Object ProcessName,Id,Path | ConvertTo-Json -Compress"
+    ], { timeout: 5_000, env: { SystemRoot: process.env.SystemRoot } });
+    if (!stdout.trim()) return [];
+    const parsed = JSON.parse(stdout);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch {
+    return [];
+  }
 }
 
 export async function environmentSnapshot() {
-  const paths = Object.fromEntries(await Promise.all(Object.entries(LOCAL_PATHS).map(async ([key, value]) => [key, { path: value, exists: await exists(value) }])));
-  const processes = await getLiveProcesses();
+  const [
+    pathEntries,
+    processes,
+    nodeVersion,
+    npmVersion,
+    gitVersion,
+    ffmpegVersion,
+    ffprobeVersion
+  ] = await Promise.all([
+    Promise.all(Object.entries(LOCAL_PATHS).map(async ([key, value]) => [key, { path: value, exists: await exists(value) }])),
+    getLiveProcesses(),
+    commandVersion(TOOL_PATHS.node, ["--version"]),
+    commandVersion(TOOL_PATHS.npm, ["--version"]),
+    commandVersion(TOOL_PATHS.git, ["--version"]),
+    commandVersion(TOOL_PATHS.ffmpeg, ["-version"]),
+    commandVersion(TOOL_PATHS.ffprobe, ["-version"])
+  ]);
+  const paths = Object.fromEntries(pathEntries);
   return {
     paths,
     platform: PLATFORM,
     liveRunning: processes.some((proc) => String(proc.ProcessName ?? "").toLowerCase().includes("ableton live")),
     abletonProcesses: processes,
     tools: {
-      node: await commandVersion(TOOL_PATHS.node, ["--version"]),
-      npm: await commandVersion(TOOL_PATHS.npm, ["--version"]),
-      git: await commandVersion(TOOL_PATHS.git, ["--version"]),
-      ffmpeg: await commandVersion(TOOL_PATHS.ffmpeg, ["-version"]),
-      ffprobe: await commandVersion(TOOL_PATHS.ffprobe, ["-version"])
+      node: nodeVersion,
+      npm: npmVersion,
+      git: gitVersion,
+      ffmpeg: ffmpegVersion,
+      ffprobe: ffprobeVersion
     },
     flags: {
       write: FLAGS.write,
