@@ -1118,6 +1118,72 @@ function automationParameterHints(target: ArrangementPlan["automationPlan"][numb
   return ["Use ableton_get_device_parameter_map to choose a reviewed parameter."];
 }
 
+function automationSummaryDiscoveryCall(trackIndex: number, target: ArrangementPlan["automationPlan"][number]["target"]) {
+  return {
+    name: "ableton_extract_automation_summary",
+    arguments: {
+      track_index: trackIndex,
+      include_devices: target !== "volume",
+      max_parameters: target === "volume" ? 16 : 64
+    }
+  };
+}
+
+function automationCandidateTargetTypes(target: ArrangementPlan["automationPlan"][number]["target"]) {
+  if (target === "volume") return ["track_volume", "device_parameter"];
+  if (target === "reverb" || target === "delay") return ["track_send", "device_parameter"];
+  if (target === "filter") return ["device_parameter"];
+  if (target === "midi_velocity") return ["clip_notes"];
+  return ["device_parameter"];
+}
+
+function automationBridgeTargetMatches(target: ArrangementPlan["automationPlan"][number]["target"], candidate: Record<string, unknown>) {
+  const targetType = String(candidate.target_type ?? "").toLowerCase();
+  const text = [
+    candidate.parameter_name,
+    candidate.device_name,
+    candidate.device_class_name,
+    candidate.target_id,
+    targetType
+  ].map((value) => String(value ?? "").toLowerCase()).join(" ");
+
+  if (target === "volume") return targetType === "track_volume" || /\b(volume|gain|level|utility)\b/.test(text);
+  if (target === "reverb") return targetType === "track_send" || /reverb|dry\/wet|decay|size/.test(text);
+  if (target === "delay") return targetType === "track_send" || /echo|delay|feedback|dry\/wet/.test(text);
+  if (target === "filter") return /filter|cutoff|frequency|freq|bandwidth|eq eight/.test(text);
+  return false;
+}
+
+function automationBridgeTargetSummary(target: ArrangementPlan["automationPlan"][number]["target"], response: unknown) {
+  const container = response && typeof response === "object" && "data" in response
+    ? (response as { data?: unknown }).data
+    : response;
+  const data = container && typeof container === "object" ? container as Record<string, unknown> : {};
+  const targets = Array.isArray(data.targets) ? data.targets.filter((entry): entry is Record<string, unknown> => entry !== null && typeof entry === "object") : [];
+  const matchingTargets = targets
+    .filter((entry) => automationBridgeTargetMatches(target, entry))
+    .slice(0, 8)
+    .map((entry) => ({
+      target_id: String(entry.target_id ?? ""),
+      target_type: String(entry.target_type ?? ""),
+      parameter_name: String(entry.parameter_name ?? ""),
+      device_name: entry.device_name === null || entry.device_name === undefined ? null : String(entry.device_name),
+      parameter_index: typeof entry.parameter_index === "number" ? entry.parameter_index : null,
+      current_value_write_tool: entry.current_value_write_tool ?? null,
+      automation_write_supported: entry.automation_write_supported === true
+    }));
+
+  return {
+    available: targets.length > 0,
+    targetCount: targets.length,
+    matchingTargetCount: matchingTargets.length,
+    candidateTargetTypes: automationCandidateTargetTypes(target),
+    availableTargetTypes: [...new Set(targets.map((entry) => String(entry.target_type ?? "")).filter(Boolean))],
+    matchingTargets,
+    support: data.support ?? null
+  };
+}
+
 function devicesForAutomation(target: ArrangementPlan["automationPlan"][number]["target"], devices: string[]) {
   const patterns = {
     reverb: /reverb/i,
@@ -2346,6 +2412,12 @@ export async function planConceptDeviceAutomationReadiness(options: ConceptDevic
     checked: options.check_bridge !== false,
     reachable: null as boolean | null,
     resolution: null as CreatedTrackResolution | null,
+    automationSummaries: [] as Array<{
+      track_index: number;
+      ok: boolean;
+      summary?: unknown;
+      error?: string;
+    }>,
     error: null as string | null,
     nextSteps: [] as string[]
   };
@@ -2358,6 +2430,35 @@ export async function planConceptDeviceAutomationReadiness(options: ConceptDevic
       bridge.reachable = false;
       bridge.error = error instanceof Error ? error.message : String(error);
       bridge.nextSteps = bridgeSetupHints(error);
+    }
+  }
+
+  const resolvedTrackForAutomation = (entry: ArrangementPlan["automationPlan"][number]) => {
+    const chain = arrangement.devicePlan.find((candidate) => candidate.layer === entry.layer);
+    if (!chain) return { target: { kind: "unknown", status: "unresolved" } as Record<string, unknown>, trackIndex: null as number | null, chain };
+    const target = plannedTargetResolution(chain, bridge.resolution ?? undefined);
+    const trackIndex = "track_index" in target && typeof target.track_index === "number" ? target.track_index : null;
+    return { target, trackIndex, chain };
+  };
+
+  const liveAutomationByTrack = new Map<number, unknown>();
+  if (bridge.checked && bridge.reachable) {
+    const trackIndices = [...new Set(arrangement.automationPlan
+      .map((entry) => resolvedTrackForAutomation(entry).trackIndex)
+      .filter((trackIndex): trackIndex is number => trackIndex !== null))]
+      .slice(0, 16);
+    for (const trackIndex of trackIndices) {
+      try {
+        const summary = await bridgeAction("automation_summary", { track_index: trackIndex, include_devices: true, max_parameters: 64 }) as Record<string, unknown>;
+        liveAutomationByTrack.set(trackIndex, summary);
+        bridge.automationSummaries.push({ track_index: trackIndex, ok: true, summary });
+      } catch (error) {
+        bridge.automationSummaries.push({
+          track_index: trackIndex,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
     }
   }
 
@@ -2402,23 +2503,52 @@ export async function planConceptDeviceAutomationReadiness(options: ConceptDevic
   });
 
   const automationTargets = arrangement.automationPlan.map((entry) => {
-    const chain = arrangement.devicePlan.find((candidate) => candidate.layer === entry.layer);
-    const target = chain ? plannedTargetResolution(chain, bridge.resolution ?? undefined) : { kind: "unknown", status: "unresolved" };
-    const resolvedTrackIndex = "track_index" in target && typeof target.track_index === "number" ? target.track_index : null;
+    const { chain, target, trackIndex: resolvedTrackIndex } = resolvedTrackForAutomation(entry);
     const matchingDevices = chain ? devicesForAutomation(entry.target, chain.devices) : [];
+    const summary = resolvedTrackIndex === null ? null : liveAutomationByTrack.get(resolvedTrackIndex);
+    const automationSummaryTemplate = entry.target === "midi_velocity"
+      ? null
+      : {
+        name: "ableton_extract_automation_summary",
+        executable: resolvedTrackIndex !== null,
+        reason: resolvedTrackIndex !== null
+          ? "Resolved track index is available from bridge preflight."
+          : "Resolve the generated track index with ableton_preflight_concept_execution before calling this template.",
+        arguments: resolvedTrackIndex !== null
+          ? automationSummaryDiscoveryCall(resolvedTrackIndex, entry.target).arguments
+          : {
+            ...(chain?.track_created_offset === undefined ? {} : { track_created_offset: chain.track_created_offset }),
+            ...(chain?.return_created_offset === undefined ? {} : { return_created_offset: chain.return_created_offset }),
+            include_devices: entry.target !== "volume",
+            max_parameters: entry.target === "volume" ? 16 : 64
+          }
+      };
     return {
       layer: entry.layer,
       automation: entry.automation,
       target: entry.target,
       targetResolution: target,
+      candidateTargetTypes: automationCandidateTargetTypes(entry.target),
       candidateDevices: matchingDevices,
       parameterHints: automationParameterHints(entry.target),
       discoveryCalls: resolvedTrackIndex === null
-        ? []
-        : [
-          { name: "ableton_list_devices", arguments: { track_id: String(resolvedTrackIndex) } },
-          { name: "ableton_get_device_parameter_map", arguments: { track_index: resolvedTrackIndex, device_index: 0 } }
-        ],
+        ? entry.target === "midi_velocity"
+          ? [{ name: "ableton_get_clip_notes", arguments: { track_index: 0, clip_slot_index: 0 } }]
+          : []
+        : entry.target === "midi_velocity"
+          ? [{ name: "ableton_get_clip_notes", arguments: { track_index: resolvedTrackIndex, clip_slot_index: 0 } }]
+          : [
+            automationSummaryDiscoveryCall(resolvedTrackIndex, entry.target),
+            { name: "ableton_list_devices", arguments: { track_id: String(resolvedTrackIndex) } },
+            { name: "ableton_get_device_parameter_map", arguments: { track_index: resolvedTrackIndex, device_index: 0 } }
+          ],
+      liveAutomationTargetSummary: summary ? automationBridgeTargetSummary(entry.target, summary) : null,
+      toolCallTemplates: [
+        ...(automationSummaryTemplate ? [automationSummaryTemplate] : []),
+        ...(entry.target === "midi_velocity"
+          ? [{ name: "ableton_get_clip_notes", executable: false, reason: "Resolve the generated MIDI clip slot before inspecting notes.", arguments: { clip_slot_index: 0 } }]
+          : [])
+      ],
       exactDryRunToolCalls: resolvedTrackIndex !== null && entry.target === "volume"
         ? [
           { name: "ableton_create_automation_envelope", arguments: { track_index: resolvedTrackIndex, parameter_index: 0, dry_run: true } },
@@ -2445,6 +2575,9 @@ export async function planConceptDeviceAutomationReadiness(options: ConceptDevic
       automationTargets: automationTargets.length,
       exactDryRunDeviceCalls: deviceChains.reduce((count, entry) => count + entry.exactDryRunToolCalls.length, 0),
       exactDryRunAutomationCalls: automationTargets.reduce((count, entry) => count + entry.exactDryRunToolCalls.length, 0),
+      automationSummaryDiscoveryCalls: automationTargets.reduce((count, entry) => count + entry.discoveryCalls.filter((call) => call.name === "ableton_extract_automation_summary").length, 0),
+      automationSummaryToolTemplates: automationTargets.reduce((count, entry) => count + entry.toolCallTemplates.filter((call) => call.name === "ableton_extract_automation_summary").length, 0),
+      liveAutomationSummaries: bridge.automationSummaries.filter((entry) => entry.ok).length,
       realDeviceInsertionSupported: false,
       realAutomationWriteSupported: false
     },
@@ -2452,7 +2585,7 @@ export async function planConceptDeviceAutomationReadiness(options: ConceptDevic
     automationTargets,
     nextSteps: [
       "Run ableton_preflight_concept_execution with check_bridge=true after the bridge is loaded.",
-      "Use the discoveryCalls to inspect actual devices and parameter names before any automation attempt.",
+      "Use ableton_extract_automation_summary discovery calls to inspect mixer, send, and device parameter candidates before any automation attempt.",
       "Keep device insertion and automation writes dry-run unless Ableton MCP reports support for the running bridge.",
       "Use the user-enabled UI driver fallback only after explicit user choice."
     ]
@@ -3697,6 +3830,7 @@ function automationDryRunTemplates(target: ArrangementPlan["automationPlan"][num
     ];
   }
   return [
+    automationSummaryDiscoveryCall(0, target),
     { name: "ableton_get_device_parameter_map", arguments: { track_index: 0, device_index: 0 } },
     { name: "ableton_create_automation_envelope", arguments: { track_index: 0, device_index: 0, parameter_index: 0, dry_run: true } },
     { name: "ableton_set_automation_point", arguments: { track_index: 0, device_index: 0, parameter_index: 0, time: 0, value: 0.5, dry_run: true } }
@@ -3709,8 +3843,8 @@ function automationReviewNotes(target: ArrangementPlan["automationPlan"][number]
     `Layer role: ${layer.role}`
   ];
   if (target === "filter") notes.push("Confirm cutoff units and parameter range from ableton_get_device_parameter_map before writing.");
-  if (target === "reverb" || target === "delay") notes.push("Prefer send or return-level automation when device parameter writes are unsupported.");
-  if (target === "volume") notes.push("Use mixer volume automation only after bridge preflight resolves the generated track index.");
+  if (target === "reverb" || target === "delay") notes.push("Use ableton_extract_automation_summary to compare send targets with device dry/wet or feedback candidates.");
+  if (target === "volume") notes.push("Use ableton_extract_automation_summary after bridge preflight resolves the generated track index.");
   if (target === "midi_velocity") notes.push("Review existing clip notes before destructive velocity edits.");
   if (target === "unknown") notes.push("Treat as a production note until a reviewed parameter target is chosen.");
   return notes;

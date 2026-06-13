@@ -281,9 +281,12 @@ describe("concept-to-music planning", () => {
     expect(readiness.bridge).toMatchObject({ checked: false, reachable: null });
     expect(readiness.summary.deviceChains).toBeGreaterThan(0);
     expect(readiness.summary.automationTargets).toBeGreaterThan(0);
+    expect(readiness.summary.automationSummaryToolTemplates).toBeGreaterThan(0);
     expect(readiness.summary.realDeviceInsertionSupported).toBe(false);
     expect(readiness.deviceChains.some((entry) => entry.toolCallTemplates.some((call) => call.name === "ableton_insert_effect"))).toBe(true);
     expect(readiness.automationTargets.some((entry) => entry.parameterHints.includes("Cutoff"))).toBe(true);
+    expect(readiness.automationTargets.some((entry) => entry.candidateTargetTypes.includes("track_send") || entry.candidateTargetTypes.includes("track_volume"))).toBe(true);
+    expect(readiness.automationTargets.some((entry) => entry.toolCallTemplates.some((call) => call.name === "ableton_extract_automation_summary"))).toBe(true);
     expect(routing.bridge).toMatchObject({ checked: false, reachable: null });
     expect(routing.summary.plannedSendCount).toBeGreaterThan(0);
     expect(routing.summary.writesAbleton).toBe(false);
@@ -347,6 +350,7 @@ describe("concept-to-music planning", () => {
     expect(automationMap.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false });
     expect(automationMap.summary.targets).toEqual(expect.arrayContaining(["reverb", "delay", "filter", "midi_velocity"]));
     expect(automationMap.lanes.some((lane) => lane.layer === "Distant Room Tone" && lane.points.some((point) => point.time_seconds === 0))).toBe(true);
+    expect(automationMap.lanes.some((lane) => lane.dryRunTemplates.some((call) => call.name === "ableton_extract_automation_summary"))).toBe(true);
     expect(automationMap.lanes.some((lane) => lane.dryRunTemplates.some((call) => call.name === "ableton_get_device_parameter_map"))).toBe(true);
     expect(automationMap.exactNextToolCalls.deviceAutomationReadiness.name).toBe("ableton_plan_concept_device_automation_readiness");
     expect(delivery.export.sampleRate).toBe(48000);
