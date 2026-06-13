@@ -76,7 +76,7 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false }, required: true },
   { name: "ableton_live_status", arguments: {}, required: true },
   { name: "ableton_bridge_status", arguments: {}, required: true },
-  { name: "ableton_bridge_setup_status", arguments: { check_bridge: false }, required: true },
+  { name: "ableton_bridge_setup_status", arguments: { check_bridge: true }, required: true },
   { name: "ableton_bridge_ping", arguments: {}, required: true },
   { name: "ableton_get_live_state", arguments: {}, required: true },
   { name: "ableton_get_full_snapshot", arguments: {}, required: true },
@@ -160,18 +160,43 @@ function coverageAreaStatus(launchReadiness: unknown, areaId: string) {
 
 function collectSetupHints(results: SmokeResult[]) {
   const hints = new Set<string>();
+  const bridgeSetup = resultByName(results, "ableton_bridge_setup_status")?.structuredContent;
+  const setupStatus = stringAt(bridgeSetup, [["bridgeSetup", "status"]]);
+  const installReady = booleanAt(bridgeSetup, [["bridgeSetup", "install", "ready"]]);
+  const liveRunning = booleanAt(bridgeSetup, [["bridgeSetup", "live", "running"]]);
+  const addHint = (hint: string) => {
+    const normalized = hint.trim().toLowerCase();
+    if (liveRunning === true && normalized === "open ableton live.") return;
+    if (
+      setupStatus === "bridge_device_not_loaded"
+      && installReady === true
+      && normalized === "install/load the max for live bridge from bridge/max-for-live."
+    ) return;
+    if (
+      setupStatus
+      && setupStatus !== "ready"
+      && normalized === "open ableton live and load the ableton mcp bridge max for live device."
+    ) return;
+    hints.add(hint);
+  };
   for (const result of results) {
-    if (result.ok) continue;
     const structured = asRecord(result.structuredContent);
+    if (result.ok && result.name === "ableton_bridge_setup_status") {
+      const setupHints = getNested(structured, ["bridgeSetup", "nextSteps"]);
+      if (setupStatus !== "ready" && Array.isArray(setupHints)) {
+        for (const hint of setupHints) if (typeof hint === "string") addHint(hint);
+      }
+    }
+    if (result.ok) continue;
     const directHints = structured?.nextSteps ?? structured?.nextStep;
     if (Array.isArray(directHints)) {
-      for (const hint of directHints) if (typeof hint === "string") hints.add(hint);
+      for (const hint of directHints) if (typeof hint === "string") addHint(hint);
     } else if (typeof directHints === "string") {
-      hints.add(directHints);
+      addHint(directHints);
     }
     if (result.error?.includes("BRIDGE_UNREACHABLE") || result.error?.includes("not reachable")) {
-      hints.add("Open Ableton Live and load the Ableton MCP Bridge Max for Live device.");
-      hints.add("Run ableton_bridge_ping after the bridge device reports it is listening on 127.0.0.1:17364.");
+      addHint("Open Ableton Live and load the Ableton MCP Bridge Max for Live device.");
+      addHint("Run ableton_bridge_ping after the bridge device reports it is listening on 127.0.0.1:17364.");
     }
   }
   return [...hints];

@@ -41,7 +41,7 @@ describe("live smoke workflow", () => {
       .toMatchObject({ check_bridge: false });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_bridge_setup_status");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_bridge_setup_status")?.arguments)
-      .toMatchObject({ check_bridge: false });
+      .toMatchObject({ check_bridge: true });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_live_state");
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_routing_overview");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_get_routing_overview")?.arguments)
@@ -83,7 +83,7 @@ describe("live smoke workflow", () => {
         : call.name === "ableton_get_bridge_capabilities"
           ? { capabilities: { summary: { read_only: 10, write_gated: 20, unsupported: 4, diagnostic: 2 } } }
         : call.name === "ableton_bridge_setup_status"
-          ? { bridgeSetup: { status: "ready", install: { ready: true }, live: { running: true }, bridge: { checked: false, reachable: null } } }
+          ? { bridgeSetup: { status: "ready", install: { ready: true }, live: { running: true }, bridge: { checked: true, reachable: true } } }
         : call.name === "ableton_get_full_snapshot"
         ? { snapshot: { data: { state: { track_count: 4, scene_count: 9 }, tracks: [{}, {}], scenes: [{}, {}, {}] } } }
         : call.name === "ableton_duplicate_clip"
@@ -127,8 +127,8 @@ describe("live smoke workflow", () => {
       status: "ready",
       installReady: true,
       liveRunning: true,
-      checked: false,
-      reachable: null
+      checked: true,
+      reachable: true
     });
     expect(report.bridgeCapabilitySummary).toMatchObject({ read_only: 10, write_gated: 20, unsupported: 4, diagnostic: 2 });
     expect(report.setupHints).toEqual([]);
@@ -139,13 +139,26 @@ describe("live smoke workflow", () => {
       name: call.name,
       ok: call.name !== "ableton_bridge_ping",
       isError: call.name === "ableton_bridge_ping",
-      structuredContent: call.name === "ableton_duplicate_clip" ? { ok: true, dry_run: true } : { ok: true }
+      structuredContent: call.name === "ableton_duplicate_clip"
+        ? { ok: true, dry_run: true }
+        : call.name === "ableton_bridge_setup_status"
+          ? {
+              bridgeSetup: {
+                status: "bridge_device_not_loaded",
+                install: { ready: true },
+                live: { running: true },
+                nextSteps: ["Load Ableton MCP Bridge from User Library > Presets > MIDI Effects > Max MIDI Effect."]
+              }
+            }
+          : { ok: true }
     })).map((result) => result.name === "ableton_bridge_ping" ? { ...result, error: "BRIDGE_UNREACHABLE" } : result);
 
     const report = buildLiveSmokeReport(results);
 
     expect(report.ok).toBe(false);
     expect(report.bridgeReachable).toBe(false);
-    expect(report.setupHints.join(" ")).toMatch(/Open Ableton Live/);
+    expect(report.bridgeSetup.status).toBe("bridge_device_not_loaded");
+    expect(report.setupHints.join(" ")).not.toMatch(/Open Ableton Live/);
+    expect(report.setupHints.join(" ")).toMatch(/Load Ableton MCP Bridge/);
   });
 });

@@ -224,9 +224,11 @@ Result: completed with structured setup failure, not fake success:
 ok: false
 bridgeReachable: false
 dryRunWriteConfirmed: true
-bridgeSetup.status: installed_pending_bridge_check
+bridgeSetup.status: bridge_device_not_loaded
 bridgeSetup.installReady: true
 bridgeSetup.liveRunning: true
+bridgeSetup.checked: true
+bridgeSetup.reachable: false
 launchReadiness.mode: ready_for_offline_planning
 launchReadiness.liveControlCoverage.areas: 9
 launchReadiness.liveControlCoverage.writeGatedSupported: 4
@@ -235,7 +237,7 @@ launchReadiness.liveControlCoverage.automationBreakpointWrites: partially_suppor
 routingRows: null
 ```
 
-Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` during this run. `ableton_bridge_setup_status --check-bridge` reported current installed bridge files and a running Ableton process, so the remaining setup step is loading the Ableton MCP Bridge Max for Live device. The workflow now calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_bridge_setup_status`, and `ableton_get_routing_overview` so one smoke run reports objective status, launch readiness, LiveAPI coverage, bridge setup state, static bridge capabilities, and the send-matrix read path before real routing work. Next steps are to load the Ableton MCP Bridge Max for Live device, then rerun live-smoke.
+Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` during this run. `ableton_bridge_setup_status check_bridge=true` reported current installed bridge files and a running Ableton process, so the remaining setup step is loading the Ableton MCP Bridge Max for Live device. The workflow now calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_bridge_setup_status check_bridge=true`, and `ableton_get_routing_overview` so one smoke run reports objective status, launch readiness, LiveAPI coverage, bridge setup state, static bridge capabilities, and the send-matrix read path before real routing work. Next steps are to load the Ableton MCP Bridge Max for Live device, then rerun live-smoke.
 
 ## Security Notes
 

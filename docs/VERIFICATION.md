@@ -101,7 +101,7 @@ ableton_get_full_snapshot
 
 If the bridge is not loaded, these tools should return `BRIDGE_UNREACHABLE` with setup steps.
 
-The live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_setup_status`, `ableton_bridge_ping`, `ableton_get_live_state`, `ableton_get_full_snapshot`, track/scene/device listing, `ableton_get_routing_overview`, `ableton_control_mode_status`, and one `dry_run=true` write probe. It reports objective status, launch mode, safe tool count, bridge setup status, LiveAPI control coverage, bridge capability summary, track/scene/device counts, and send-matrix row counts when the bridge is loaded. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
+The live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_setup_status` with `check_bridge=true`, `ableton_bridge_ping`, `ableton_get_live_state`, `ableton_get_full_snapshot`, track/scene/device listing, `ableton_get_routing_overview`, `ableton_control_mode_status`, and one `dry_run=true` write probe. It reports objective status, launch mode, safe tool count, bridge setup status, LiveAPI control coverage, bridge capability summary, track/scene/device counts, and send-matrix row counts when the bridge is loaded. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
 
 ## Check the UI driver
 
