@@ -67,7 +67,7 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   const textPath = path.join(dir, "note.txt");
   const audioPath = path.join(dir, "tone.wav");
   const stagedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-tone.wav");
-  const convertedAudioPath = path.join(dir, "converted.wav");
+  const convertedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-converted.wav");
   const pluginPath = path.join(dir, "plugin.zip");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?><Ableton><LiveSet><Tracks><MidiTrack></MidiTrack></Tracks><Scenes><Scene></Scene></Scenes><Manual Value="120"/></LiveSet></Ableton>`;

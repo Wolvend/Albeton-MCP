@@ -69,6 +69,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_insert_midi_notes).toHaveProperty("notes");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).toHaveProperty("path");
+    expect(registeredToolSchemas.ableton_convert_audio_file).toHaveProperty("preset");
     expect(registeredToolSchemas.ableton_list_internet_archive_audio_files).toHaveProperty("identifier");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_get_concept_plan).toHaveProperty("plan_id");

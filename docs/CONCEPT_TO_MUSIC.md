@@ -22,6 +22,7 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
    - Real staging requires `dry_run=false` and `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
    - Downloads only from approved sample hosts through the existing sample policy.
    - Builds a provenance record with source URL, destination name, license policy, creator/title/identifier metadata, and checksum/byte count when a real download occurs.
+   - Local reference audio can also be converted into approved staging/import paths with `ableton_convert_audio_file` using presets such as `liminal_memory`, `stretched_ambience`, and `reversed_fragment`.
 
 5. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.

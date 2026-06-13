@@ -30,4 +30,6 @@ Every imported sample should have:
 
 The report redacts local paths, sanitizes remote title/creator text for display, and keeps source URLs, licenses, checksums, byte counts, and staging/import timestamps available for review.
 
+`ableton_convert_audio_file` can render approved local audio into `samples\staging` or Codex Imports with ffmpeg. It is dry-run by default, requires `ABLETON_MCP_ENABLE_WRITE=1` for real conversion, never overwrites existing files, and writes a sidecar attribution record with transform preset, checksum, byte count, and inherited source metadata when available.
+
 Do not import unclear copyrighted, commercial, bootleg, or license-ambiguous audio.

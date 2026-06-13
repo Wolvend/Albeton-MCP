@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { analyzeAbletonSet, analyzeAudioFile } from "./analysis.js";
+import { analyzeAbletonSet, analyzeAudioFile, convertAudioFile } from "./analysis.js";
 import { bridgeAction, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
 import { FLAGS, LOCAL_PATHS, PLATFORM } from "./config.js";
@@ -503,7 +503,10 @@ toolDefs.push(
   { name: "ableton_preview_remote_sample", description: "Return preview metadata only; never downloads.", inputSchema: { url: z.string().url(), license: z.string().optional() }, annotations: webro, handler: async (args) => ({ ok: true, preview: { url: assertAllowedSampleUrl(args.url), license: normalizeLicense(args.license), downloadEnabled: FLAGS.downloads } }) },
   { name: "ableton_download_sample", description: "Download an allowed licensed sample into staging when downloads are enabled.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, download: await downloadSample(args.url, args.destinationName, args.metadata) }) },
   { name: "ableton_analyze_audio_file", description: "Analyze allowed local audio file with ffprobe.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAudioFile(args.path) }) },
-  { name: "ableton_convert_audio_file", description: "Plan safe audio conversion; actual conversion is disabled in v1.", inputSchema: { input: z.string(), output: z.string(), format: z.string().default("wav"), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, dry_run: true, input: redactPath((await resolveSafePath(args.input, { mustExist: true })).real), output: redactPath((await resolveSafePath(args.output, { mustExist: false, forWrite: true })).real), note: "Conversion execution will use ffmpeg after overwrite policy and fixture tests are added." }) },
+  { name: "ableton_convert_audio_file", description: "Convert approved local audio into staging/imports with ffmpeg; dry-run by default and never overwrites.", inputSchema: { input: z.string().min(1), output: z.string().min(1), format: z.enum(["wav", "flac", "mp3"]).default("wav"), preset: z.enum(["clean", "liminal_memory", "stretched_ambience", "reversed_fragment"]).default("clean"), start_seconds: z.number().min(0).max(100_000).optional(), duration_seconds: z.number().positive().max(3600).optional(), ...DryRun }, annotations: rw, handler: async (args) => {
+    if (args.dry_run === false) requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Audio conversion");
+    return { ok: true, audioConversion: await convertAudioFile(args) as any };
+  } },
   { name: "ableton_normalize_sample_metadata", description: "Normalize sample metadata and license policy.", inputSchema: { metadata: z.record(z.unknown()).default({}) }, annotations: ro, handler: async (args) => ({ ok: true, normalized: { ...args.metadata, licensePolicy: normalizeLicense(String(args.metadata.license ?? args.metadata.licenseurl ?? "")) } }) },
   { name: "ableton_import_sample_to_library", description: "Import staged sample to Ableton User Library Codex Imports when downloads are enabled.", inputSchema: { stagedPath: z.string(), attribution: z.record(z.unknown()).default({}) }, annotations: rw, handler: async (args) => ({ ok: true, import: await importSampleToLibrary(args.stagedPath, args.attribution) }) },
   { name: "ableton_find_local_samples", description: "Search indexed local samples.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
