@@ -22,6 +22,7 @@ type SweepFixtures = {
   setPath: string;
   textPath: string;
   audioPath: string;
+  stagedAudioPath: string;
   convertedAudioPath: string;
   pluginPath: string;
 };
@@ -65,6 +66,7 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   const setPath = path.join(dir, "minimal.als");
   const textPath = path.join(dir, "note.txt");
   const audioPath = path.join(dir, "tone.wav");
+  const stagedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-tone.wav");
   const convertedAudioPath = path.join(dir, "converted.wav");
   const pluginPath = path.join(dir, "plugin.zip");
 
@@ -72,9 +74,11 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   await writeIfMissing(setPath, await gzip(Buffer.from(xml, "utf8")));
   await writeIfMissing(textPath, "Ableton MCP all-tool contract sweep fixture\n");
   await writeIfMissing(audioPath, makeSilentWav());
+  await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+  await writeIfMissing(stagedAudioPath, makeSilentWav());
   await writeIfMissing(pluginPath, "Ableton MCP plugin package placeholder\n");
 
-  return { dir, setPath, textPath, audioPath, convertedAudioPath, pluginPath };
+  return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath };
 }
 
 function bridgePayload(dryRun = true) {
@@ -162,7 +166,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_create_scene", arguments: bridgePayload() },
     { name: "ableton_create_clip", arguments: bridgePayload() },
     { name: "ableton_create_midi_clip", arguments: bridgePayload() },
-    { name: "ableton_insert_midi_notes", arguments: bridgePayload() },
+    { name: "ableton_insert_midi_notes", arguments: { track_index: 0, clip_slot_index: 0, notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 90 }], create_clip_if_missing: true, clip_length: 4, dry_run: true } },
     { name: "ableton_set_clip_loop", arguments: bridgePayload() },
     { name: "ableton_fire_clip", arguments: bridgePayload() },
     { name: "ableton_stop_clip", arguments: bridgePayload() },
@@ -174,7 +178,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_set_track_send", arguments: bridgePayload() },
     { name: "ableton_insert_instrument", arguments: bridgePayload() },
     { name: "ableton_insert_effect", arguments: bridgePayload() },
-    { name: "ableton_load_preset_or_sample", arguments: bridgePayload() },
+    { name: "ableton_load_preset_or_sample", arguments: { path: fixtures.stagedAudioPath, track_index: 0, clip_slot_index: 0, mode: "audio_clip", dry_run: true } },
     { name: "ableton_set_device_parameter", arguments: bridgePayload() },
     { name: "ableton_map_macro", arguments: bridgePayload() },
     { name: "ableton_rename_track", arguments: bridgePayload() },

@@ -73,8 +73,10 @@ Recommended flow:
 ```powershell
 .\launch.ps1 docker -SkipSetup
 openclaw mcp status --verbose
-openclaw mcp set ableton-mcp '{"url":"http://127.0.0.1:17366/mcp","transport":"streamable-http","connectTimeout":10,"timeout":60}'
-openclaw mcp doctor --probe ableton-mcp
+$safeTools = node -e "import('./dist/src/docker-profile.js').then(m=>console.log(m.HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.join(',')))"
+openclaw mcp add ableton-mcp --url http://127.0.0.1:17366/mcp --transport streamable-http --timeout 30 --connect-timeout 5
+openclaw mcp tools ableton-mcp --include "$safeTools"
+openclaw mcp doctor ableton-mcp --probe
 ```
 
 OpenClaw should remain a consumer of Ableton MCP. Ableton MCP still owns write/download/UI gates, path allowlisting, sample-source policy, and LiveAPI/UI-driver separation.

@@ -8,6 +8,7 @@ const fixtures = {
   setPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "minimal.als"),
   textPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "note.txt"),
   audioPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "tone.wav"),
+  stagedAudioPath: path.join(process.cwd(), "samples", "staging", "contract-sweep-tone.wav"),
   convertedAudioPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "converted.wav"),
   pluginPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "plugin.zip")
 };

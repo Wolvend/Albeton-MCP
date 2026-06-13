@@ -117,11 +117,21 @@ config/openclaw-http.json
 Or add it with the OpenClaw MCP registry:
 
 ```powershell
-openclaw mcp set ableton-mcp '{"url":"http://127.0.0.1:17366/mcp","transport":"streamable-http","connectTimeout":10,"timeout":60}'
-openclaw mcp doctor --probe ableton-mcp
+$safeTools = node -e "import('./dist/src/docker-profile.js').then(m=>console.log(m.HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.join(',')))"
+openclaw mcp add ableton-mcp --url http://127.0.0.1:17366/mcp --transport streamable-http --timeout 30 --connect-timeout 5
+openclaw mcp tools ableton-mcp --include "$safeTools"
+openclaw mcp doctor ableton-mcp --probe
 ```
 
-OpenClaw's [MCP docs](https://docs.openclaw.ai/cli/mcp) distinguish `openclaw mcp serve` for exposing OpenClaw as an MCP server from `openclaw mcp set`, `doctor`, and `probe` for consuming third-party MCP servers. Ableton MCP uses the consumer path.
+Equivalent JSON config can be applied with `openclaw mcp set` when scripting direct config writes:
+
+```powershell
+openclaw mcp set ableton-mcp '{"url":"http://127.0.0.1:17366/mcp","transport":"streamable-http","connectTimeout":5,"timeout":30}'
+openclaw mcp tools ableton-mcp --include "$safeTools"
+openclaw mcp doctor ableton-mcp --probe
+```
+
+OpenClaw's [MCP docs](https://docs.openclaw.ai/cli/mcp) distinguish `openclaw mcp serve` for exposing OpenClaw as an MCP server from `openclaw mcp add`, `set`, `tools`, `doctor`, and `probe` for consuming third-party MCP servers. Ableton MCP uses the consumer path.
 
 ## WSL
 
@@ -174,7 +184,7 @@ Use Ableton MCP through the app or agent runtime that is actually connecting to 
 | Gemini | Configure Ableton MCP in a Gemini client/agent runtime if it supports MCP server config. |
 | llama.cpp | Use an MCP-capable local agent wrapper around llama.cpp. |
 | Antigravity | Use stdio or Streamable HTTP if the app exposes MCP server configuration. |
-| OpenClaw | Use the local Streamable HTTP profile through `openclaw mcp set` and verify with `openclaw mcp doctor --probe`. |
+| OpenClaw | Use the local Streamable HTTP profile through `openclaw mcp add`, apply the generated safe tool include list, and verify with `openclaw mcp doctor ableton-mcp --probe`. |
 | Claude | Use stdio locally; use HTTP only if the client supports Streamable HTTP MCP. |
 | Codex | Use stdio locally or HTTP/Docker routing for remote/private-device workflows. |
 

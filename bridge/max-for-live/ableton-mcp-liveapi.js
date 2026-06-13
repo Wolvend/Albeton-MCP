@@ -59,6 +59,11 @@ function unsupported(action, reason, details) {
   };
 }
 
+function fileNameOnly(filePath) {
+  var parts = String(filePath || "").split(/[\\/]/);
+  return parts.length ? parts[parts.length - 1] : "";
+}
+
 function childCount(api, childName) {
   try {
     return api.getcount(childName);
@@ -486,7 +491,87 @@ function createClip(payload) {
   var length = Number(payload && payload.length ? payload.length : 4);
   if (!isFinite(length) || length <= 0 || length > 1024) throw new Error("Clip length must be between 0 and 1024 beats.");
   var result = safeCall(target.slot, "create_clip", [length]);
-  return { track_index: target.track_index, slot_index: target.slot_index, length: length, result: result };
+  if (!callSucceeded(result)) return unsupported("ableton_create_clip", "ClipSlot.create_clip is unavailable for this target. It only works on empty MIDI clip slots.", { track_index: target.track_index, slot_index: target.slot_index, result: result });
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  if (name) liveObject(target.clip_path).set("name", name);
+  return { track_index: target.track_index, slot_index: target.slot_index, length: length, name: name || null, result: result };
+}
+
+function loadPresetOrSample(payload) {
+  var target = clipSlotFromPayload(payload);
+  var mode = String(payload && payload.mode ? payload.mode : "audio_clip");
+  var filePath = String(payload && payload.path ? payload.path : "");
+  if (mode !== "audio_clip") {
+    return unsupported("ableton_load_preset_or_sample", "Only approved local audio sample clip creation is implemented. Preset/device loading needs a reviewed browser or LiveAPI insertion path.", { mode: mode });
+  }
+  if (!filePath) throw new Error("path is required.");
+  if (Number(safeGet(target.slot, "has_clip", 0)) === 1) throw new Error("Clip slot already contains a clip.");
+  var result = safeCall(target.slot, "create_audio_clip", [filePath]);
+  if (!callSucceeded(result)) return unsupported("ableton_load_preset_or_sample", "ClipSlot.create_audio_clip is unavailable for this target. It requires an empty audio track clip slot and a supported local audio file.", { track_index: target.track_index, slot_index: target.slot_index, file_name: fileNameOnly(filePath), result: result });
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  if (name) liveObject(target.clip_path).set("name", name);
+  return { track_index: target.track_index, slot_index: target.slot_index, file_name: fileNameOnly(filePath), name: name || null, result: result };
+}
+
+function normalizeMidiNote(note) {
+  var pitch = Math.floor(Number(note && note.pitch));
+  var startTime = Number(note && note.start_time);
+  var duration = Number(note && note.duration);
+  var velocity = Number(note && note.velocity !== undefined ? note.velocity : 100);
+  if (!isFinite(pitch) || pitch < 0 || pitch > 127) throw new Error("MIDI note pitch must be 0..127.");
+  if (!isFinite(startTime) || startTime < 0) throw new Error("MIDI note start_time must be non-negative.");
+  if (!isFinite(duration) || duration <= 0) throw new Error("MIDI note duration must be positive.");
+  if (!isFinite(velocity) || velocity < 0 || velocity > 127) throw new Error("MIDI note velocity must be 0..127.");
+  var normalized = {
+    pitch: pitch,
+    start_time: startTime,
+    duration: duration,
+    velocity: velocity,
+    mute: note && note.mute ? 1 : 0
+  };
+  if (note && note.probability !== undefined) {
+    normalized.probability = Number(note.probability);
+    if (!isFinite(normalized.probability) || normalized.probability < 0 || normalized.probability > 1) throw new Error("MIDI note probability must be 0..1.");
+  }
+  if (note && note.velocity_deviation !== undefined) {
+    normalized.velocity_deviation = Number(note.velocity_deviation);
+    if (!isFinite(normalized.velocity_deviation) || normalized.velocity_deviation < -127 || normalized.velocity_deviation > 127) throw new Error("MIDI note velocity_deviation must be -127..127.");
+  }
+  if (note && note.release_velocity !== undefined) {
+    normalized.release_velocity = Number(note.release_velocity);
+    if (!isFinite(normalized.release_velocity) || normalized.release_velocity < 0 || normalized.release_velocity > 127) throw new Error("MIDI note release_velocity must be 0..127.");
+  }
+  return normalized;
+}
+
+function insertMidiNotes(payload) {
+  var target = clipSlotFromPayload(payload);
+  var notes = payload && payload.notes instanceof Array ? payload.notes : [];
+  if (!notes.length) throw new Error("notes must contain at least one MIDI note.");
+  if (payload && payload.replace_existing) {
+    return unsupported("ableton_insert_midi_notes", "Replacing existing MIDI note content needs a reviewed remove/replace note strategy for this Ableton version.", { track_index: target.track_index, clip_slot_index: target.slot_index });
+  }
+  if (!clipExists(target.track_index, target.slot_index)) {
+    if (!(payload && payload.create_clip_if_missing)) throw new Error("Clip slot does not contain a MIDI clip.");
+    var created = createClip({ track_index: target.track_index, clip_slot_index: target.slot_index, length: payload.clip_length || 4, name: payload.name || "MIDI" });
+    if (created.unsupported) return created;
+  }
+  var clip = liveObject(target.clip_path);
+  var normalizedNotes = [];
+  for (var i = 0; i < notes.length; i += 1) {
+    normalizedNotes.push(normalizeMidiNote(notes[i]));
+  }
+  var notePayload = { notes: normalizedNotes };
+  var result = safeCall(clip, "add_new_notes", [notePayload]);
+  if (!callSucceeded(result)) return unsupported("ableton_insert_midi_notes", "Clip.add_new_notes is unavailable from this bridge context.", { track_index: target.track_index, clip_slot_index: target.slot_index, note_count: notePayload.notes.length, result: result });
+  return { track_index: target.track_index, clip_slot_index: target.slot_index, note_count: notePayload.notes.length, result: result };
+}
+
+function unsupportedDeviceInsertion(action, payload) {
+  return unsupported(action, "Ableton-native device insertion is not exposed reliably through this LiveAPI bridge. Use browse/read tools first, then the user-chosen UI driver fallback if device insertion is required.", {
+    track_index: parseTrackIndex(payload || {}),
+    requested_device: String(payload && (payload.device || payload.name || payload.preset || "")).slice(0, 128)
+  });
 }
 
 function fireClip(payload) {
@@ -745,6 +830,8 @@ function dispatch(action, payload) {
   if (action === "ableton_create_return_track") return createTrack("return", payload);
   if (action === "ableton_create_scene") return createScene(payload);
   if (action === "ableton_create_clip" || action === "ableton_create_midi_clip") return createClip(payload);
+  if (action === "ableton_insert_midi_notes") return insertMidiNotes(payload);
+  if (action === "ableton_load_preset_or_sample") return loadPresetOrSample(payload);
   if (action === "ableton_set_clip_loop") return setClipLoop(payload);
   if (action === "ableton_fire_clip") return fireClip(payload);
   if (action === "ableton_stop_clip") return stopClip(payload);
@@ -754,6 +841,7 @@ function dispatch(action, payload) {
   if (action === "ableton_set_track_volume") return setMixerParameter(payload, "volume", 0, 1);
   if (action === "ableton_set_track_pan") return setMixerParameter(payload, "panning", -1, 1);
   if (action === "ableton_set_track_send") return setTrackSend(payload);
+  if (action === "ableton_insert_instrument" || action === "ableton_insert_effect") return unsupportedDeviceInsertion(action, payload);
   if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);
   if (action === "ableton_rename_clip") return renameClip(payload);
@@ -766,7 +854,7 @@ function dispatch(action, payload) {
   if (action === "ableton_move_clip") return moveClip(payload);
   if (action === "ableton_quantize_clip") return quantizeClip(payload);
   if (action === "ableton_humanize_midi_clip") return humanizeMidiClip(payload);
-  return { unsupported: true, action: action, message: "Action is registered on the MCP side but not implemented in the v1 LiveAPI bridge yet." };
+  return unsupported(action, "Action is registered on the MCP side but not implemented in the v1 LiveAPI bridge yet.", {});
 }
 
 function request(id, action, payloadJson) {

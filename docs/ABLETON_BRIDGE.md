@@ -56,7 +56,15 @@ MCP clients can call `ableton_bridge_install_plan` for the same dry-run report. 
 
 ## Current LiveAPI coverage
 
-The bridge currently covers broad read visibility plus common write-gated operations: track/return/master summaries, scenes, clip slots, clips, devices, parameters, mixer volume/pan, clip creation/launch/stop/loop/rename, scene creation, track creation, track arm/mute/solo/rename, tempo, and transport.
+The bridge currently covers broad read visibility plus common write-gated operations:
+
+- Transport, tempo, play/stop/record state, and full/diff snapshots.
+- Track, return, master, scene, clip slot, clip, device, parameter, arrangement locator, and selected-object summaries.
+- Track creation, scene creation, clip creation, clip launch/stop, loop changes, renaming, track arm/mute/solo, mixer volume/pan/send changes, and scene/clip duplication or movement.
+- Audio clip creation from an approved local sample path with `ableton_load_preset_or_sample` in `audio_clip` mode.
+- MIDI note insertion with `ableton_insert_midi_notes` when the loaded Ableton/Max LiveAPI context supports the modern note API.
+
+The bridge returns explicit `unsupported: true` results for operations that are not reliable in the current LiveAPI context, including generic device/preset insertion and automation writes that cannot be proven for the selected target. MCP clients should treat those responses as setup or capability limits, not as success.
 
 ## Queueing and fallback
 

@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 20 test files and 49 tests passed.
+Result: succeeded. Vitest reported 21 test files and 50 tests passed, including typed MIDI/sample tool schema checks and OpenClaw client config documentation checks.
 
 ```powershell
 npm run lint
@@ -67,6 +67,8 @@ npm run sweep:all
 
 Result: succeeded. All-tool contract sweep called all 158 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> dry-run execution.
 
+The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode.
+
 ```powershell
 npm run verify:mcp
 ```
@@ -82,12 +84,10 @@ Result: succeeded. npm reported 0 vulnerabilities after updating the dev `esbuil
 ## Docker MCP
 
 ```powershell
-npm run docker:hypernimbus:plan
-npm run docker:hypernimbus:apply
 npm run docker:hypernimbus:verify
 ```
 
-Result: succeeded. The apply command backed up the existing HyperNimbus profile to `diagnostics\runtime\docker-mcp\hypernimbus.before.yaml`, added `ableton-mcp`, disabled all Ableton tools, then enabled the 103-tool safe allowlist.
+Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server with the 103-tool safe allowlist.
 
 The profile now includes:
 
@@ -134,6 +134,14 @@ docker mcp gateway run --profile hypernimbus --dry-run --block-secrets --block-n
 ```
 
 Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 103 tools.
+
+OpenClaw docs/config were updated and tested for Streamable HTTP consumer setup:
+
+```powershell
+openclaw mcp add ableton-mcp --url http://127.0.0.1:17366/mcp --transport streamable-http --timeout 30 --connect-timeout 5
+openclaw mcp tools ableton-mcp --include "$safeTools"
+openclaw mcp doctor ableton-mcp --probe
+```
 
 ## WSL
 

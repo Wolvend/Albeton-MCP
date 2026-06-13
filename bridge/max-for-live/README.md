@@ -79,6 +79,8 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `ableton_create_scene`
 - `ableton_create_clip`
 - `ableton_create_midi_clip`
+- `ableton_insert_midi_notes`
+- `ableton_load_preset_or_sample` in `audio_clip` mode for approved local audio files
 - `ableton_set_clip_loop`
 - `ableton_fire_clip`
 - `ableton_stop_clip`
@@ -87,8 +89,19 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `ableton_solo_track`
 - `ableton_set_track_volume`
 - `ableton_set_track_pan`
+- `ableton_set_track_send`
 - `ableton_set_device_parameter`
 - `ableton_rename_track`
 - `ableton_rename_clip`
+- `ableton_create_arrangement_marker`
+- `ableton_duplicate_scene`
+- `ableton_duplicate_clip`
+- `ableton_move_clip`
+- `ableton_quantize_clip`
+- `ableton_humanize_midi_clip`
+- `arrangement_markers`
+- `clip_notes`
+- `clip_envelopes`
+- `device_parameter_map`
 
-Other MCP write tools remain gated and return a structured unsupported-action response until mapped to LiveAPI.
+Automation and device/preset insertion actions are dispatched deliberately, but return structured `unsupported: true` responses unless the current LiveAPI target can be handled reliably. Other MCP write tools remain gated and return a structured unsupported-action response until mapped to LiveAPI.

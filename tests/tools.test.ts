@@ -18,6 +18,8 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_mcp_get_client_connection_profiles");
     expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");
     expect(registeredToolNames).toContain("ableton_set_tempo");
+    expect(registeredToolNames).toContain("ableton_insert_midi_notes");
+    expect(registeredToolNames).toContain("ableton_load_preset_or_sample");
     expect(registeredToolNames).toContain("ableton_set_track_send");
     expect(registeredToolNames).toContain("ableton_search_freesound");
     expect(registeredToolNames).toContain("ableton_search_plugin_catalog");
@@ -44,6 +46,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_create_arrangement_marker).toHaveProperty("name");
     expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("parameter_index");
     expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("value");
+    expect(registeredToolSchemas.ableton_insert_midi_notes).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_insert_midi_notes).toHaveProperty("notes");
+    expect(registeredToolSchemas.ableton_load_preset_or_sample).not.toHaveProperty("payload");
+    expect(registeredToolSchemas.ableton_load_preset_or_sample).toHaveProperty("path");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");
   });

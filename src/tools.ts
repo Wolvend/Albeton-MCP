@@ -8,7 +8,7 @@ import { bridgeAction, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } fr
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
 import { FLAGS, LOCAL_PATHS, PLATFORM } from "./config.js";
 import { environmentSnapshot } from "./environment.js";
-import { requireFlag } from "./errors.js";
+import { AbletonMcpError, requireFlag } from "./errors.js";
 import { paginate } from "./response.js";
 import { getRuntimeReport, runTool, type RuntimeTool, type ToolAnnotations } from "./runtime.js";
 import { getScanStatus, scanLibrary } from "./scanner.js";
@@ -50,6 +50,17 @@ const AutomationPoint = {
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
 const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
+const MidiNote = z.object({
+  pitch: z.number().int().min(0).max(127),
+  start_time: z.number().min(0).max(100_000),
+  duration: z.number().positive().max(100_000),
+  velocity: z.number().min(0).max(127).default(100),
+  mute: z.boolean().default(false),
+  probability: z.number().min(0).max(1).optional(),
+  velocity_deviation: z.number().min(-127).max(127).optional(),
+  release_velocity: z.number().min(0).max(127).optional()
+});
+const AudioFileExtensions = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg"]);
 const SafeUiActionId = z.enum([
   "focus_window",
   "capture_screenshot",
@@ -110,6 +121,54 @@ async function typedBridgeWrite(action: string, args: any, plan: Record<string, 
   }
   requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
   return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
+}
+
+function isPathWithin(candidate: string, root: string) {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+async function resolveApprovedLocalSamplePath(inputPath: string) {
+  const safe = await resolveSafePath(inputPath, { mustExist: true });
+  const extension = path.extname(safe.real).toLowerCase();
+  if (!AudioFileExtensions.has(extension)) {
+    throw new AbletonMcpError("Only common local audio sample files may be loaded into Ableton clips.", "UNSUPPORTED_SAMPLE_TYPE", ["Use WAV, AIFF, FLAC, MP3, M4A, or OGG files."]);
+  }
+  const approvedRoots = [LOCAL_PATHS.staging, LOCAL_PATHS.imports, LOCAL_PATHS.userLibrary, LOCAL_PATHS.liveRecordings];
+  if (!approvedRoots.some((root) => isPathWithin(safe.real, root))) {
+    throw new AbletonMcpError("Local sample loads must come from staging, Codex Imports, the Ableton User Library, or Live Recordings.", "SAMPLE_PATH_NOT_APPROVED", ["Stage downloads first, or choose a sample already under the Ableton User Library."]);
+  }
+  return { real: safe.real, redacted: redactPath(safe.real), extension };
+}
+
+async function loadPresetOrSample(args: any) {
+  const sample = await resolveApprovedLocalSamplePath(args.path);
+  const payload = {
+    path: sample.real,
+    track_index: args.track_index,
+    clip_slot_index: args.clip_slot_index,
+    mode: args.mode,
+    name: args.name
+  };
+  const plan = {
+    target: "audio_clip_from_approved_local_sample",
+    path: sample.redacted,
+    extension: sample.extension,
+    track_index: args.track_index,
+    clip_slot_index: args.clip_slot_index,
+    mode: args.mode
+  };
+  if (args.dry_run !== false) {
+    return {
+      ok: true,
+      dry_run: true,
+      action: "ableton_load_preset_or_sample",
+      plan,
+      nextStep: "Set dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 to create an audio clip from this approved local sample."
+    };
+  }
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "ableton_load_preset_or_sample");
+  return { ok: true, bridge: await bridgeAction("ableton_load_preset_or_sample", payload) as Record<string, unknown>, sample: plan };
 }
 
 async function uiWrite(action: string, args: any) {
@@ -347,9 +406,9 @@ const toolDefs: ToolDef[] = [
 const writeToolNames = [
   "ableton_set_tempo", "ableton_transport_control", "ableton_create_audio_track", "ableton_create_midi_track",
   "ableton_create_return_track", "ableton_create_scene", "ableton_create_clip", "ableton_create_midi_clip",
-  "ableton_insert_midi_notes", "ableton_set_clip_loop", "ableton_fire_clip", "ableton_stop_clip",
+  "ableton_set_clip_loop", "ableton_fire_clip", "ableton_stop_clip",
   "ableton_arm_track", "ableton_mute_track", "ableton_solo_track", "ableton_set_track_volume",
-  "ableton_set_track_pan", "ableton_set_track_send", "ableton_insert_instrument", "ableton_insert_effect", "ableton_load_preset_or_sample",
+  "ableton_set_track_pan", "ableton_set_track_send", "ableton_insert_instrument", "ableton_insert_effect",
   "ableton_set_device_parameter", "ableton_map_macro", "ableton_rename_track", "ableton_rename_clip",
   "ableton_apply_groove"
 ];
@@ -359,6 +418,8 @@ for (const name of writeToolNames) {
 }
 
 toolDefs.push(
+  { name: "ableton_insert_midi_notes", description: "Insert bounded MIDI notes into a Session View MIDI clip through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, notes: z.array(MidiNote).min(1).max(512), create_clip_if_missing: z.boolean().default(false), clip_length: z.number().positive().max(1024).default(4), replace_existing: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_insert_midi_notes", args, { target: "midi_clip_notes", track_index: args.track_index, clip_slot_index: args.clip_slot_index, note_count: args.notes.length, create_clip_if_missing: args.create_clip_if_missing, replace_existing: args.replace_existing }) },
+  { name: "ableton_load_preset_or_sample", description: "Create an audio clip from an approved local sample path; preset/device loading remains unsupported unless the bridge can prove it.", inputSchema: { path: z.string().min(1), track_index: TrackIndex.default(0), clip_slot_index: ClipSlotIndex.default(0), mode: z.enum(["audio_clip"]).default("audio_clip"), name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => loadPresetOrSample(args) },
   { name: "ableton_list_arrangement_markers", description: "List arrangement locators and marker-like metadata from the LiveAPI bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("arrangement_markers") },
   { name: "ableton_get_clip_notes", description: "Read MIDI note summary for a clip through the LiveAPI bridge.", inputSchema: { ...OptionalTrackClipRef }, annotations: ro, handler: async (args) => bridgeRead("clip_notes", args) },
   { name: "ableton_get_clip_envelopes", description: "Read clip envelope availability from the LiveAPI bridge where supported.", inputSchema: { ...OptionalTrackClipRef }, annotations: ro, handler: async (args) => bridgeRead("clip_envelopes", args) },
