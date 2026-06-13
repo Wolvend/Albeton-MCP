@@ -21,6 +21,10 @@ import { assertAllowedSampleUrl } from "./network.js";
 import {
   buildLayeredArrangementPlan,
   executeConceptPlan,
+  getArrangementPlanForReport,
+  getConceptPlanForReport,
+  listArrangementPlans,
+  listConceptPlans,
   planConceptTrack,
   renderDeliveryPlan,
   searchConceptSamples,
@@ -541,6 +545,10 @@ toolDefs.push(
   { name: "ableton_browse_drum_hits", description: "Search indexed local drum-hit samples with pagination.", inputSchema: { query: z.string().max(120).default("kick OR snare OR hat"), ...Page }, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
 
   { name: "ableton_plan_concept_track", description: "Turn a mood, place, or liminal concept into a stored staged Ableton production plan.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), sources: ConceptSources, reference_path: z.string().min(1).optional() }, annotations: ro, handler: async (args) => ({ ok: true, concept: await planConceptTrack(args) as any }) },
+  { name: "ableton_list_concept_plans", description: "List stored concept plans from the bounded diagnostics plan store.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, plans: paginate(await listConceptPlans(), args.page, args.pageSize) }) },
+  { name: "ableton_get_concept_plan", description: "Read one stored concept plan by id with local paths redacted.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, concept: await getConceptPlanForReport(args.plan_id) as any }) },
+  { name: "ableton_list_arrangement_plans", description: "List stored arrangement plans from the bounded diagnostics plan store.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, arrangements: paginate(await listArrangementPlans(), args.page, args.pageSize) }) },
+  { name: "ableton_get_arrangement_plan", description: "Read one stored arrangement plan by id with local paths redacted.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await getArrangementPlanForReport(args.arrangement_id) as any }) },
   { name: "ableton_search_concept_samples", description: "Search approved sample metadata for a stored concept plan or direct concept without downloading.", inputSchema: { plan_id: ConceptPlanId.optional(), concept: z.string().min(3).max(1000).optional(), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, samples: await searchConceptSamples({ plan_id: args.plan_id, concept: args.concept, page: args.page, pageSize: args.pageSize }) as any }) },
   { name: "ableton_stage_concept_samples", description: "Stage approved concept samples; dry-run by default and download-gated for real staging.", inputSchema: { samples: z.array(z.object({ url: z.string().url(), destinationName: z.string().min(1).max(160), metadata: z.record(z.unknown()).default({}) })).min(1).max(12), ...DryRun }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, staging: await stageConceptSamples({ samples: args.samples, dry_run: args.dry_run }) as any }) },
   { name: "ableton_build_layered_arrangement_plan", description: "Convert a stored concept plan into a stored Ableton track/scene/action plan.", inputSchema: { plan_id: ConceptPlanId, sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]) }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await buildLayeredArrangementPlan(args.plan_id, args.sample_assignments) as any }) },

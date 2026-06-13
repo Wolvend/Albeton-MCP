@@ -538,6 +538,81 @@ export async function readArrangementPlan(arrangementId: string): Promise<Arrang
   return JSON.parse(await fs.readFile(filePath, "utf8")) as ArrangementPlan;
 }
 
+async function listStoredPlanFiles(prefix: "concept" | "arrangement") {
+  const dir = conceptPlanDir();
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && entry.name.startsWith(`${prefix}-`) && entry.name.endsWith(".json"))
+      .slice(0, 500)
+      .map((entry) => path.join(dir, entry.name));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+export async function getConceptPlanForReport(planId: string) {
+  return conceptForReport(await readConceptPlan(planId));
+}
+
+export async function getArrangementPlanForReport(arrangementId: string) {
+  return arrangementForReport(await readArrangementPlan(arrangementId));
+}
+
+export async function listConceptPlans() {
+  const files = await listStoredPlanFiles("concept");
+  const summaries = await Promise.all(files.map(async (filePath) => {
+    const stat = await fs.stat(filePath);
+    const plan = JSON.parse(await fs.readFile(filePath, "utf8")) as ConceptPlan;
+    return {
+      id: plan.id,
+      type: "concept",
+      createdAt: plan.createdAt,
+      modifiedAt: stat.mtime.toISOString(),
+      preset: plan.preset,
+      concept: plan.concept,
+      style: plan.style,
+      target_duration_seconds: plan.target_duration_seconds,
+      intensity: plan.intensity,
+      layerCount: Array.isArray(plan.layers) ? plan.layers.length : 0,
+      sectionCount: Array.isArray(plan.sections) ? plan.sections.length : 0,
+      reference: plan.reference ? {
+        path: redactPath(plan.reference.redactedPath ?? plan.reference.path),
+        mediaType: plan.reference.mediaType ?? "file",
+        approvedForAudioPlacement: Boolean(plan.reference.approvedForAudioPlacement)
+      } : null
+    };
+  }));
+  return summaries.sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+}
+
+export async function listArrangementPlans() {
+  const files = await listStoredPlanFiles("arrangement");
+  const summaries = await Promise.all(files.map(async (filePath) => {
+    const stat = await fs.stat(filePath);
+    const arrangement = JSON.parse(await fs.readFile(filePath, "utf8")) as ArrangementPlan;
+    const actions = Array.isArray(arrangement.actions) ? arrangement.actions : [];
+    const sampleAssignments = Array.isArray(arrangement.sampleAssignments) ? arrangement.sampleAssignments : [];
+    const devicePlan = Array.isArray(arrangement.devicePlan) ? arrangement.devicePlan : [];
+    const automationPlan = Array.isArray(arrangement.automationPlan) ? arrangement.automationPlan : [];
+    return {
+      id: arrangement.id,
+      type: "arrangement",
+      createdAt: arrangement.createdAt,
+      modifiedAt: stat.mtime.toISOString(),
+      conceptPlanId: arrangement.conceptPlanId,
+      actionCount: actions.length,
+      executableActionCount: actions.filter((action) => action.safeToExecute).length,
+      sampleAssignmentCount: sampleAssignments.length,
+      referenceAudioAssignmentCount: sampleAssignments.filter((assignment) => assignment.source === "reference_audio").length,
+      devicePlanCount: devicePlan.length,
+      automationPlanCount: automationPlan.length
+    };
+  }));
+  return summaries.sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+}
+
 export async function planConceptTrack(input: ConceptPlanInput) {
   const horror = isLiminalHorror(input.concept, input.style);
   const style = input.style?.trim() || (horror ? "liminal/backrooms/horror" : "cinematic electronic");

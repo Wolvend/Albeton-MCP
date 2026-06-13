@@ -37,6 +37,10 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_build_layered_arrangement_plan");
     expect(registeredToolNames).toContain("ableton_execute_concept_plan");
     expect(registeredToolNames).toContain("ableton_render_delivery_plan");
+    expect(registeredToolNames).toContain("ableton_list_concept_plans");
+    expect(registeredToolNames).toContain("ableton_get_concept_plan");
+    expect(registeredToolNames).toContain("ableton_list_arrangement_plans");
+    expect(registeredToolNames).toContain("ableton_get_arrangement_plan");
   });
 
   it("uses typed schemas for newer bridge workflow tools", () => {
@@ -67,6 +71,8 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_load_preset_or_sample).toHaveProperty("path");
     expect(registeredToolSchemas.ableton_list_internet_archive_audio_files).toHaveProperty("identifier");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
+    expect(registeredToolSchemas.ableton_get_concept_plan).toHaveProperty("plan_id");
+    expect(registeredToolSchemas.ableton_get_arrangement_plan).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_build_layered_arrangement_plan).toHaveProperty("sample_assignments");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");
   });

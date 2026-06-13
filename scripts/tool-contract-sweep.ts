@@ -232,9 +232,13 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_browse_max_devices", arguments: { query: "bridge" } },
     { name: "ableton_browse_drum_hits", arguments: { query: "kick", page: 1, pageSize: 5 } },
     { name: "ableton_plan_concept_track", arguments: { concept: "liminal backrooms horror contract sweep", target_duration_seconds: 120, intensity: 7, sources: ["local_library", "internet_archive"] } },
+    { name: "ableton_list_concept_plans", arguments: { page: 1, pageSize: 5 } },
+    { name: "ableton_get_concept_plan", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_search_concept_samples", arguments: { concept: "liminal backrooms horror contract sweep", page: 1, pageSize: 1 }, expected: "any" },
     { name: "ableton_stage_concept_samples", arguments: { samples: [{ url: "https://archive.org/download/opensource_audio/opensource_audio_meta.xml", destinationName: "contract-sweep.wav", metadata: { license: "CC0" } }], dry_run: true } },
     { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: conceptPlanId, sample_assignments: [{ layer: "Stretched Room", path: fixtures.stagedAudioPath, clip_slot_index: 1, name: "Contract Sweep Room Tone" }] } },
+    { name: "ableton_list_arrangement_plans", arguments: { page: 1, pageSize: 5 } },
+    { name: "ableton_get_arrangement_plan", arguments: { arrangement_id: "arrangement-0000000000000000" } },
     { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-0000000000000000", dry_run: true } },
     { name: "ableton_render_delivery_plan", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_generate_session_plan", arguments: { brief: "contract sweep" } },
@@ -299,7 +303,7 @@ async function main() {
   if (coverage.missingSpecs.length === 0 && coverage.extraSpecs.length === 0 && coverage.duplicateSpecs.length === 0) {
     for (const call of calls) {
       try {
-        const callArguments = call.name === "ableton_execute_concept_plan" && conceptArrangementId
+        const callArguments = (call.name === "ableton_execute_concept_plan" || call.name === "ableton_get_arrangement_plan") && conceptArrangementId
           ? { ...call.arguments, arrangement_id: conceptArrangementId }
           : call.arguments;
         const result = await client.callTool({ name: call.name, arguments: callArguments });

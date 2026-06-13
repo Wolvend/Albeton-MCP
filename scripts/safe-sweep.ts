@@ -104,6 +104,8 @@ const calls: SweepCall[] = [
   { name: "ableton_browse_live_devices", arguments: { category: "effects" } },
   { name: "ableton_browse_max_devices", arguments: { query: "bridge" } },
   { name: "ableton_browse_drum_hits", arguments: { query: "kick", page: 1, pageSize: 5 } },
+  { name: "ableton_list_concept_plans", arguments: { page: 1, pageSize: 5 } },
+  { name: "ableton_list_arrangement_plans", arguments: { page: 1, pageSize: 5 } },
   { name: "ableton_normalize_sample_metadata", arguments: { metadata: { license: "CC0" } } },
   { name: "ableton_list_internet_archive_audio_files", arguments: { identifier: "opensource_audio", page: 1, pageSize: 5 }, expected: "any" },
   { name: "ableton_preview_remote_sample", arguments: { url: "https://archive.org/download/example/file.wav", license: "CC0" } },

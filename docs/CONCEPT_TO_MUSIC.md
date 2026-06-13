@@ -9,17 +9,21 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
    - Produces sections, tempo/key, layer roles, search queries, device-chain suggestions, mix targets, and approval checklist.
    - Accepts `reference_path` for a local reference file. If the path is an approved audio file under sample staging, Codex Imports, the Ableton User Library, or Live Recordings, the plan adds a source-audio treatment plan.
 
-2. `ableton_search_concept_samples`
+2. `ableton_list_concept_plans` / `ableton_get_concept_plan`
+   - Resume prior planning sessions from the bounded concept-plan store.
+   - Return redacted paths and summary metadata only.
+
+3. `ableton_search_concept_samples`
    - Searches approved metadata sources without downloading.
    - Sanitizes remote titles, creators, licenses, identifiers, and queries before returning them to the agent.
 
-3. `ableton_stage_concept_samples`
+4. `ableton_stage_concept_samples`
    - Dry-run by default.
    - Real staging requires `dry_run=false` and `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
    - Downloads only from approved sample hosts through the existing sample policy.
    - Builds a provenance record with source URL, destination name, license policy, creator/title/identifier metadata, and checksum/byte count when a real download occurs.
 
-4. `ableton_build_layered_arrangement_plan`
+5. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.
    - Builds tempo, track, scene, arrangement marker, mix, send, and sparse MIDI motif actions.
    - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit `ableton_load_preset_or_sample` actions.
@@ -27,12 +31,16 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
    - Preserves each layer's Ableton-native device chain as a staged `devicePlan` for review.
    - Uses created-track placeholders for mix, send, and MIDI actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
 
-5. `ableton_execute_concept_plan`
+6. `ableton_list_arrangement_plans` / `ableton_get_arrangement_plan`
+   - Resume stored arrangement plans before execution.
+   - Return redacted action payloads, redacted sample paths, and summary counts.
+
+7. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-6. `ableton_render_delivery_plan`
+8. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 

@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildLayeredArrangementPlan,
   executeConceptPlan,
+  getArrangementPlanForReport,
+  getConceptPlanForReport,
+  listArrangementPlans,
+  listConceptPlans,
   planConceptTrack,
   readArrangementPlan,
   renderDeliveryPlan,
@@ -139,6 +143,31 @@ describe("concept-to-music planning", () => {
     expect(planned.plan.reference?.nextSteps?.join(" ")).toMatch(/samples\/staging|Codex Imports|User Library|Live Recordings/);
     expect(arrangement.arrangement.sourceAudioPlan).toBeUndefined();
     expect(arrangement.arrangement.sampleAssignments.some((assignment) => assignment.source === "reference_audio")).toBe(false);
+  });
+
+  it("lists and retrieves stored plans with local paths redacted", async () => {
+    await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+    const sourcePath = path.join(LOCAL_PATHS.staging, "stored-plan-reference.wav");
+    await fs.writeFile(sourcePath, "fixture source audio placeholder");
+    const planned = await planConceptTrack({
+      concept: "stored backrooms reference plan",
+      target_duration_seconds: 100,
+      intensity: 8,
+      sources: ["local_library"],
+      reference_path: sourcePath
+    });
+    const arrangement = await buildLayeredArrangementPlan(planned.plan.id);
+    const concepts = await listConceptPlans();
+    const arrangements = await listArrangementPlans();
+    const concept = await getConceptPlanForReport(planned.plan.id);
+    const arrangementReport = await getArrangementPlanForReport(arrangement.arrangement.id);
+
+    expect(concepts.some((entry) => entry.id === planned.plan.id)).toBe(true);
+    expect(arrangements.some((entry) => entry.id === arrangement.arrangement.id)).toBe(true);
+    expect(concept.reference?.path).not.toBe(sourcePath);
+    expect(concept.reference?.approvedForAudioPlacement).toBe(true);
+    expect(arrangementReport.sampleAssignments.every((assignment) => assignment.path !== sourcePath)).toBe(true);
+    expect(arrangementReport.sourceAudioPlan?.referencePath).not.toBe(sourcePath);
   });
 
   it("rejects real concept execution while write gate is disabled", async () => {
