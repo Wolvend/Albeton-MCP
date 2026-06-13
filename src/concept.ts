@@ -1127,6 +1127,21 @@ function motifNotes(horror: boolean, intensity: number) {
   ];
 }
 
+function motifHumanizeSeed(planId: string, layerName: string, clipSlotIndex: number) {
+  const hash = crypto.createHash("sha256")
+    .update(JSON.stringify({ planId, layerName, clipSlotIndex, version: 1 }))
+    .digest("hex")
+    .slice(0, 8);
+  return parseInt(hash, 16) % 2147483646;
+}
+
+function motifHumanizeSettings(horror: boolean, intensity: number) {
+  return {
+    timing_amount: horror ? Math.min(0.06, 0.012 + intensity * 0.003) : Math.min(0.035, 0.008 + intensity * 0.002),
+    velocity_amount: horror ? Math.min(14, 4 + intensity) : Math.min(10, 3 + intensity)
+  };
+}
+
 const RootPitchClasses: Record<string, number> = {
   c: 0,
   "c#": 1,
@@ -1531,7 +1546,7 @@ function actionPhase(action: string) {
   if (action.includes("_volume") || action.includes("_pan") || action === "ableton_set_track_send") return "mixer_setup";
   if (action.includes("_track") || action === "ableton_rename_return_track") return "track_and_return_setup";
   if (action.includes("_scene")) return "scene_setup";
-  if (action === "ableton_insert_midi_notes") return "midi_motif";
+  if (action === "ableton_insert_midi_notes" || action === "ableton_humanize_midi_clip") return "midi_motif";
   if (action === "ableton_load_preset_or_sample") return "sample_placement";
   if (action.includes("_clip") || action.includes("transpose")) return "clip_shaping";
   return "other";
@@ -1598,6 +1613,10 @@ function actionMatrixDependencies(action: ArrangementAction, placeholders: Retur
   if (action.action === "ableton_insert_midi_notes") {
     dependencies.push("empty_or_created_midi_clip_slot");
   }
+  if (action.action === "ableton_humanize_midi_clip") {
+    dependencies.push("existing_target_midi_clip");
+    dependencies.push("modern_note_read_remove_add_api");
+  }
   if (action.action === "ableton_load_preset_or_sample") {
     dependencies.push("approved_local_sample_path");
     dependencies.push("empty_audio_clip_slot");
@@ -1645,6 +1664,9 @@ function actionRunbookPostconditions(action: ArrangementAction) {
   if (action.action === "ableton_insert_midi_notes") {
     return ["The target MIDI clip exists and contains the planned note payload.", "The note count matches the stored motif action."];
   }
+  if (action.action === "ableton_humanize_midi_clip") {
+    return ["The target MIDI clip note timing and velocity have been rewritten with the approved deterministic seed.", "A follow-up clip-note read reports the same note count after humanization."];
+  }
   if (action.action === "ableton_set_track_send") {
     return ["The target track send value matches the approved payload.", "The routing overview send matrix reflects the updated send level."];
   }
@@ -1679,7 +1701,7 @@ function actionRunbookInspectionCalls(action: ArrangementAction): Array<{ name: 
   if (action.action === "ableton_load_preset_or_sample" || action.action.includes("_clip") || action.action.includes("transpose")) {
     return [{ name: "ableton_list_clip_slots", arguments: { track_index: "resolved-after-preflight", page: 1, pageSize: 16 } }];
   }
-  if (action.action === "ableton_insert_midi_notes") {
+  if (action.action === "ableton_insert_midi_notes" || action.action === "ableton_humanize_midi_clip") {
     return [{ name: "ableton_get_clip_notes", arguments: { track_index: "resolved-after-preflight", clip_slot_index: action.payload.clip_slot_index ?? 0 } }];
   }
   if (action.action === "ableton_create_arrangement_marker") {
@@ -2875,6 +2897,7 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       if (target.layer.type !== "midi" || target.trackOffset === null) return [];
       const clipName = `${target.layer.name} Motif`;
       const clipLength = horror ? 16 : 8;
+      const humanize = motifHumanizeSettings(horror, plan.intensity);
       return [
         {
           action: "ableton_insert_midi_notes",
@@ -2888,6 +2911,18 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
           },
           safeToExecute: true,
           reason: "Creates a short editable MIDI motif from the stored concept plan."
+        },
+        {
+          action: "ableton_humanize_midi_clip",
+          payload: {
+            track_created_offset: target.trackOffset,
+            clip_slot_index: 0,
+            timing_amount: humanize.timing_amount,
+            velocity_amount: humanize.velocity_amount,
+            seed: motifHumanizeSeed(plan.id, target.layer.name, 0)
+          },
+          safeToExecute: true,
+          reason: "Applies deterministic bounded timing and velocity variation so the generated motif is less rigid while remaining reproducible."
         },
         {
           action: "ableton_rename_clip",
@@ -3357,6 +3392,7 @@ export async function preflightConceptExecution(options: ConceptExecutionPreflig
     skipped: skippedActions.length,
     samplePlacements: arrangement.actions.filter((action) => action.action === "ableton_load_preset_or_sample").length,
     midiNoteInsertions: arrangement.actions.filter((action) => action.action === "ableton_insert_midi_notes").length,
+    midiHumanizations: arrangement.actions.filter((action) => action.action === "ableton_humanize_midi_clip").length,
     trackCreates: arrangement.actions.filter((action) => action.action.endsWith("_track")).length,
     sceneCreates: arrangement.actions.filter((action) => action.action === "ableton_create_scene").length,
     markerCreates: arrangement.actions.filter((action) => action.action === "ableton_create_arrangement_marker").length,
@@ -4738,15 +4774,17 @@ export async function renderConceptProductionScorecard(options: ConceptProductio
         actionNames.has("ableton_create_arrangement_marker") ? 2 : 0,
         hasAllActions(["ableton_set_track_volume", "ableton_set_track_pan", "ableton_set_track_send"]) ? 3 : 0,
         actionNames.has("ableton_insert_midi_notes") ? 2 : 0,
+        actionNames.has("ableton_humanize_midi_clip") ? 1 : 0,
         hasAllActions(["ableton_rename_clip", "ableton_set_clip_loop", "ableton_set_clip_color"]) ? 3 : 0
       ].reduce((sum, value) => sum + value, 0),
-      18,
+      19,
       {
         totalActions: arrangement.actions.length,
         tempo: actionNames.has("ableton_set_tempo"),
         trackCreates: actionCount("ableton_create_audio_track") + actionCount("ableton_create_midi_track") + actionCount("ableton_create_return_track"),
         sceneCreates: actionCount("ableton_create_scene"),
         midiNoteInsertions: actionCount("ableton_insert_midi_notes"),
+        midiHumanizations: actionCount("ableton_humanize_midi_clip"),
         samplePlacements: actionCount("ableton_load_preset_or_sample"),
         sendMoves: actionCount("ableton_set_track_send")
       },
@@ -4904,6 +4942,7 @@ export async function renderConceptProductionScorecard(options: ConceptProductio
         total: arrangement.actions.length,
         samplePlacements: actionCount("ableton_load_preset_or_sample"),
         midiNoteInsertions: actionCount("ableton_insert_midi_notes"),
+        midiHumanizations: actionCount("ableton_humanize_midi_clip"),
         sends: actionCount("ableton_set_track_send"),
         unsafe: unsafeActions.length
       },

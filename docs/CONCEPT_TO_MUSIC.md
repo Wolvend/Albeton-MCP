@@ -83,7 +83,7 @@ Fast path:
 
 11. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.
-   - Builds tempo, track, scene, scene tempo/signature/color, track/return/clip color, arrangement marker, mix, send, sparse MIDI motif, clip rename, clip gain, transpose, warp, marker, and loop actions.
+   - Builds tempo, track, scene, scene tempo/signature/color, track/return/clip color, arrangement marker, mix, send, sparse MIDI motif insertion, deterministic MIDI humanization, clip rename, clip gain, transpose, warp, marker, and loop actions.
    - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit ordered load, rename, shape, and loop actions.
    - Automatically maps approved reference audio to the most relevant concept layers unless those layers already have explicit sample assignments.
    - Preserves each layer's Ableton-native device chain as a staged `devicePlan` for review.
@@ -245,7 +245,7 @@ The arrangement plan includes:
 - A read-only user-gated UI placement plan for staged devices that returns screenshot-first readiness calls without moving the mouse, typing, or inserting devices.
 - A read-only execution runbook that groups planned actions into practical production phases with gates, dependencies, postconditions, and inspection calls.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
-- A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact or reviewable through `ableton_generate_midi_clip_plan` as ready-to-dry-run `ableton_insert_midi_notes` arguments.
+- A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, followed by deterministic seeded `ableton_humanize_midi_clip` timing/velocity polish. The motif is exportable as a staged `.mid` artifact or reviewable through `ableton_generate_midi_clip_plan` as ready-to-dry-run `ableton_insert_midi_notes` arguments.
 - Optional named, shaped, and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Distant Room Tone`, `Mechanical Texture`, or `Reversed Fragments`. Sample shaping uses conservative layer-specific gain, transpose/detune, warp mode, and start/end marker actions.
 - Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, distant room-tone bed, and reversed fragments. These can be rendered into staging with `ableton_prepare_concept_audio_layers`.
 - A staged automation plan for reverb, delay, filter, and volume movement. `ableton_plan_concept_device_automation_readiness` now links each non-MIDI lane to `ableton_extract_automation_summary` so agents can inspect mixer volume, send, and device parameter candidates before any write; automation remains non-writing until the bridge proves support.

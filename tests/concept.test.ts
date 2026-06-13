@@ -392,6 +392,7 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_scene_tempo")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_scene_time_signature")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_insert_midi_notes")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_humanize_midi_clip")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_rename_clip")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_clip_loop")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_clip_gain")).toBe(true);
@@ -424,6 +425,16 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.actions.find((action) => action.action === "ableton_insert_midi_notes")?.payload.notes).toEqual(expect.arrayContaining([
       expect.objectContaining({ pitch: expect.any(Number), start_time: expect.any(Number), duration: expect.any(Number) })
     ]));
+    const midiInsertIndex = arrangement.arrangement.actions.findIndex((action) => action.action === "ableton_insert_midi_notes");
+    const midiHumanizeIndex = arrangement.arrangement.actions.findIndex((action) => action.action === "ableton_humanize_midi_clip");
+    expect(midiHumanizeIndex).toBeGreaterThan(midiInsertIndex);
+    expect(arrangement.arrangement.actions[midiHumanizeIndex]?.payload).toMatchObject({
+      track_created_offset: expect.any(Number),
+      clip_slot_index: 0,
+      timing_amount: expect.any(Number),
+      velocity_amount: expect.any(Number),
+      seed: expect.any(Number)
+    });
     const sampleAction = arrangement.arrangement.actions.find((action) => action.action === "ableton_load_preset_or_sample");
     expect(sampleAction?.payload.path).not.toBe(stagedPath);
     expect(sampleAction?.payload.name).toBe("Assigned Room Tone");
@@ -496,6 +507,14 @@ describe("concept-to-music planning", () => {
     const midiMatrixAction = actionMatrix.actions.find((action) => action.action === "ableton_insert_midi_notes");
     expect(midiMatrixAction?.bridgeCapability.status).toBe("write_gated");
     expect(midiMatrixAction?.dependencies).toContain("live_bridge_snapshot_resolution");
+    const midiHumanizeMatrixAction = actionMatrix.actions.find((action) => action.action === "ableton_humanize_midi_clip");
+    expect(midiHumanizeMatrixAction?.phase).toBe("midi_motif");
+    expect(midiHumanizeMatrixAction?.bridgeCapability.status).toBe("write_gated");
+    expect(midiHumanizeMatrixAction?.dependencies).toEqual(expect.arrayContaining([
+      "live_bridge_snapshot_resolution",
+      "existing_target_midi_clip",
+      "modern_note_read_remove_add_api"
+    ]));
     expect(readiness.bridge).toMatchObject({ checked: false, reachable: null });
     expect(readiness.summary.deviceChains).toBeGreaterThan(0);
     expect(readiness.summary.automationTargets).toBeGreaterThan(0);
@@ -556,6 +575,7 @@ describe("concept-to-music planning", () => {
     expect(scorecard.summary.layers.missingAudioLayers).toContain("Degraded Memory");
     expect(scorecard.summary.layers.missingAudioLayers).toContain("Distant Room Tone");
     expect(scorecard.summary.actions.samplePlacements).toBeGreaterThan(0);
+    expect(scorecard.summary.actions.midiHumanizations).toBeGreaterThan(0);
     expect(scorecard.checks.map((check) => check.id)).toEqual(expect.arrayContaining([
       "layer_architecture",
       "sample_coverage",
