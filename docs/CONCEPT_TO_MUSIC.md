@@ -36,12 +36,17 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
    - Resume stored arrangement plans before execution.
    - Return redacted action payloads, redacted sample paths, and summary counts.
 
-7. `ableton_execute_concept_plan`
+7. `ableton_export_concept_midi_motif`
+   - Dry-run by default.
+   - Renders the stored plan's sparse motif as a `.mid` file under `samples\staging\midi` only after `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
+   - Never overwrites an existing MIDI file and writes an attribution sidecar with checksum, source plan ID, tempo, key, and note count.
+
+8. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-8. `ableton_render_delivery_plan`
+9. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -76,7 +81,7 @@ The arrangement plan includes:
 - Scene names and arrangement locators for isolation, motif, decay, collapse, and unresolved tail sections.
 - Initial volume, pan, and named reverb/delay return-send targets for each created non-return track.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
-- A short editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer.
+- A short editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
 - Optional approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`.
 - Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, and reversed fragments.
 - A staged automation plan for reverb, delay, filter, and volume movement. These lanes are review metadata until the live set has verified device/parameter targets.
@@ -102,6 +107,7 @@ Then:
 ```text
 ableton_search_concept_samples
 ableton_build_layered_arrangement_plan
+ableton_export_concept_midi_motif with dry_run=true
 ableton_execute_concept_plan with dry_run=true
 ```
 

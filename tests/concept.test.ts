@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildLayeredArrangementPlan,
   executeConceptPlan,
+  exportConceptMidiMotif,
   getArrangementPlanForReport,
   getConceptPlanForReport,
   listArrangementPlans,
@@ -92,6 +93,27 @@ describe("concept-to-music planning", () => {
     expect(dryRun.dry_run).toBe(true);
     expect(dryRun.executableActions).toBeGreaterThan(0);
     expect(delivery.export.sampleRate).toBe(48000);
+  });
+
+  it("plans concept MIDI motif export without writing by default", async () => {
+    const planned = await planConceptTrack({
+      concept: "backrooms hallway motif with decaying piano memory",
+      target_duration_seconds: 120,
+      intensity: 8,
+      sources: ["local_library"]
+    });
+    const exported = await exportConceptMidiMotif({
+      plan_id: planned.plan.id,
+      output_name: "../unsafe motif.mid",
+      dry_run: true
+    });
+
+    expect(exported.dry_run).toBe(true);
+    expect(exported.midi.plan_id).toBe(planned.plan.id);
+    expect(exported.midi.note_count).toBeGreaterThan(0);
+    expect(exported.midi.outputPath).toContain("unsafe_motif.mid");
+    expect(exported.midi.outputPath).not.toContain("..");
+    expect(exported.nextStep).toMatch(/ABLETON_MCP_ENABLE_WRITE=1/);
   });
 
   it("turns approved reference audio into redacted source-treatment assignments", async () => {

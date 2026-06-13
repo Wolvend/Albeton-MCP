@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-163 tools
+164 tools
 3 resources
 2 prompts
 ```

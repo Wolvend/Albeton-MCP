@@ -74,9 +74,9 @@ Native WSL Node can verify the MCP server, but it may not reach the Windows-only
 Expected current results:
 
 ```text
-Tests: 22 files, 62 tests passed
-MCP verifier: 163 tools, 3 resources, 2 prompts
-All-tool contract sweep: 163 registered tools, 163 safe calls
+Tests: 22 files, 63 tests passed
+MCP verifier: 164 tools, 3 resources, 2 prompts
+All-tool contract sweep: 164 registered tools, 164 safe calls
 Audit: 0 vulnerabilities
 ```
 

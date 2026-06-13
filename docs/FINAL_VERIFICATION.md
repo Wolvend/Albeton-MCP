@@ -7,7 +7,7 @@ This report records the latest verification pass for the Ableton MCP production 
 ## Current Surface
 
 ```text
-Tools: 163
+Tools: 164
 Resources: 3
 Prompts: 2
 HyperNimbus Docker MCP enabled tools: 108
@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 22 test files and 62 tests passed, including typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 22 test files and 63 tests passed, including typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, write-gated concept MIDI motif export planning, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -65,7 +65,7 @@ Result: succeeded. Safe sweep called 81 read-only and dry-run tools with 0 unexp
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 163 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> stored plan retrieval -> dry-run execution.
+Result: succeeded. All-tool contract sweep called all 164 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> stored plan retrieval -> dry-run MIDI motif export -> dry-run execution.
 
 The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode. Concept arrangement plans now include created-track placeholders for volume, pan, reverb/delay sends, sparse MIDI motifs, approved local sample assignments, staged device-chain plans, and staged automation metadata; real execution resolves those placeholders from a live snapshot immediately before write-gated bridge calls.
 
@@ -73,7 +73,7 @@ The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 163 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 164 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -111,7 +111,7 @@ The host HTTP service was started with:
 .\launch.ps1 docker -SkipSetup
 ```
 
-The host HTTP service was restarted after the latest build so Docker could query the rebuilt 163-tool server.
+The host HTTP service was restarted after the latest build so Docker could query the rebuilt 164-tool server.
 
 Health result:
 
@@ -151,7 +151,7 @@ openclaw mcp doctor ableton-mcp --probe
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL with 163 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL with 164 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ## Live Bridge Smoke
 

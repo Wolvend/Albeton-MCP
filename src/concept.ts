@@ -1,12 +1,15 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import toneMidi from "@tonejs/midi";
 import { bridgeAction, getBridgeSnapshot } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
 import { buildSampleAttribution, downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
 import { redactPath, resolveSafePath } from "./security.js";
 import { assertAllowedSampleUrl } from "./network.js";
+
+const { Midi } = toneMidi;
 
 export type ConceptSource = "local_library" | "internet_archive" | "freesound";
 
@@ -17,6 +20,12 @@ export type ConceptPlanInput = {
   style?: string;
   sources: ConceptSource[];
   reference_path?: string;
+};
+
+export type ExportConceptMidiMotifOptions = {
+  plan_id: string;
+  output_name?: string;
+  dry_run: boolean;
 };
 
 type ConceptLayer = {
@@ -148,6 +157,10 @@ const AudioFileExtensions = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", "
 
 function conceptPlanDir() {
   return path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-plans");
+}
+
+function conceptMidiDir() {
+  return path.join(LOCAL_PATHS.staging, "midi");
 }
 
 export function sanitizeRemoteSampleText(value: unknown, maxLength = 240) {
@@ -443,6 +456,50 @@ function motifNotes(horror: boolean, intensity: number) {
     { pitch: 64, start_time: 4, duration: 1.5, velocity: velocityBase - 4 },
     { pitch: 60, start_time: 7, duration: 1, velocity: velocityBase - 10 }
   ];
+}
+
+function safeMidiFileName(planId: string, value?: string) {
+  const raw = value?.trim() || `${planId}-sparse-motif.mid`;
+  const cleaned = raw
+    .replace(/[\\/]+/g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/\.\.+/g, ".")
+    .replace(/^\.+/, "")
+    .slice(0, 120);
+  const base = cleaned.length > 0 ? cleaned : `${planId}-sparse-motif`;
+  const withExtension = base.toLowerCase().endsWith(".mid") ? base : `${base}.mid`;
+  if (!/^[a-zA-Z0-9._-]+\.mid$/i.test(withExtension)) {
+    throw new AbletonMcpError("MIDI output_name must resolve to a simple .mid filename.", "INVALID_MIDI_OUTPUT_NAME", ["Use letters, numbers, dot, underscore, or dash only."]);
+  }
+  return withExtension;
+}
+
+function keySignature(planKey: string) {
+  const [key, scale] = planKey.split(/\s+/);
+  return {
+    key: key || "C",
+    scale: scale?.toLowerCase() === "minor" ? "minor" : "major",
+    ticks: 0
+  };
+}
+
+function motifExportPlan(plan: ConceptPlan, outputName?: string) {
+  const horror = plan.preset === "liminal_backrooms_horror";
+  const notes = motifNotes(horror, plan.intensity);
+  const fileName = safeMidiFileName(plan.id, outputName);
+  const outputPath = path.join(conceptMidiDir(), fileName);
+  return {
+    plan_id: plan.id,
+    preset: plan.preset,
+    tempo: plan.tempo,
+    key: plan.key,
+    clip_length_beats: horror ? 16 : 8,
+    track_name: horror ? "Sparse Motif - liminal memory" : "Motif",
+    note_count: notes.length,
+    notes,
+    outputPath,
+    redactedOutputPath: redactPath(outputPath)
+  };
 }
 
 function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: CreatedTrackResolution) {
@@ -960,6 +1017,91 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
   };
   const filePath = await writeJson(`${arrangement.id}.json`, arrangement);
   return { arrangement: arrangementForReport(arrangement), storedPath: redactPath(filePath) };
+}
+
+function midiVelocity(value: unknown) {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : 100;
+  return Math.max(0, Math.min(1, numeric / 127));
+}
+
+export async function exportConceptMidiMotif(options: ExportConceptMidiMotifOptions) {
+  const plan = await readConceptPlan(options.plan_id);
+  const exportPlan = motifExportPlan(plan, options.output_name);
+  const responsePlan = {
+    ...exportPlan,
+    outputPath: exportPlan.redactedOutputPath
+  };
+  delete (responsePlan as { redactedOutputPath?: string }).redactedOutputPath;
+
+  if (options.dry_run !== false) {
+    return {
+      dry_run: true,
+      midi: responsePlan,
+      nextStep: "Set dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 to write the generated MIDI motif into samples/staging/midi."
+    };
+  }
+
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Exporting concept MIDI motif");
+  await fs.mkdir(conceptMidiDir(), { recursive: true });
+  try {
+    await fs.access(exportPlan.outputPath);
+    throw new AbletonMcpError(`MIDI output already exists: ${redactPath(exportPlan.outputPath)}`, "MIDI_OUTPUT_EXISTS", ["Choose a new output_name. MCP MIDI export never overwrites files."]);
+  } catch (error) {
+    if (error instanceof AbletonMcpError) throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+
+  const midi = new Midi();
+  midi.name = `${plan.id} ${exportPlan.track_name}`;
+  midi.header.setTempo(plan.tempo);
+  midi.header.timeSignatures.push({ ticks: 0, timeSignature: [4, 4] });
+  midi.header.keySignatures.push(keySignature(plan.key));
+  midi.header.meta.push({ ticks: 0, type: "marker", text: `Ableton MCP concept ${plan.id}` });
+  midi.header.update();
+
+  const track = midi.addTrack();
+  track.name = exportPlan.track_name;
+  track.channel = 0;
+  for (const note of exportPlan.notes) {
+    track.addNote({
+      midi: note.pitch,
+      ticks: Math.round(note.start_time * midi.header.ppq),
+      durationTicks: Math.max(1, Math.round(note.duration * midi.header.ppq)),
+      velocity: midiVelocity(note.velocity)
+    });
+  }
+  track.endOfTrackTicks = Math.round(exportPlan.clip_length_beats * midi.header.ppq);
+
+  const data = Buffer.from(midi.toArray());
+  const checksum = crypto.createHash("sha256").update(data).digest("hex");
+  await fs.writeFile(exportPlan.outputPath, data, { flag: "wx" });
+  const sidecar = {
+    source: "ableton_mcp_generated_midi",
+    conceptPlanId: plan.id,
+    preset: plan.preset,
+    concept: sanitizeRemoteSampleText(plan.concept, 500),
+    destinationName: path.basename(exportPlan.outputPath),
+    checksum,
+    bytes: data.length,
+    generatedAt: new Date().toISOString(),
+    tempo: plan.tempo,
+    key: plan.key,
+    clipLengthBeats: exportPlan.clip_length_beats,
+    noteCount: exportPlan.note_count,
+    license: "Generated locally by Ableton MCP from user-provided concept text; review before publishing."
+  };
+  await fs.writeFile(`${exportPlan.outputPath}.attribution.json`, `${JSON.stringify(sidecar, null, 2)}\n`, { flag: "wx" });
+
+  return {
+    dry_run: false,
+    midi: {
+      ...responsePlan,
+      checksum,
+      bytes: data.length,
+      attributionPath: redactPath(`${exportPlan.outputPath}.attribution.json`)
+    },
+    attribution: sidecar
+  };
 }
 
 export async function executeConceptPlan(options: { arrangement_id: string; dry_run: boolean }) {

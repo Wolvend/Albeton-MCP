@@ -239,6 +239,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: conceptPlanId, sample_assignments: [{ layer: "Stretched Room", path: fixtures.stagedAudioPath, clip_slot_index: 1, name: "Contract Sweep Room Tone" }] } },
     { name: "ableton_list_arrangement_plans", arguments: { page: 1, pageSize: 5 } },
     { name: "ableton_get_arrangement_plan", arguments: { arrangement_id: "arrangement-0000000000000000" } },
+    { name: "ableton_export_concept_midi_motif", arguments: { plan_id: conceptPlanId, output_name: "contract-sweep-motif.mid", dry_run: true } },
     { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-0000000000000000", dry_run: true } },
     { name: "ableton_render_delivery_plan", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_generate_session_plan", arguments: { brief: "contract sweep" } },
