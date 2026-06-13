@@ -248,18 +248,18 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 23 files, 85 tests passed
+Tests: 23 files, 87 tests passed
 Lint: passed
 Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed
 Safe sweep: passed
 Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 206 tools, 3 resources, 2 prompts
-All-tool contract sweep: 206 registered tools, 206 safe calls
+MCP verifier: 207 tools, 3 resources, 2 prompts
+All-tool contract sweep: 207 registered tools, 207 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; layer sample curation available through ableton_curate_concept_samples; execution action review available through ableton_render_concept_execution_action_matrix; full safe client workflow demo available through .\launch.ps1 concept-demo
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake available through ableton_plan_reference_audio_intake; layer sample curation available through ableton_curate_concept_samples; execution action review available through ableton_render_concept_execution_action_matrix; full safe client workflow demo available through .\launch.ps1 concept-demo
 Audit: 0 vulnerabilities
 ```
 

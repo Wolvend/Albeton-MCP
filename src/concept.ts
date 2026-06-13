@@ -4,7 +4,7 @@ import path from "node:path";
 import toneMidi from "@tonejs/midi";
 import { convertAudioFile } from "./analysis.js";
 import { bridgeAction, getBridgeCapabilityMatrix, getBridgeSnapshot, type BridgeActionCapability } from "./bridge.js";
-import { FLAGS, LOCAL_PATHS } from "./config.js";
+import { FLAGS, LOCAL_PATHS, PLATFORM } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
 import { buildSampleAttribution, downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
 import { redactPath, resolveSafePath } from "./security.js";
@@ -45,6 +45,12 @@ export type ConceptProductionPlanInput = ConceptPlanInput & {
   sample_assignments?: SampleLayerAssignmentInput[];
   include_sample_search?: boolean;
   sample_page_size?: number;
+};
+
+export type ReferenceAudioIntakePlanOptions = {
+  reference_path: string;
+  concept?: string;
+  desired_destination_name?: string;
 };
 
 export type ConceptSampleCurationOptions = {
@@ -328,14 +334,20 @@ function isPathWithin(candidate: string, root: string) {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
+function hostInputPath(inputPath: string) {
+  if (!PLATFORM.isWsl) return inputPath;
+  const match = inputPath.match(/^([A-Za-z]):[\\/](.*)$/);
+  if (!match) return inputPath;
+  return `/mnt/${match[1]!.toLowerCase()}/${match[2]!.replaceAll("\\", "/")}`;
+}
+
 async function resolveApprovedConceptSamplePath(inputPath: string) {
   const safe = await resolveSafePath(inputPath, { mustExist: true });
   const extension = path.extname(safe.real).toLowerCase();
   if (!AudioFileExtensions.has(extension)) {
     throw new AbletonMcpError("Concept sample assignments must point to common local audio files.", "UNSUPPORTED_SAMPLE_TYPE", ["Use WAV, AIFF, FLAC, MP3, M4A, or OGG files."]);
   }
-  const approvedRoots = [LOCAL_PATHS.staging, LOCAL_PATHS.imports, LOCAL_PATHS.userLibrary, LOCAL_PATHS.liveRecordings];
-  if (!approvedRoots.some((root) => isPathWithin(safe.real, root))) {
+  if (!conceptReferenceApprovalRoots().some((root) => isPathWithin(safe.real, root))) {
     throw new AbletonMcpError("Concept sample assignments must come from staging, Codex Imports, the Ableton User Library, or Live Recordings.", "SAMPLE_PATH_NOT_APPROVED", ["Stage downloads first, or choose a sample already under the Ableton User Library."]);
   }
   return { real: safe.real, redacted: redactPath(safe.real), extension };
@@ -343,6 +355,184 @@ async function resolveApprovedConceptSamplePath(inputPath: string) {
 
 function isAudioFilePath(inputPath: string) {
   return AudioFileExtensions.has(path.extname(inputPath).toLowerCase());
+}
+
+function conceptReferenceApprovalRoots() {
+  return [LOCAL_PATHS.staging, LOCAL_PATHS.imports, LOCAL_PATHS.userLibrary, LOCAL_PATHS.liveRecordings];
+}
+
+function stagingDestinationForReference(inputPath: string, desiredDestinationName?: string) {
+  const extension = AudioFileExtensions.has(path.extname(inputPath).toLowerCase())
+    ? path.extname(inputPath).toLowerCase()
+    : ".wav";
+  const requested = desiredDestinationName?.trim();
+  const requestedExtension = requested ? path.extname(requested).toLowerCase() : "";
+  const stemInput = requested
+    ? requested.slice(0, requested.length - requestedExtension.length)
+    : path.basename(inputPath, path.extname(inputPath)) || "reference-audio";
+  const stem = safeFileStem(stemInput, "reference-audio").replace(/^[-_.]+/, "") || "reference-audio";
+  const finalExtension = AudioFileExtensions.has(requestedExtension) ? requestedExtension : extension;
+  return path.join(LOCAL_PATHS.staging, `${stem}${finalExtension}`);
+}
+
+function pathApprovalRootsForReport() {
+  return [
+    { root: LOCAL_PATHS.staging, purpose: "temporary reviewed staging for source audio and downloaded samples" },
+    { root: LOCAL_PATHS.imports, purpose: "Ableton User Library Codex Imports for publishable imports" },
+    { root: LOCAL_PATHS.userLibrary, purpose: "Ableton User Library material already managed by the user" },
+    { root: LOCAL_PATHS.liveRecordings, purpose: "Ableton Live Recordings captured by the user" }
+  ].map((entry) => ({ ...entry, root: redactPath(entry.root) }));
+}
+
+export async function planReferenceAudioIntake(options: ReferenceAudioIntakePlanOptions) {
+  const localReferencePath = hostInputPath(options.reference_path);
+  const requestedAbsolute = path.resolve(localReferencePath);
+  const redactedRequestedPath = redactPath(requestedAbsolute);
+  const extension = path.extname(localReferencePath).toLowerCase();
+  const audioTypeSupported = AudioFileExtensions.has(extension);
+  const stagingDestination = stagingDestinationForReference(localReferencePath, options.desired_destination_name);
+  const safeDestinationName = path.basename(stagingDestination);
+  const safeConcept = options.concept ? sanitizeRemoteSampleText(options.concept, 500) : null;
+
+  const base = {
+    intakeType: "reference_audio_intake_plan",
+    concept: safeConcept,
+    requestedPath: redactedRequestedPath,
+    audioTypeSupported,
+    extension: extension || null,
+    safety: {
+      readsUnapprovedPath: false,
+      copiesFiles: false,
+      downloads: false,
+      abletonWrites: false,
+      uiControl: false,
+      arbitraryUrlFetch: false
+    },
+    approvalRoots: pathApprovalRootsForReport(),
+    recommendedStaging: {
+      destinationName: safeDestinationName,
+      stagingPath: redactPath(stagingDestination),
+      copyRequired: true
+    }
+  };
+
+  if (!audioTypeSupported) {
+    return {
+      ...base,
+      okToUseAsReference: false,
+      status: "unsupported_file_type",
+      nextSteps: [
+        "Use WAV, AIFF, FLAC, MP3, M4A, or OGG for reference-audio treatment.",
+        "Convert the file into an approved staging or Ableton User Library location before calling ableton_plan_concept_track with reference_path."
+      ],
+      exactNextToolCalls: {
+        conceptWithoutReference: safeConcept
+          ? {
+              name: "ableton_plan_concept_track",
+              arguments: { concept: safeConcept, target_duration_seconds: 150, intensity: 8, style: "liminal/backrooms/horror", sources: ["local_library"] }
+            }
+          : null
+      }
+    };
+  }
+
+  if (!conceptReferenceApprovalRoots().some((root) => isPathWithin(requestedAbsolute, root))) {
+    return {
+      ...base,
+      okToUseAsReference: false,
+      status: "needs_user_staging_or_import",
+      reason: {
+        code: "REFERENCE_AUDIO_NOT_IN_APPROVED_ROOT",
+        message: "Reference audio path is not under an approved staging/import/library root.",
+        nextSteps: ["Copy or import the source audio into samples/staging, Codex Imports, the Ableton User Library, or Live Recordings before automatic placement."]
+      },
+      nextSteps: [
+        `Copy or import the source audio to ${redactPath(stagingDestination)} or to the Ableton User Library Codex Imports folder.`,
+        "After the copy/import, call ableton_plan_reference_audio_intake again with the approved destination path.",
+        "Then call ableton_plan_concept_track with reference_path set to the approved staged or imported audio."
+      ],
+      exactNextToolCalls: {
+        recheckAfterUserCopy: {
+          name: "ableton_plan_reference_audio_intake",
+          arguments: {
+            reference_path: redactPath(stagingDestination),
+            ...(safeConcept ? { concept: safeConcept } : {}),
+            desired_destination_name: safeDestinationName
+          }
+        },
+        conceptWithoutReference: safeConcept
+          ? {
+              name: "ableton_plan_concept_track",
+              arguments: { concept: safeConcept, target_duration_seconds: 150, intensity: 8, style: "liminal/backrooms/horror", sources: ["local_library"] }
+            }
+          : null
+      }
+    };
+  }
+
+  try {
+    const approved = await resolveApprovedConceptSamplePath(localReferencePath);
+    return {
+      ...base,
+      okToUseAsReference: true,
+      status: "ready_for_concept_reference",
+      requestedPath: approved.redacted,
+      recommendedStaging: {
+        ...base.recommendedStaging,
+        copyRequired: false
+      },
+      nextSteps: [
+        "Call ableton_plan_concept_track with this approved reference_path.",
+        "Run ableton_prepare_concept_audio_layers with dry_run=true before rendering prepared layers."
+      ],
+      exactNextToolCalls: {
+        conceptWithReference: {
+          name: "ableton_plan_concept_track",
+          arguments: {
+            concept: safeConcept ?? "liminal backrooms horror reference treatment",
+            target_duration_seconds: 150,
+            intensity: 8,
+            style: "liminal/backrooms/horror",
+            sources: ["local_library"],
+            reference_path: approved.redacted
+          }
+        },
+        prepareLayersDryRun: {
+          name: "ableton_prepare_concept_audio_layers",
+          arguments: { plan_id: "concept-...", output_prefix: safeFileStem(path.basename(approved.real, path.extname(approved.real)), "reference-audio"), format: "wav", dry_run: true }
+        }
+      }
+    };
+  } catch (error) {
+    const reason = error instanceof AbletonMcpError ? { code: error.code, message: error.message, nextSteps: error.nextSteps } : null;
+    return {
+      ...base,
+      okToUseAsReference: false,
+      status: "needs_user_staging_or_import",
+      reason,
+      nextSteps: [
+        `Copy or import the source audio to ${redactPath(stagingDestination)} or to the Ableton User Library Codex Imports folder.`,
+        "After the copy/import, call ableton_plan_reference_audio_intake again with the approved destination path.",
+        "Then call ableton_plan_concept_track with reference_path set to the approved staged or imported audio."
+      ],
+      exactNextToolCalls: {
+        recheckAfterUserCopy: {
+          name: "ableton_plan_reference_audio_intake",
+          arguments: {
+            reference_path: redactPath(stagingDestination),
+            ...(safeConcept ? { concept: safeConcept } : {}),
+            desired_destination_name: safeDestinationName
+          }
+        },
+        conceptWithoutReference: safeConcept
+          ? {
+              name: "ableton_plan_concept_track",
+              arguments: { concept: safeConcept, target_duration_seconds: 150, intensity: 8, style: "liminal/backrooms/horror", sources: ["local_library"] }
+            }
+          : null
+      }
+    };
+  }
 }
 
 function sourceAudioTreatmentPlan(horror: boolean, intensity: number): SourceAudioTreatmentPlan {

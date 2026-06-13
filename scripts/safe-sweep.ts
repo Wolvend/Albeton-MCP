@@ -152,6 +152,7 @@ const calls: SweepCall[] = [
   { name: "ableton_suggest_mix_actions", arguments: { issue: "muddy low mids" } },
   { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep" } } },
   { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } },
+  { name: "ableton_plan_reference_audio_intake", arguments: { reference_path: "%USERPROFILE%\\Documents\\Codex\\source-memory.mp3", concept: "safe sweep backrooms source memory", desired_destination_name: "safe-sweep-source-memory.mp3" } },
   { name: "ableton_curate_concept_samples", arguments: { plan_id: safeConcept.plan.id, search: false, page: 1, pageSize: 3 } },
   { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: safeArrangement.arrangement.id } },
