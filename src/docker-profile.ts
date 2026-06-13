@@ -123,6 +123,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_plan_concept_device_automation_readiness",
   "ableton_render_concept_device_chain_spec",
   "ableton_render_concept_device_catalog_matches",
+  "ableton_plan_concept_device_ui_placement",
   "ableton_render_concept_execution_action_matrix",
   "ableton_render_concept_timeline",
   "ableton_render_concept_mix_plan",

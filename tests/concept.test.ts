@@ -19,6 +19,7 @@ import {
   listConceptPresets,
   planReferenceAudioIntake,
   planConceptDeviceAutomationReadiness,
+  planConceptDeviceUiPlacement,
   planConceptProduction,
   planConceptRoutingReadiness,
   planConceptTrack,
@@ -268,6 +269,11 @@ describe("concept-to-music planning", () => {
       max_candidates_per_device: 3,
       include_plugin_presets: false
     });
+    const uiPlacement = await planConceptDeviceUiPlacement({
+      arrangement_id: arrangement.arrangement.id,
+      max_devices: 12,
+      include_catalog_matches: true
+    });
     const readiness = await planConceptDeviceAutomationReadiness({
       arrangement_id: arrangement.arrangement.id,
       check_bridge: false
@@ -376,6 +382,20 @@ describe("concept-to-music planning", () => {
       device.bestCandidate?.name === "Hybrid Reverb.adg" &&
       !String(device.bestCandidate.path).includes(LOCAL_PATHS.projectRoot)
     ))).toBe(true);
+    expect(uiPlacement.planType).toBe("concept_device_ui_placement_plan");
+    expect(uiPlacement.safety).toMatchObject({
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      executesUiActions: false,
+      rawCoordinates: false
+    });
+    expect(uiPlacement.summary.plannedPlacements).toBeGreaterThan(0);
+    expect(uiPlacement.summary.uiExecutionIncluded).toBe(false);
+    expect(uiPlacement.requiredGatesForRealUiPlacement.join(" ")).toContain("ABLETON_MCP_ENABLE_UI_CONTROL=1");
+    expect(uiPlacement.placements.some((placement) => placement.exactGatedCallTemplates.dryRunUiSequence.name === "ableton_run_ui_action_sequence")).toBe(true);
+    expect(uiPlacement.placements.every((placement) => placement.bridgeInsertionStatus === "unsupported_until_verified_browser_or_hotswap_path")).toBe(true);
+    expect(uiPlacement.exactNextToolCalls.listSafeUiActions.name).toBe("ableton_list_safe_ui_actions");
     const stretchedDeviceSpec = deviceChainSpec.chainSpecs.find((entry) => entry.layer === "Stretched Room");
     expect(stretchedDeviceSpec?.devices.map((device) => device.name)).toContain("Hybrid Reverb");
     expect(stretchedDeviceSpec?.devices.some((device) =>

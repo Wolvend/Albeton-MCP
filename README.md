@@ -255,11 +255,11 @@ Release check: passed
 Safe sweep: passed
 Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 210 tools, 3 resources, 2 prompts
-All-tool contract sweep: 210 registered tools, 210 safe calls
-Docker-mode HTTP: restarted node dist/src/http.js on 127.0.0.1:17366; direct Streamable HTTP probe reports 210 tools
+MCP verifier: 211 tools, 3 resources, 2 prompts
+All-tool contract sweep: 211 registered tools, 211 safe calls
+Docker-mode HTTP: restarted node dist/src/http.js on 127.0.0.1:17366; direct Streamable HTTP probe reports 211 tools
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake available through ableton_plan_reference_audio_intake; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; indexed device catalog matching available through ableton_render_concept_device_catalog_matches; execution action review available through ableton_render_concept_execution_action_matrix; execution rehearsal available through ableton_render_concept_execution_runbook; full safe client workflow demo available through .\launch.ps1 concept-demo
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake available through ableton_plan_reference_audio_intake; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; indexed device catalog matching available through ableton_render_concept_device_catalog_matches; user-gated UI placement planning available through ableton_plan_concept_device_ui_placement; execution action review available through ableton_render_concept_execution_action_matrix; execution rehearsal available through ableton_render_concept_execution_runbook; full safe client workflow demo available through .\launch.ps1 concept-demo
 Audit: 0 vulnerabilities
 ```
 

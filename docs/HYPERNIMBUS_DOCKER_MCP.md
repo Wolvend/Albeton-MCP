@@ -48,7 +48,7 @@ Verify the profile:
 npm run docker:hypernimbus:verify
 ```
 
-The apply command backs up the current Docker MCP profile before adding Ableton MCP and applying the safe tool filter. The verify command now checks both that `ableton-mcp` is present and that Docker's enabled tool list exactly matches the 135-tool safe allowlist with no unexpected Ableton or risky write/download/UI tools enabled.
+The apply command backs up the current Docker MCP profile before adding Ableton MCP and applying the safe tool filter. The verify command now checks both that `ableton-mcp` is present and that Docker's enabled tool list exactly matches the 136-tool safe allowlist with no unexpected Ableton or risky write/download/UI tools enabled.
 
 ## Rollback
 

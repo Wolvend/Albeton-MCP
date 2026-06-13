@@ -124,6 +124,12 @@ export function buildAgentMusicDryRunToolPlan(options: AgentMusicDryRunOptions):
       dynamic: true
     },
     {
+      phase: "device_review",
+      name: "ableton_plan_concept_device_ui_placement",
+      arguments: { arrangement_id: "arrangement-...", max_devices: 12, include_catalog_matches: true },
+      dynamic: true
+    },
+    {
       phase: "qa",
       name: "ableton_render_concept_production_scorecard",
       arguments: { arrangement_id: "arrangement-...", check_bridge: false },
@@ -278,6 +284,7 @@ function collectReport(options: AgentMusicDryRunOptions, results: StepResult[], 
   const runbookResult = results.find((result) => result.name === "ableton_render_concept_execution_runbook")?.structuredContent;
   const deviceSpecResult = results.find((result) => result.name === "ableton_render_concept_device_chain_spec")?.structuredContent;
   const deviceCatalogResult = results.find((result) => result.name === "ableton_render_concept_device_catalog_matches")?.structuredContent;
+  const deviceUiPlacementResult = results.find((result) => result.name === "ableton_plan_concept_device_ui_placement")?.structuredContent;
   const preflightResult = results.find((result) => result.name === "ableton_preflight_concept_execution")?.structuredContent;
   const failures = results.filter((result) => !result.ok);
 
@@ -309,6 +316,8 @@ function collectReport(options: AgentMusicDryRunOptions, results: StepResult[], 
       deviceSpecDevices: getNested(deviceSpecResult, ["deviceChainSpec", "summary", "totalDevices"]) ?? null,
       deviceCatalogMatched: getNested(deviceCatalogResult, ["catalogMatches", "summary", "matchedDevices"]) ?? null,
       deviceCatalogMissing: getNested(deviceCatalogResult, ["catalogMatches", "summary", "missingDevices"]) ?? null,
+      deviceUiPlacements: getNested(deviceUiPlacementResult, ["uiPlacement", "summary", "plannedPlacements"]) ?? null,
+      deviceUiExecutionIncluded: getNested(deviceUiPlacementResult, ["uiPlacement", "summary", "uiExecutionIncluded"]) ?? null,
       stagedDeviceChains: getNested(matrixResult, ["actionMatrix", "summary", "stagedDeviceChains"]) ?? null,
       stagedAutomationTargets: getNested(matrixResult, ["actionMatrix", "summary", "stagedAutomationTargets"]) ?? null
     },
@@ -324,7 +333,7 @@ function collectReport(options: AgentMusicDryRunOptions, results: StepResult[], 
       ...(result.error ? { error: result.error } : {})
     })),
     nextSteps: [
-      "Review the action matrix, execution manifest, execution runbook, device-chain spec, and device catalog matches.",
+      "Review the action matrix, execution manifest, execution runbook, device-chain spec, device catalog matches, and UI placement plan.",
       "Stage only licensed samples after metadata review.",
       "Open Ableton and load the Max for Live bridge, then run live-smoke.",
       "Use ableton_execute_concept_plan with dry_run=false only after approval and ABLETON_MCP_ENABLE_WRITE=1 are intentional."

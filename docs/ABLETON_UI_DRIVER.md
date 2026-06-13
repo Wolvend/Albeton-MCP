@@ -65,6 +65,10 @@ Use named actions first:
 
 These actions are reviewed, Ableton-window scoped, serialized, and dry-run friendly. Raw coordinate clicks remain a fallback for cases where the named action map does not cover the workflow.
 
+## Concept Device Placement
+
+Use `ableton_plan_concept_device_ui_placement` after `ableton_render_concept_device_chain_spec` and `ableton_render_concept_device_catalog_matches` when an agent needs to review foreground device placement. The tool is a plan only: it does not move the mouse, type, insert devices, click coordinates, or contact Ableton. It returns screenshot-first UI readiness calls, catalog hints, and the exact gates required before a separate user-approved UI session.
+
 ## Run the driver
 
 Run the driver:

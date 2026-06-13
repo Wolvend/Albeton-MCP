@@ -35,6 +35,7 @@ import {
   listConceptPresets,
   planReferenceAudioIntake,
   planConceptDeviceAutomationReadiness,
+  planConceptDeviceUiPlacement,
   planConceptProduction,
   planConceptRoutingReadiness,
   planConceptTrack,
@@ -538,6 +539,7 @@ function clientBootstrapBundle() {
       { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: "concept-..." } },
       { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: "arrangement-..." } },
       { name: "ableton_render_concept_device_catalog_matches", arguments: { arrangement_id: "arrangement-...", max_candidates_per_device: 3, include_plugin_presets: false } },
+      { name: "ableton_plan_concept_device_ui_placement", arguments: { arrangement_id: "arrangement-...", max_devices: 24, include_catalog_matches: true } },
       { name: "ableton_render_concept_execution_runbook", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
       { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
       { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
@@ -631,6 +633,7 @@ async function agentMusicSessionPlan(args: {
         { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: "arrangement-...", check_bridge: args.check_bridge } },
         { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: "arrangement-..." } },
         { name: "ableton_render_concept_device_catalog_matches", arguments: { arrangement_id: "arrangement-...", max_candidates_per_device: 3, include_plugin_presets: false } },
+        { name: "ableton_plan_concept_device_ui_placement", arguments: { arrangement_id: "arrangement-...", max_devices: 24, include_catalog_matches: true } },
         { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: "arrangement-...", check_bridge: args.check_bridge } }
       ]
     },
@@ -1117,6 +1120,7 @@ toolDefs.push(
   { name: "ableton_plan_concept_device_automation_readiness", description: "Create a read-only readiness plan for staged concept device chains and automation targets with discovery and dry-run call templates.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, readiness: await planConceptDeviceAutomationReadiness(args) as any }) },
   { name: "ableton_render_concept_device_chain_spec", description: "Render a read-only production device-chain spec for each staged concept layer with roles, parameter hints, discovery calls, and dry-run templates.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, deviceChainSpec: await renderConceptDeviceChainSpec(args) as any }) },
   { name: "ableton_render_concept_device_catalog_matches", description: "Match staged concept device chains against already-indexed Ableton presets, Max devices, and optionally plugin presets without scanning or writing.", inputSchema: { arrangement_id: ArrangementPlanId, max_candidates_per_device: z.number().int().min(1).max(10).default(3), include_plugin_presets: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, catalogMatches: await renderConceptDeviceCatalogMatches(args) as any }) },
+  { name: "ableton_plan_concept_device_ui_placement", description: "Plan user-gated foreground UI placement for staged concept devices without moving the mouse, typing, or inserting devices.", inputSchema: { arrangement_id: ArrangementPlanId, max_devices: z.number().int().min(1).max(64).default(24), include_catalog_matches: z.boolean().default(true), include_plugin_presets: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, uiPlacement: await planConceptDeviceUiPlacement(args) as any }) },
   { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default and real execution requires a matching approval bundle id.", inputSchema: { arrangement_id: ArrangementPlanId, approval_id: z.string().regex(/^approval-[a-f0-9]{16}$/).optional(), approval_confirmed: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run, approval_id: args.approval_id, approval_confirmed: args.approval_confirmed }) as any }) },
   { name: "ableton_render_concept_timeline", description: "Render a stored concept plan as a section-by-section layer timeline without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, timeline: await renderConceptTimeline(args.plan_id) as any }) },
   { name: "ableton_render_concept_mix_plan", description: "Render a stored concept plan into layer-by-layer mix, routing, automation, and gain-staging guidance without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, mixPlan: await renderConceptMixPlan(args.plan_id) as any }) },

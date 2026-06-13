@@ -42,6 +42,7 @@ describe("agent music dry-run workflow", () => {
       "ableton_render_concept_automation_map",
       "ableton_render_concept_device_chain_spec",
       "ableton_render_concept_device_catalog_matches",
+      "ableton_plan_concept_device_ui_placement",
       "ableton_render_concept_production_scorecard",
       "ableton_preflight_concept_execution",
       "ableton_create_concept_execution_approval_bundle",

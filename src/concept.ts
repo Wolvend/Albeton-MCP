@@ -88,6 +88,13 @@ export type ConceptDeviceCatalogMatchOptions = {
   include_plugin_presets?: boolean;
 };
 
+export type ConceptDeviceUiPlacementOptions = {
+  arrangement_id: string;
+  max_devices?: number;
+  include_catalog_matches?: boolean;
+  include_plugin_presets?: boolean;
+};
+
 export type ConceptExecutionManifestOptions = {
   arrangement_id: string;
 };
@@ -3604,6 +3611,135 @@ export async function renderConceptDeviceCatalogMatches(options: ConceptDeviceCa
       "Use matched candidates to review real Ableton-native device availability before UI placement or bridge feature work.",
       "Do not treat a catalog match as a live insertion; ableton_insert_instrument and ableton_insert_effect still return unsupported until a reliable bridge path exists.",
       "Keep UI/mouse device placement behind explicit ABLETON_MCP_ENABLE_UI_CONTROL=1 user choice."
+    ]
+  };
+}
+
+export async function planConceptDeviceUiPlacement(options: ConceptDeviceUiPlacementOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const maxDevices = Math.min(Math.max(Math.trunc(options.max_devices ?? 24), 1), 64);
+  const catalogMatches = options.include_catalog_matches === false
+    ? null
+    : await renderConceptDeviceCatalogMatches({
+      arrangement_id: arrangement.id,
+      max_candidates_per_device: 3,
+      include_plugin_presets: options.include_plugin_presets === true
+    });
+  const catalogByDevice = new Map<string, {
+    matchStatus: string;
+    bestCandidate: unknown;
+    candidateCount: number;
+  }>();
+  if (catalogMatches) {
+    for (const chain of catalogMatches.chains) {
+      for (const device of chain.devices) {
+        catalogByDevice.set(device.name, {
+          matchStatus: device.matchStatus,
+          bestCandidate: device.bestCandidate,
+          candidateCount: device.candidateCount
+        });
+      }
+    }
+  }
+
+  const placements = arrangement.devicePlan
+    .flatMap((entry) => entry.devices.map((device, deviceIndex) => {
+      const catalog = catalogByDevice.get(device) ?? null;
+      return {
+        layer: entry.layer,
+        target: entry.target,
+        targetResolution: plannedTargetResolution(entry),
+        device,
+        deviceIndex,
+        category: deviceCategory(device),
+        bridgeInsertTool: deviceInsertTool(device),
+        bridgeInsertionStatus: "unsupported_until_verified_browser_or_hotswap_path",
+        catalogMatchStatus: catalog?.matchStatus ?? "not_checked",
+        catalogCandidateCount: catalog?.candidateCount ?? null,
+        bestCatalogCandidate: catalog?.bestCandidate ?? null,
+        uiPlacementStatus: "requires_user_enabled_ui_driver",
+        reviewBeforeAction: [
+          "Confirm the target track/return is selected or visible in Ableton.",
+          "Capture the Browser and Detail regions before any click or text action.",
+          "Use catalog candidates as search/review hints, not as proof that insertion succeeded."
+        ],
+        exactGatedCallTemplates: {
+          planUiSession: {
+            name: "ableton_plan_ui_control_session",
+            arguments: {
+              purpose: `Review UI placement for ${device} on ${entry.layer}`,
+              actions: ["focus", "screenshot", "region_capture", "click", "type"]
+            }
+          },
+          dryRunUiSequence: {
+            name: "ableton_run_ui_action_sequence",
+            arguments: {
+              actions: ["focus_window", "capture_browser_region", "capture_detail_region"],
+              dry_run: true
+            }
+          },
+          captureBeforePlacement: {
+            name: "ableton_capture_screenshot",
+            arguments: { dry_run: true }
+          },
+          optionalSearchTextOnlyAfterUserChoice: {
+            name: "ableton_type_text",
+            arguments: { text: device, dry_run: true }
+          }
+        }
+      };
+    }))
+    .slice(0, maxDevices);
+
+  return {
+    planType: "concept_device_ui_placement_plan",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      style: concept.style
+    },
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      bridgeContact: false,
+      cacheOnlyCatalogMatches: catalogMatches !== null,
+      executesUiActions: false,
+      rawCoordinates: false,
+      requiresExplicitUiGateForExecution: "ABLETON_MCP_ENABLE_UI_CONTROL=1"
+    },
+    summary: {
+      plannedPlacements: placements.length,
+      totalStagedDevices: arrangement.devicePlan.reduce((count, entry) => count + entry.devices.length, 0),
+      truncated: arrangement.devicePlan.reduce((count, entry) => count + entry.devices.length, 0) > placements.length,
+      catalogMatchesIncluded: catalogMatches !== null,
+      catalogMatchedDevices: catalogMatches?.summary.matchedDevices ?? null,
+      catalogMissingDevices: catalogMatches?.summary.missingDevices ?? null,
+      realDeviceInsertionSupportedByBridge: false,
+      uiExecutionIncluded: false
+    },
+    requiredGatesForRealUiPlacement: [
+      "User intentionally starts .\\launch.ps1 ui-driver.",
+      "ABLETON_MCP_ENABLE_UI_CONTROL=1 is set only for that foreground session.",
+      "No bridge write commands are running at the same time.",
+      "The agent captures Ableton Browser/Detail regions before any click/type action.",
+      "The user approves any raw coordinate click after inspecting screenshots."
+    ],
+    placements,
+    exactNextToolCalls: {
+      listSafeUiActions: { name: "ableton_list_safe_ui_actions", arguments: {} },
+      planUiControlSession: { name: "ableton_plan_ui_control_session", arguments: { purpose: "Review staged concept device placement", actions: ["focus", "screenshot", "region_capture", "click", "type"] } },
+      dryRunUiReadinessSequence: { name: "ableton_run_ui_action_sequence", arguments: { actions: ["focus_window", "capture_browser_region", "capture_detail_region"], dry_run: true } },
+      deviceCatalogMatches: { name: "ableton_render_concept_device_catalog_matches", arguments: { arrangement_id: arrangement.id, max_candidates_per_device: 3, include_plugin_presets: options.include_plugin_presets === true } },
+      bridgeReadiness: { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: arrangement.id, check_bridge: true } }
+    },
+    nextSteps: [
+      "Use this plan to review device placement order and UI prerequisites; it does not move the mouse or insert devices.",
+      "Prefer background bridge execution for tracks, clips, samples, mixer, sends, and markers.",
+      "Use the UI driver only for the remaining device placement gap after explicit user choice.",
+      "After any user-driven device placement, rerun ableton_list_devices and ableton_get_device_parameter_map before automation planning."
     ]
   };
 }
