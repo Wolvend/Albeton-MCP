@@ -73,7 +73,7 @@ Use these launch modes:
 | Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
-| Live smoke | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge and routing readiness with read-only and dry-run calls only. |
+| Live smoke | `.\launch.ps1 live-smoke` | Confirms launch readiness, LiveAPI coverage, bridge reachability, routing readiness, and one dry-run write probe. |
 | Concept demo | `.\launch.ps1 concept-demo` | Runs a no-write MCP client workflow from a liminal brief through concept, arrangement, action matrix, approval dry-run, and delivery plan. |
 | UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
 
@@ -253,7 +253,7 @@ Lint: passed
 Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed
 Safe sweep: passed
-Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
+Live smoke: reports launch readiness and LiveAPI coverage; returns structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
 MCP verifier: 214 tools, 3 resources, 2 prompts
 All-tool contract sweep: 214 registered tools, 214 safe calls

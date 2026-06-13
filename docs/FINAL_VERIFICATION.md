@@ -224,10 +224,15 @@ Result: completed with structured setup failure, not fake success:
 ok: false
 bridgeReachable: false
 dryRunWriteConfirmed: true
+launchReadiness.mode: ready_for_offline_planning
+launchReadiness.liveControlCoverage.areas: 9
+launchReadiness.liveControlCoverage.writeGatedSupported: 4
+launchReadiness.liveControlCoverage.nativeDeviceInsertion: unsupported_by_current_bridge
+launchReadiness.liveControlCoverage.automationBreakpointWrites: partially_supported
 routingRows: null
 ```
 
-Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` during this run. The workflow now calls `ableton_get_routing_overview` so a loaded bridge will also prove the send-matrix read path before real routing work. Next steps are to open Ableton Live, load the Ableton MCP Bridge Max for Live device, then rerun live-smoke.
+Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` during this run. The workflow now calls `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, and `ableton_get_routing_overview` so one smoke run reports launch readiness, LiveAPI coverage, static bridge capabilities, and the send-matrix read path before real routing work. Next steps are to open Ableton Live, load the Ableton MCP Bridge Max for Live device, then rerun live-smoke.
 
 ## Security Notes
 

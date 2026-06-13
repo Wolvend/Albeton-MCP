@@ -33,6 +33,19 @@ export type LiveSmokeReport = {
   ok: boolean;
   bridgeReachable: boolean;
   dryRunWriteConfirmed: boolean;
+  launchReadiness: {
+    mode: string | null;
+    okForDefaultClientUse: boolean | null;
+    safeToolCount: number | null;
+    liveControlCoverage: {
+      areas: number | null;
+      writeGatedSupported: number | null;
+      unsupported: number | null;
+      nativeDeviceInsertion: string | null;
+      automationBreakpointWrites: string | null;
+    };
+  };
+  bridgeCapabilitySummary: Record<string, unknown> | null;
   counts: {
     tracks: number | null;
     scenes: number | null;
@@ -44,6 +57,8 @@ export type LiveSmokeReport = {
 };
 
 export const liveSmokeCalls: SmokeCall[] = [
+  { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false }, required: true },
+  { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false }, required: true },
   { name: "ableton_live_status", arguments: {}, required: true },
   { name: "ableton_bridge_status", arguments: {}, required: true },
   { name: "ableton_bridge_ping", arguments: {}, required: true },
@@ -91,8 +106,32 @@ function numberAt(value: unknown, paths: string[][]): number | null {
   return null;
 }
 
+function stringAt(value: unknown, paths: string[][]): string | null {
+  for (const path of paths) {
+    const candidate = getNested(value, path);
+    if (typeof candidate === "string") return candidate;
+  }
+  return null;
+}
+
+function booleanAt(value: unknown, paths: string[][]): boolean | null {
+  for (const path of paths) {
+    const candidate = getNested(value, path);
+    if (typeof candidate === "boolean") return candidate;
+  }
+  return null;
+}
+
 function resultByName(results: SmokeResult[], name: string) {
   return results.find((result) => result.name === name);
+}
+
+function coverageAreaStatus(launchReadiness: unknown, areaId: string) {
+  const areas = getNested(launchReadiness, ["launchReadiness", "liveControlCoverage", "areas"]);
+  if (!Array.isArray(areas)) return null;
+  const match = areas.find((area) => asRecord(area)?.id === areaId);
+  const status = asRecord(match)?.status;
+  return typeof status === "string" ? status : null;
 }
 
 function collectSetupHints(results: SmokeResult[]) {
@@ -115,6 +154,8 @@ function collectSetupHints(results: SmokeResult[]) {
 }
 
 export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
+  const launchReadiness = resultByName(results, "ableton_mcp_get_launch_readiness_audit")?.structuredContent;
+  const bridgeCapabilities = resultByName(results, "ableton_get_bridge_capabilities")?.structuredContent;
   const snapshot = resultByName(results, "ableton_get_full_snapshot")?.structuredContent;
   const tracks = resultByName(results, "ableton_list_tracks")?.structuredContent;
   const scenes = resultByName(results, "ableton_list_scenes")?.structuredContent;
@@ -144,6 +185,19 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
     ok: requiredFailures.length === 0 && bridgeReachable && dryRunWriteConfirmed,
     bridgeReachable,
     dryRunWriteConfirmed,
+    launchReadiness: {
+      mode: stringAt(launchReadiness, [["launchReadiness", "mode"]]),
+      okForDefaultClientUse: booleanAt(launchReadiness, [["launchReadiness", "okForDefaultClientUse"]]),
+      safeToolCount: numberAt(launchReadiness, [["launchReadiness", "summary", "safeToolCount"]]),
+      liveControlCoverage: {
+        areas: numberAt(launchReadiness, [["launchReadiness", "liveControlCoverage", "summary", "areas"]]),
+        writeGatedSupported: numberAt(launchReadiness, [["launchReadiness", "liveControlCoverage", "summary", "writeGatedSupported"]]),
+        unsupported: numberAt(launchReadiness, [["launchReadiness", "liveControlCoverage", "summary", "unsupported"]]),
+        nativeDeviceInsertion: coverageAreaStatus(launchReadiness, "native_device_insertion"),
+        automationBreakpointWrites: coverageAreaStatus(launchReadiness, "automation_breakpoint_writes")
+      }
+    },
+    bridgeCapabilitySummary: asRecord(getNested(bridgeCapabilities, ["capabilities", "summary"])) ?? null,
     counts,
     setupHints: collectSetupHints(results),
     results: results.map((result) => ({

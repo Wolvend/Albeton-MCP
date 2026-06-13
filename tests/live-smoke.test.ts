@@ -25,6 +25,12 @@ describe("live smoke workflow", () => {
     expect(dryRunWrite?.arguments).toMatchObject({ dry_run: true });
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_capture_screenshot");
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_download_sample");
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_mcp_get_launch_readiness_audit");
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_mcp_get_launch_readiness_audit")?.arguments)
+      .toMatchObject({ check_bridge: false });
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_bridge_capabilities");
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_get_bridge_capabilities")?.arguments)
+      .toMatchObject({ check_bridge: false });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_live_state");
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_routing_overview");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_get_routing_overview")?.arguments)
@@ -36,7 +42,24 @@ describe("live smoke workflow", () => {
       name: call.name,
       ok: true,
       isError: false,
-      structuredContent: call.name === "ableton_get_full_snapshot"
+      structuredContent: call.name === "ableton_mcp_get_launch_readiness_audit"
+        ? {
+            launchReadiness: {
+              mode: "ready_for_live_read_dry_run",
+              okForDefaultClientUse: true,
+              summary: { safeToolCount: 138 },
+              liveControlCoverage: {
+                summary: { areas: 9, writeGatedSupported: 4, unsupported: 1 },
+                areas: [
+                  { id: "native_device_insertion", status: "unsupported_by_current_bridge" },
+                  { id: "automation_breakpoint_writes", status: "partially_supported" }
+                ]
+              }
+            }
+          }
+        : call.name === "ableton_get_bridge_capabilities"
+          ? { capabilities: { summary: { read_only: 10, write_gated: 20, unsupported: 4, diagnostic: 2 } } }
+        : call.name === "ableton_get_full_snapshot"
         ? { snapshot: { data: { state: { track_count: 4, scene_count: 9 }, tracks: [{}, {}], scenes: [{}, {}, {}] } } }
         : call.name === "ableton_duplicate_clip"
           ? { ok: true, dry_run: true }
@@ -56,6 +79,19 @@ describe("live smoke workflow", () => {
     expect(report.counts.scenes).toBe(3);
     expect(report.counts.devices).toBe(1);
     expect(report.counts.routingRows).toBe(2);
+    expect(report.launchReadiness).toMatchObject({
+      mode: "ready_for_live_read_dry_run",
+      okForDefaultClientUse: true,
+      safeToolCount: 138,
+      liveControlCoverage: {
+        areas: 9,
+        writeGatedSupported: 4,
+        unsupported: 1,
+        nativeDeviceInsertion: "unsupported_by_current_bridge",
+        automationBreakpointWrites: "partially_supported"
+      }
+    });
+    expect(report.bridgeCapabilitySummary).toMatchObject({ read_only: 10, write_gated: 20, unsupported: 4, diagnostic: 2 });
     expect(report.setupHints).toEqual([]);
   });
 

@@ -43,7 +43,7 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `build` | `.\launch.ps1 build` | Builds TypeScript only. |
 | `sweep` | `.\launch.ps1 sweep` | Runs the read-only/dry-run MCP safe sweep. |
 | `sweep-all` | `.\launch.ps1 sweep-all` | Calls every registered tool once with safe read-only or dry-run arguments. |
-| `live-smoke` | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge and routing readiness with read-only and dry-run calls only. |
+| `live-smoke` | `.\launch.ps1 live-smoke` | Confirms launch readiness, LiveAPI coverage, bridge reachability, routing readiness, and one dry-run write probe. |
 | `concept-demo` | `.\launch.ps1 concept-demo` | Runs a side-effect-free MCP client workflow from concept brief to stored arrangement, action matrix, approval dry-run, and delivery plan. |
 | `inspect` | `.\launch.ps1 inspect` | Lists tools through MCP Inspector. |
 | `ui-driver` | `.\launch.ps1 ui-driver` | Enables `ABLETON_MCP_ENABLE_UI_CONTROL=1` and starts the foreground Ableton UI driver. |
