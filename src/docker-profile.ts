@@ -123,6 +123,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_render_delivery_plan",
   "ableton_mcp_health",
   "ableton_mcp_get_client_connection_profiles",
+  "ableton_mcp_get_client_bootstrap_bundle",
   "ableton_mcp_get_safe_tool_allowlist",
   "ableton_mcp_list_capabilities",
   "ableton_mcp_get_runtime_report",

@@ -17,6 +17,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_run_ui_action_sequence");
     expect(registeredToolNames).toContain("ableton_ui_driver_ping");
     expect(registeredToolNames).toContain("ableton_mcp_get_client_connection_profiles");
+    expect(registeredToolNames).toContain("ableton_mcp_get_client_bootstrap_bundle");
     expect(registeredToolNames).toContain("ableton_mcp_get_safe_tool_allowlist");
     expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");
     expect(registeredToolNames).toContain("ableton_set_tempo");

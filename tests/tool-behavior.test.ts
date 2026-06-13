@@ -87,6 +87,31 @@ describe("MCP tool behavior", () => {
     });
   }, INTEGRATION_TIMEOUT_MS);
 
+  it("reports a safe client bootstrap bundle for MCP consumers", async () => {
+    await withClient(async (client) => {
+      const structured = await callStructured(client, "ableton_mcp_get_client_bootstrap_bundle", {});
+      const bootstrap = structured.bootstrap as Record<string, any>;
+
+      expect(structured.ok).toBe(true);
+      expect(bootstrap.server).toBe("ableton-mcp");
+      expect(bootstrap.transportDefaults.streamableHttp.url).toBe("http://127.0.0.1:17366/mcp");
+      expect(bootstrap.safeToolAllowlist.tools).toContain("ableton_mcp_get_client_bootstrap_bundle");
+      expect(bootstrap.clients.openclaw.commands.join("\n")).toContain("openclaw mcp doctor ableton-mcp --probe");
+      expect(bootstrap.clients.openRouter.note).toContain("host app");
+      expect(bootstrap.clients.llamaCpp.note).toContain("wrapper");
+      expect(bootstrap.recommendedAgentWorkflow.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_plan_full_concept_production",
+        "ableton_preflight_concept_execution"
+      ]));
+      expect(bootstrap.safetyDefaults).toMatchObject({
+        writeEnabled: false,
+        downloadsEnabled: false,
+        uiControlEnabled: false
+      });
+      expect(bootstrap.guardrails).toContain("Do not expose HTTP publicly.");
+    });
+  }, INTEGRATION_TIMEOUT_MS);
+
   it("reports unsupported dry-run status for LiveAPI controls that cannot be proven reliable", async () => {
     await withClient(async (client) => {
       const instrument = await callStructured(client, "ableton_insert_instrument", {

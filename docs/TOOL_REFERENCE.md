@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-202 tools
+203 tools
 3 resources
 2 prompts
 ```
@@ -61,6 +61,7 @@ Control-mode tools:
 - `ableton_ui_driver_status`: reports the ChromeDriver-style Ableton UI driver endpoint and queue state.
 - `ableton_ui_driver_ping`: pings the UI driver when UI control is enabled.
 - `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.
+- `ableton_mcp_get_client_bootstrap_bundle`: returns a one-call safe bootstrap bundle for Codex, Claude, Docker MCP, OpenClaw, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity.
 - `ableton_mcp_get_safe_tool_allowlist`: returns the HyperNimbus/OpenClaw safe tool allowlist as structured data plus CSV without changing client configuration.
 
 Additional MCP context:

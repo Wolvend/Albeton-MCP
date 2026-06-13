@@ -321,6 +321,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_validate_production_plan", arguments: { plan: { goal: "contract sweep" } } },
     { name: "ableton_mcp_health", arguments: {} },
     { name: "ableton_mcp_get_client_connection_profiles", arguments: {} },
+    { name: "ableton_mcp_get_client_bootstrap_bundle", arguments: {} },
     { name: "ableton_mcp_get_safe_tool_allowlist", arguments: {} },
     { name: "ableton_mcp_list_capabilities", arguments: {} },
     { name: "ableton_mcp_get_runtime_report", arguments: {} },

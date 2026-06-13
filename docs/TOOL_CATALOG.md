@@ -32,7 +32,7 @@ Some LiveAPI write requests are intentionally capability-limited until the runni
 | Plugin/package safety | `ableton_validate_plugin_package`, `ableton_scan_vst_folders`, `ableton_check_plugin_license_metadata` |
 | Export planning | `ableton_plan_export_audio`, `ableton_validate_export_settings`, `ableton_prepare_stems_plan` |
 | Composition helpers | `ableton_generate_session_plan`, `ableton_suggest_effect_chain`, `ableton_validate_production_plan` |
-| Client configuration | `ableton_mcp_get_client_connection_profiles`, `ableton_mcp_get_safe_tool_allowlist` |
+| Client configuration | `ableton_mcp_get_client_connection_profiles`, `ableton_mcp_get_client_bootstrap_bundle`, `ableton_mcp_get_safe_tool_allowlist` |
 | Runtime and evaluation | `ableton_mcp_health`, `ableton_mcp_security_report`, `ableton_mcp_run_eval_suite` |
 
 ## Context exposed through MCP
