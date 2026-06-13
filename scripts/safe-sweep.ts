@@ -156,6 +156,7 @@ const calls: SweepCall[] = [
   { name: "ableton_curate_concept_samples", arguments: { plan_id: safeConcept.plan.id, search: false, page: 1, pageSize: 3 } },
   { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: safeArrangement.arrangement.id } },
+  { name: "ableton_render_concept_execution_runbook", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_render_concept_attribution_bundle", arguments: { arrangement_id: safeArrangement.arrangement.id } },
   { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },

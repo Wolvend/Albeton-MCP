@@ -152,6 +152,7 @@ describe("MCP tool behavior", () => {
         "ableton_plan_full_concept_production",
         "ableton_curate_concept_samples",
         "ableton_render_concept_device_chain_spec",
+        "ableton_render_concept_execution_runbook",
         "ableton_render_concept_execution_action_matrix",
         "ableton_preflight_concept_execution"
       ]));

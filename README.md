@@ -32,7 +32,7 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
-| Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, layer sample curation plan, mix plan, device-chain spec, arrangement skeleton, execution action matrix, execution manifest, and delivery plan. |
+| Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, layer sample curation plan, mix plan, device-chain spec, arrangement skeleton, execution action matrix, execution manifest, execution runbook, and delivery plan. |
 | Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
 | Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
 | Safety/evals | Run security checks, runtime reports, bridge mock checks, sample license tests, and full MCP verification. |
@@ -255,11 +255,11 @@ Release check: passed
 Safe sweep: passed
 Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 208 tools, 3 resources, 2 prompts
-All-tool contract sweep: 208 registered tools, 208 safe calls
-Docker-mode HTTP: restarted node dist/src/http.js on 127.0.0.1:17366; direct Streamable HTTP probe reports 208 tools
+MCP verifier: 209 tools, 3 resources, 2 prompts
+All-tool contract sweep: 209 registered tools, 209 safe calls
+Docker-mode HTTP: restarted node dist/src/http.js on 127.0.0.1:17366; direct Streamable HTTP probe reports 209 tools
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake available through ableton_plan_reference_audio_intake; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; execution action review available through ableton_render_concept_execution_action_matrix; full safe client workflow demo available through .\launch.ps1 concept-demo
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake available through ableton_plan_reference_audio_intake; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; execution action review available through ableton_render_concept_execution_action_matrix; execution rehearsal available through ableton_render_concept_execution_runbook; full safe client workflow demo available through .\launch.ps1 concept-demo
 Audit: 0 vulnerabilities
 ```
 

@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-208 tools
+209 tools
 3 resources
 2 prompts
 ```
@@ -36,7 +36,7 @@ Primary groups:
 - Screenshot and UI tools
 - Legal sample discovery/import
 - Plugin/package discovery, validation, and download staging
-- Concept-to-music preset catalog, planning, mix planning, device-chain specs, attribution bundles, production scorecards, sample staging, execution action matrices, execution manifests, arrangement execution, and delivery planning
+- Concept-to-music preset catalog, planning, mix planning, device-chain specs, attribution bundles, production scorecards, sample staging, execution action matrices, execution manifests, execution runbooks, arrangement execution, and delivery planning
 - Export and stem planning
 - Composition helpers
 - Developer/evaluation tools
@@ -57,6 +57,7 @@ Control-mode tools:
 - `ableton_render_concept_device_chain_spec`: renders the staged device chains as a production-ready review spec with layer roles, device order, conservative parameter hints, automation links, discovery calls, and dry-run templates.
 - `ableton_plan_reference_audio_intake`: classifies a local reference-audio path as ready, needing staging/import, or unsupported without reading unapproved paths.
 - `ableton_render_concept_execution_action_matrix`: renders each stored arrangement action with bridge capability status, write gates, placeholder dependencies, staged-only notes, and direct dry-run availability.
+- `ableton_render_concept_execution_runbook`: renders a read-only execution rehearsal with ordered phases, gates, dependencies, expected postconditions, and inspection calls before approval or real writes.
 - `ableton_extract_automation_summary`: reads live mixer/device automation target candidates with bounded parameter output; breakpoint writes remain unsupported unless a bridge reports support.
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
 - `ableton_curate_concept_samples`: maps stored concept layers to licensed sample-search candidates, layer review notes, and dry-run staging templates without downloads.

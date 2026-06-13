@@ -29,6 +29,7 @@ import {
   renderConceptDeviceChainSpec,
   renderConceptExecutionActionMatrix,
   renderConceptExecutionManifest,
+  renderConceptExecutionRunbook,
   renderConceptMixPlan,
   renderConceptProductionScorecard,
   renderConceptTimeline,
@@ -267,6 +268,10 @@ describe("concept-to-music planning", () => {
     const manifest = await renderConceptExecutionManifest({
       arrangement_id: arrangement.arrangement.id
     });
+    const runbook = await renderConceptExecutionRunbook({
+      arrangement_id: arrangement.arrangement.id,
+      check_bridge: false
+    });
     const attribution = await renderConceptAttributionBundle({
       arrangement_id: arrangement.arrangement.id
     });
@@ -402,6 +407,19 @@ describe("concept-to-music planning", () => {
     expect(attribution.exactNextToolCalls.globalAttributionReport.name).toBe("ableton_generate_attribution_report");
     expect(manifest.exactToolCalls.routingReadiness.name).toBe("ableton_plan_concept_routing_readiness");
     expect(manifest.stagedReview.routingReadinessToolCall.name).toBe("ableton_plan_concept_routing_readiness");
+    expect(runbook.runbookType).toBe("concept_execution_runbook");
+    expect(runbook.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, storedPlanOnly: true });
+    expect(runbook.summary.totalActions).toBe(arrangement.arrangement.actions.length);
+    expect(runbook.summary.realWritesGranted).toBe(false);
+    expect(runbook.bridge).toMatchObject({ checked: false, readyForRealWrite: false });
+    expect(runbook.gateSequence.map((gate) => gate.name)).toEqual(expect.arrayContaining(["offline_review", "live_read_preflight", "approval_bundle", "dry_run_execution", "real_execution"]));
+    expect(runbook.phases.some((phase) => phase.phase === "sample_placement" && phase.actions.some((action) => action.requiresApprovedLocalSample === true))).toBe(true);
+    expect(runbook.phases.some((phase) => phase.inspectionCalls.some((call) => call.name === "ableton_get_routing_overview"))).toBe(true);
+    expect(runbook.exactNextToolCalls.realExecutionAfterApproval.arguments).toMatchObject({
+      arrangement_id: arrangement.arrangement.id,
+      dry_run: false,
+      approval_confirmed: true
+    });
     expect(scorecard.scorecardType).toBe("concept_production_scorecard");
     expect(scorecard.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, arbitraryBridgePayloads: false });
     expect(scorecard.status).toMatch(/ready_for_dry_run|needs_samples_or_bridge_review/);

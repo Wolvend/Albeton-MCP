@@ -366,6 +366,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: "arrangement-0000000000000000" } },
+    { name: "ableton_render_concept_execution_runbook", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_render_concept_attribution_bundle", arguments: { arrangement_id: "arrangement-0000000000000000" } },
     { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
@@ -441,7 +442,7 @@ async function main() {
   if (coverage.missingSpecs.length === 0 && coverage.extraSpecs.length === 0 && coverage.duplicateSpecs.length === 0) {
     for (const call of calls) {
       try {
-        const callArguments = (call.name === "ableton_execute_concept_plan" || call.name === "ableton_get_arrangement_plan" || call.name === "ableton_preflight_concept_execution" || call.name === "ableton_create_concept_execution_approval_bundle" || call.name === "ableton_render_concept_execution_manifest" || call.name === "ableton_render_concept_attribution_bundle" || call.name === "ableton_render_concept_production_scorecard" || call.name === "ableton_plan_concept_routing_readiness" || call.name === "ableton_plan_concept_device_automation_readiness" || call.name === "ableton_render_concept_device_chain_spec") && conceptArrangementId
+        const callArguments = (call.name === "ableton_execute_concept_plan" || call.name === "ableton_get_arrangement_plan" || call.name === "ableton_preflight_concept_execution" || call.name === "ableton_create_concept_execution_approval_bundle" || call.name === "ableton_render_concept_execution_manifest" || call.name === "ableton_render_concept_execution_runbook" || call.name === "ableton_render_concept_attribution_bundle" || call.name === "ableton_render_concept_production_scorecard" || call.name === "ableton_plan_concept_routing_readiness" || call.name === "ableton_plan_concept_device_automation_readiness" || call.name === "ableton_render_concept_device_chain_spec") && conceptArrangementId
           ? { ...call.arguments, arrangement_id: conceptArrangementId }
           : call.arguments;
         const result = await client.callTool({ name: call.name, arguments: callArguments });

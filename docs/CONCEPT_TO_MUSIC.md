@@ -126,48 +126,54 @@ Fast path:
    - Does not contact Ableton, approve execution, download samples, write files, or use UI/mouse control.
    - Use this when an agent needs a concrete execution manifest before asking for approval or running preflight.
 
-19. `ableton_render_concept_attribution_bundle`
+19. `ableton_render_concept_execution_runbook`
+   - Read-only.
+   - Rehearses the stored arrangement as ordered production phases with gate requirements, created-index dependencies, expected postconditions, and exact inspection calls.
+   - Defaults `check_bridge=false`; with `check_bridge=true` it performs the same read-only bridge preflight used by execution readiness checks.
+   - Use this after the execution manifest when an agent needs to verify the practical order of operations before approval or dry-run execution.
+
+20. `ableton_render_concept_attribution_bundle`
    - Read-only.
    - Reviews exact sample assignments for one stored arrangement and reports sidecar license policy, source URL, creator/title metadata, checksum, byte count, and missing-attribution warnings.
    - Does not scan broadly; it reads only the `.attribution.json` sidecar beside each assigned sample path and redacts local paths.
    - Use this before publishing or delivering stems.
 
-20. `ableton_render_concept_production_scorecard`
+21. `ableton_render_concept_production_scorecard`
    - Read-only.
    - Scores a stored arrangement on layer architecture, section arc, executable action coverage, sample coverage, routing, staged device/automation readiness, execution safety, and delivery readiness.
    - Defaults `check_bridge=false`; with `check_bridge=true` it performs read-only bridge preflight/routing checks and still never writes, downloads, approves, or uses UI/mouse control.
    - Use this as the agent QA gate before dry-run execution or approval review.
 
-21. `ableton_plan_concept_routing_readiness`
+22. `ableton_plan_concept_routing_readiness`
    - Read-only.
    - Maps planned `ableton_set_track_send` actions to return targets, `ableton_get_routing_overview` discovery, and exact dry-run send templates after bridge resolution.
    - Does not write sends, approve execution, download samples, or use UI/mouse control.
    - Use this before approval when an agent needs to verify reverb, delay, and texture routing against the live set.
 
-22. `ableton_render_concept_device_chain_spec`
+23. `ableton_render_concept_device_chain_spec`
    - Read-only.
    - Renders each staged concept device chain as a production review spec with layer role, bus role, device order, conservative parameter hints, automation links, discovery calls, and dry-run templates.
    - Does not contact Ableton, insert devices, write automation, download files, or use UI/mouse control.
    - Use this before bridge readiness when an agent needs professional device-chain decisions it can inspect and revise.
 
-23. `ableton_plan_concept_device_automation_readiness`
+24. `ableton_plan_concept_device_automation_readiness`
    - Read-only.
    - Converts staged `devicePlan` and `automationPlan` entries into discovery calls, dry-run templates, target hints, and explicit unsupported/support status.
    - Does not insert devices, write automation, move the mouse, or approve execution.
 
-24. `ableton_create_concept_execution_approval_bundle`
+25. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
    - Packages the redacted concept, redacted arrangement, preflight result, deterministic `approval_id`, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
-25. `ableton_execute_concept_plan`
+26. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false`, `ABLETON_MCP_ENABLE_WRITE=1`, the matching `approval_id`, `approval_confirmed=true`, and a successful bridge preflight.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
    - Writes a redacted execution journal under `diagnostics\runtime\concept-executions` before live preflight and after each action outcome.
    - Stops immediately with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` if the loaded bridge returns `unsupported: true` for any approved action, so clients do not mistake a bridge limitation for successful execution.
 
-26. `ableton_list_concept_execution_journals`
+27. `ableton_list_concept_execution_journals`
    - Read-only.
    - Lists recent redacted execution journals with status, event counts, failure counts, and exact follow-up calls.
    - Does not accept file paths, scan broadly, or expose raw local sample paths.
@@ -219,6 +225,7 @@ The arrangement plan includes:
 - A read-only mix plan with layer priorities, routing roles, frequency focus, spatial treatment, return use cases, gain-staging, automation targets, and conservative master-bus settings.
 - A read-only routing readiness plan that links planned sends to `ableton_get_routing_overview`, dry-run send templates, and approval-time verification.
 - A read-only device-chain spec that turns staged device choices into layer roles, bus roles, parameter hints, automation links, discovery calls, and dry-run templates.
+- A read-only execution runbook that groups planned actions into practical production phases with gates, dependencies, postconditions, and inspection calls.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
 - A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
 - Optional named, shaped, and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Distant Room Tone`, `Mechanical Texture`, or `Reversed Fragments`. Sample shaping uses conservative layer-specific gain, transpose/detune, warp mode, and start/end marker actions.
@@ -263,6 +270,7 @@ ableton_build_arrangement_from_prepared_audio after real layer preparation
 ableton_preflight_concept_execution with check_bridge=true
 ableton_render_concept_execution_action_matrix with check_bridge=true
 ableton_render_concept_execution_manifest
+ableton_render_concept_execution_runbook
 ableton_render_concept_attribution_bundle
 ableton_render_concept_production_scorecard
 ableton_render_concept_device_chain_spec
@@ -277,7 +285,7 @@ For a local proof that an MCP consumer can run the safe sequence end to end with
 .\launch.ps1 concept-demo -SkipSetup
 ```
 
-The demo uses stdio MCP calls and returns a compact JSON report with generated concept/arrangement ids, layer/action counts, staged device/automation counts, preflight status, and next steps.
+The demo uses stdio MCP calls and returns a compact JSON report with generated concept/arrangement ids, layer/action counts, staged device/automation counts, execution runbook phase count, preflight status, and next steps.
 
 With approved local samples:
 

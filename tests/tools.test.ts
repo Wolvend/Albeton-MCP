@@ -69,6 +69,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_render_concept_execution_action_matrix");
     expect(registeredToolNames).toContain("ableton_create_concept_execution_approval_bundle");
     expect(registeredToolNames).toContain("ableton_render_concept_execution_manifest");
+    expect(registeredToolNames).toContain("ableton_render_concept_execution_runbook");
     expect(registeredToolNames).toContain("ableton_render_concept_attribution_bundle");
     expect(registeredToolNames).toContain("ableton_render_concept_production_scorecard");
     expect(registeredToolNames).toContain("ableton_plan_concept_routing_readiness");
@@ -171,6 +172,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_render_concept_execution_action_matrix).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_create_concept_execution_approval_bundle).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_render_concept_execution_manifest).toHaveProperty("arrangement_id");
+    expect(registeredToolSchemas.ableton_render_concept_execution_runbook).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_render_concept_attribution_bundle).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_render_concept_production_scorecard).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_plan_concept_routing_readiness).toHaveProperty("check_bridge");

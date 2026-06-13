@@ -44,6 +44,7 @@ import {
   renderConceptAutomationMap,
   renderConceptDeviceChainSpec,
   renderConceptExecutionActionMatrix,
+  renderConceptExecutionRunbook,
   renderConceptMixPlan,
   renderConceptExecutionManifest,
   renderConceptProductionScorecard,
@@ -535,6 +536,7 @@ function clientBootstrapBundle() {
       { name: "ableton_curate_concept_samples", arguments: { plan_id: "concept-...", search: true, allowed_only: true } },
       { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: "concept-..." } },
       { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: "arrangement-..." } },
+      { name: "ableton_render_concept_execution_runbook", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
       { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
       { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
       { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-...", check_bridge: true } }
@@ -622,6 +624,7 @@ async function agentMusicSessionPlan(args: {
       calls: [
         { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: "concept-...", sample_assignments: [] } },
         { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: "arrangement-..." } },
+        { name: "ableton_render_concept_execution_runbook", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
         { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
         { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: "arrangement-...", check_bridge: args.check_bridge } },
         { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: "arrangement-..." } },
@@ -1104,6 +1107,7 @@ toolDefs.push(
   { name: "ableton_render_concept_execution_action_matrix", description: "Render every stored concept action with bridge capability status, gates, placeholder dependencies, and dry-run call availability.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, actionMatrix: await renderConceptExecutionActionMatrix(args) as any }) },
   { name: "ableton_create_concept_execution_approval_bundle", description: "Create a read-only approval bundle for a stored arrangement with redacted plan, preflight, required gates, and exact next tool calls.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, approvalBundle: await createConceptExecutionApprovalBundle(args) as any }) },
   { name: "ableton_render_concept_execution_manifest", description: "Render a read-only execution manifest for a stored arrangement with grouped actions, gates, staged review, and exact next calls.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, manifest: await renderConceptExecutionManifest(args) as any }) },
+  { name: "ableton_render_concept_execution_runbook", description: "Render a read-only execution rehearsal runbook with ordered phases, gates, dependencies, expected postconditions, and inspection calls.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, runbook: await renderConceptExecutionRunbook(args) as any }) },
   { name: "ableton_render_concept_attribution_bundle", description: "Render a read-only attribution bundle for a stored concept arrangement, including sidecar license, source URL, checksum, and missing-attribution warnings.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, attribution: await renderConceptAttributionBundle(args) as any }) },
   { name: "ableton_render_concept_production_scorecard", description: "Score a stored concept arrangement for layer coverage, sample readiness, routing, device/automation review, execution gates, and delivery readiness without writes.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, scorecard: await renderConceptProductionScorecard(args) as any }) },
   { name: "ableton_plan_concept_routing_readiness", description: "Create a read-only routing readiness plan for concept sends, return targets, routing overview discovery, and dry-run send calls.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, routing: await planConceptRoutingReadiness(args) as any }) },

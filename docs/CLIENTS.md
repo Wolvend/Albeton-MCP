@@ -7,6 +7,8 @@ Ableton MCP exposes the same tools through two transports:
 
 The safest default is stdio on the same machine.
 
+For music-production agents, start with `ableton_mcp_get_client_bootstrap_bundle`. Its recommended workflow now includes concept planning, sample curation, arrangement planning, execution action review, execution manifest review, execution runbook rehearsal, device-chain review, and dry-run execution before any approval-gated write.
+
 ## Automatic Setup
 
 Run:

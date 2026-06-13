@@ -71,6 +71,8 @@ export type ConceptExecutionActionMatrixOptions = ConceptExecutionPreflightOptio
 
 export type ConceptExecutionApprovalBundleOptions = ConceptExecutionPreflightOptions;
 
+export type ConceptExecutionRunbookOptions = ConceptExecutionPreflightOptions;
+
 export type ConceptDeviceAutomationReadinessOptions = ConceptExecutionPreflightOptions;
 
 export type ConceptRoutingReadinessOptions = ConceptExecutionPreflightOptions;
@@ -1339,6 +1341,71 @@ function actionMatrixGate(action: ArrangementAction, capability: BridgeActionCap
   if (capability.status === "write_gated") return "ableton_execute_concept_plan dry_run=false plus ABLETON_MCP_ENABLE_WRITE=1 plus matching approval_id";
   if (capability.status === "read_only" || capability.status === "diagnostic") return "read_only";
   return "unknown";
+}
+
+function actionRunbookPostconditions(action: ArrangementAction) {
+  if (action.action === "ableton_create_audio_track" || action.action === "ableton_create_midi_track") {
+    return ["A new track exists at the preflight-resolved index.", "Follow-up mixer, color, clip, and send actions can target that created track offset."];
+  }
+  if (action.action === "ableton_create_return_track") {
+    return ["A new return track exists at the preflight-resolved return index.", "Track-send actions can target the matching return/send index after routing preflight."];
+  }
+  if (action.action === "ableton_create_scene") {
+    return ["A new scene exists at the preflight-resolved scene index.", "Scene tempo, time signature, color, and launch actions can target that scene."];
+  }
+  if (action.action === "ableton_load_preset_or_sample") {
+    return ["The target clip slot contains the approved local audio sample as an audio clip.", "The clip name matches the stored assignment when supplied.", "The sample path remains redacted in reports and is used only through the stored plan executor."];
+  }
+  if (action.action === "ableton_insert_midi_notes") {
+    return ["The target MIDI clip exists and contains the planned note payload.", "The note count matches the stored motif action."];
+  }
+  if (action.action === "ableton_set_track_send") {
+    return ["The target track send value matches the approved payload.", "The routing overview send matrix reflects the updated send level."];
+  }
+  if (action.action.includes("_volume") || action.action.includes("_pan")) {
+    return ["The addressed mixer parameter value matches the approved payload.", "A follow-up mixer read reports the new value."];
+  }
+  if (action.action === "ableton_create_arrangement_marker") {
+    return ["The Arrangement locator exists at the requested time.", "The locator name matches the stored section or cue name."];
+  }
+  if (action.action.includes("_clip") || action.action.includes("transpose")) {
+    return ["The addressed clip exists after execution.", "A follow-up clip-slot read reports the requested clip property change."];
+  }
+  if (action.action.includes("_color")) {
+    return ["The target track, return, scene, or clip color matches the approved RGB integer."];
+  }
+  return ["The bridge returns ok for this approved stored-plan action.", "The concept execution journal records the action outcome."];
+}
+
+function actionRunbookInspectionCalls(action: ArrangementAction): Array<{ name: string; arguments: Record<string, unknown> }> {
+  if (action.action === "ableton_set_track_send") {
+    return [
+      { name: "ableton_get_routing_overview", arguments: { include_devices: true } },
+      { name: "ableton_list_track_sends", arguments: { track_index: "resolved-after-preflight" } }
+    ];
+  }
+  if (action.action.includes("_volume") || action.action.includes("_pan")) {
+    if (action.payload.return_created_offset !== undefined || action.action.includes("return")) {
+      return [{ name: "ableton_get_return_track_mixer", arguments: { return_track_index: "resolved-after-preflight" } }];
+    }
+    return [{ name: "ableton_get_track_mixer", arguments: { track_index: "resolved-after-preflight" } }];
+  }
+  if (action.action === "ableton_load_preset_or_sample" || action.action.includes("_clip") || action.action.includes("transpose")) {
+    return [{ name: "ableton_list_clip_slots", arguments: { track_index: "resolved-after-preflight", page: 1, pageSize: 16 } }];
+  }
+  if (action.action === "ableton_insert_midi_notes") {
+    return [{ name: "ableton_get_clip_notes", arguments: { track_index: "resolved-after-preflight", clip_slot_index: action.payload.clip_slot_index ?? 0 } }];
+  }
+  if (action.action === "ableton_create_arrangement_marker") {
+    return [{ name: "ableton_list_arrangement_markers", arguments: { page: 1, pageSize: 50 } }];
+  }
+  if (action.action.includes("_track")) {
+    return [{ name: "ableton_list_tracks", arguments: { page: 1, pageSize: 50 } }];
+  }
+  if (action.action.includes("_scene")) {
+    return [{ name: "ableton_list_scenes", arguments: { page: 1, pageSize: 50 } }];
+  }
+  return [{ name: "ableton_get_full_snapshot", arguments: {} }];
 }
 
 export async function renderConceptExecutionActionMatrix(options: ConceptExecutionActionMatrixOptions) {
@@ -3699,6 +3766,150 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
       "Load the Max for Live bridge, then run preflightWithBridge.",
       "Only run realExecutionAfterApproval after reviewing the approval bundle and intentionally enabling ABLETON_MCP_ENABLE_WRITE=1."
     ]
+  };
+}
+
+export async function renderConceptExecutionRunbook(options: ConceptExecutionRunbookOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const capabilityMap = bridgeCapabilityByAction();
+  const checkBridge = options.check_bridge === true;
+  const preflight = checkBridge
+    ? await preflightConceptExecution({ arrangement_id: arrangement.id, check_bridge: true }) as {
+      status?: string;
+      readyForRealWrite?: boolean;
+      bridge?: { reachable?: boolean | null };
+      issues?: Array<{ severity?: string; code?: string; message?: string }>;
+    }
+    : null;
+  const runbookActions = arrangement.actions.map((action, index) => {
+    const capability = capabilityMap.get(action.action) ?? unknownBridgeCapability(action.action);
+    const placeholders = actionPlaceholderSummary(action);
+    return {
+      index,
+      phase: actionPhase(action.action),
+      action: action.action,
+      reason: action.reason,
+      safeToExecute: action.safeToExecute,
+      payloadTemplate: redactActionPayload(action.payload),
+      bridgeCapability: {
+        status: capability.status,
+        domain: capability.domain,
+        requiresWriteGate: capability.requiresWriteGate === true,
+        dryRunFirst: capability.dryRunFirst === true,
+        notes: capability.notes ?? null
+      },
+      placeholders,
+      dependencies: actionMatrixDependencies(action, placeholders),
+      requiresApprovedLocalSample: actionNeedsApprovedSample(action),
+      gates: [
+        "stored arrangement_id only",
+        "dry_run=true rehearsal before real execution",
+        ...(action.safeToExecute ? ["matching approval_id before dry_run=false", "ABLETON_MCP_ENABLE_WRITE=1 before dry_run=false"] : ["not executable"]),
+        ...(Object.values(placeholders).some(Boolean) ? ["bridge preflight must resolve created indexes"] : []),
+        ...(actionNeedsApprovedSample(action) ? ["approved local sample path is used only inside stored executor"] : [])
+      ],
+      expectedPostconditions: actionRunbookPostconditions(action),
+      inspectionCalls: actionRunbookInspectionCalls(action)
+    };
+  });
+  const phases = [...new Set(runbookActions.map((action) => action.phase))].map((phase, phaseIndex) => {
+    const actions = runbookActions.filter((action) => action.phase === phase);
+    return {
+      phaseIndex,
+      phase,
+      actionCount: actions.length,
+      writeGatedActions: actions.filter((action) => action.bridgeCapability.status === "write_gated").length,
+      dependencies: [...new Set(actions.flatMap((action) => action.dependencies))],
+      inspectionCalls: [...new Map(actions.flatMap((action) => action.inspectionCalls).map((call) => [JSON.stringify(call), call])).values()],
+      actions
+    };
+  });
+
+  return {
+    runbookType: "concept_execution_runbook",
+    arrangement_id: arrangement.id,
+    approval_id: conceptExecutionApprovalId(arrangement),
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      title: sanitizeRemoteSampleText(concept.concept, 500),
+      style: concept.style,
+      tempo: concept.tempo,
+      key: concept.key,
+      sections: concept.sections.map((section) => section.name)
+    },
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      bridgeContact: checkBridge,
+      arbitraryBridgePayloads: false,
+      storedPlanOnly: true,
+      localPathsRedacted: true
+    },
+    bridge: preflight
+      ? {
+        checked: true,
+        reachable: preflight.bridge?.reachable ?? null,
+        preflightStatus: preflight.status ?? null,
+        readyForRealWrite: preflight.readyForRealWrite === true,
+        issueCount: Array.isArray(preflight.issues) ? preflight.issues.length : 0
+      }
+      : {
+        checked: false,
+        reachable: null,
+        preflightStatus: "not_checked",
+        readyForRealWrite: false,
+        issueCount: null
+      },
+    summary: {
+      phases: phases.length,
+      totalActions: runbookActions.length,
+      writeGatedActions: runbookActions.filter((action) => action.bridgeCapability.status === "write_gated").length,
+      unsupportedActions: runbookActions.filter((action) => action.bridgeCapability.status === "unsupported").length,
+      samplePlacements: runbookActions.filter((action) => action.requiresApprovedLocalSample).length,
+      actionsWithCreatedIndexDependencies: runbookActions.filter((action) => Object.values(action.placeholders).some(Boolean)).length,
+      stagedDeviceChains: arrangement.devicePlan.length,
+      stagedAutomationTargets: arrangement.automationPlan.length,
+      realWritesGranted: false
+    },
+    gateSequence: [
+      { step: 1, name: "offline_review", required: true, calls: ["ableton_render_concept_execution_manifest", "ableton_render_concept_execution_action_matrix", "ableton_render_concept_device_chain_spec"] },
+      { step: 2, name: "live_read_preflight", required: true, calls: ["ableton_preflight_concept_execution", "ableton_plan_concept_routing_readiness", "ableton_plan_concept_device_automation_readiness"] },
+      { step: 3, name: "approval_bundle", required: true, calls: ["ableton_create_concept_execution_approval_bundle"] },
+      { step: 4, name: "dry_run_execution", required: true, calls: ["ableton_execute_concept_plan dry_run=true"] },
+      { step: 5, name: "real_execution", required: true, calls: ["ABLETON_MCP_ENABLE_WRITE=1", "ableton_execute_concept_plan dry_run=false with approval_id and approval_confirmed=true"] }
+    ],
+    phases,
+    exactNextToolCalls: {
+      executionManifest: { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: arrangement.id } },
+      actionMatrix: { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: arrangement.id, check_bridge: false } },
+      deviceChainSpec: { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: arrangement.id } },
+      preflightWithBridge: { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      approvalBundle: { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      dryRunExecution: { name: "ableton_execute_concept_plan", arguments: { arrangement_id: arrangement.id, dry_run: true } },
+      realExecutionAfterApproval: {
+        name: "ableton_execute_concept_plan",
+        arguments: {
+          arrangement_id: arrangement.id,
+          dry_run: false,
+          approval_id: conceptExecutionApprovalId(arrangement),
+          approval_confirmed: true
+        }
+      }
+    },
+    nextSteps: checkBridge
+      ? [
+        "If bridge.readyForRealWrite is false, resolve the listed preflight issues before approving execution.",
+        "Review every phase inspection call and expected postcondition before enabling writes.",
+        "Run dryRunExecution before any real execution."
+      ]
+      : [
+        "Review phases, dependencies, and expected postconditions offline.",
+        "Load Ableton and the Max for Live bridge, then rerun with check_bridge=true.",
+        "Do not enable ABLETON_MCP_ENABLE_WRITE=1 until preflight and approval bundle are reviewed."
+      ]
   };
 }
 
