@@ -10,6 +10,8 @@ npm run inspect
 
 Core Live control tools expose field-level schemas for agent planning and validation. For example, tempo uses `tempo`, track/scene creation uses `name` and optional indexes, clip tools use `track_index` and `clip_slot_index`, mixer tools use bounded `value`, and device parameter writes use explicit track/device/parameter indexes. Real writes still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1`.
 
+Some LiveAPI write requests are intentionally capability-limited until the running Ableton bridge proves a reliable path. Device insertion, macro mapping, groove application, automation writes, clip quantization, and MIDI humanization return structured `unsupported: true` dry-run plans with next-step hints instead of fake success.
+
 ## Main tool groups
 
 | Group | Examples |
