@@ -116,7 +116,17 @@ function summarizeClipSlot(trackIndex, slotIndex) {
       color: safeGet(clipApi, "color", null),
       is_playing: safeGet(clipApi, "is_playing", null),
       is_recording: safeGet(clipApi, "is_recording", null),
+      is_audio_clip: safeGet(clipApi, "is_audio_clip", null),
+      is_midi_clip: safeGet(clipApi, "is_midi_clip", null),
       length: safeGet(clipApi, "length", null),
+      gain: safeGet(clipApi, "gain", null),
+      gain_display_string: safeGet(clipApi, "gain_display_string", null),
+      pitch_coarse: safeGet(clipApi, "pitch_coarse", null),
+      pitch_fine: safeGet(clipApi, "pitch_fine", null),
+      warping: safeGet(clipApi, "warping", null),
+      warp_mode: safeGet(clipApi, "warp_mode", null),
+      start_marker: safeGet(clipApi, "start_marker", null),
+      end_marker: safeGet(clipApi, "end_marker", null),
       loop_start: safeGet(clipApi, "loop_start", null),
       loop_end: safeGet(clipApi, "loop_end", null)
     };
@@ -622,6 +632,121 @@ function renameClip(payload) {
   return { track_index: target.track_index, slot_index: target.slot_index, name: name };
 }
 
+function audioClipTarget(payload, action) {
+  var target = clipSlotFromPayload(payload);
+  if (!clipExists(target.track_index, target.slot_index)) throw new Error("Clip slot does not contain a clip.");
+  var clip = liveObject(target.clip_path);
+  if (Number(safeGet(clip, "is_audio_clip", 0)) !== 1) {
+    return {
+      unsupported: unsupported(action, "This operation is available only for audio clips in the Live Object Model.", {
+        track_index: target.track_index,
+        clip_slot_index: target.slot_index,
+        clip: summarizeClipSlot(target.track_index, target.slot_index).clip
+      })
+    };
+  }
+  target.clip = clip;
+  return target;
+}
+
+function audioClipState(target) {
+  return {
+    track_index: target.track_index,
+    slot_index: target.slot_index,
+    gain: safeGet(target.clip, "gain", null),
+    gain_display_string: safeGet(target.clip, "gain_display_string", null),
+    pitch_coarse: safeGet(target.clip, "pitch_coarse", null),
+    pitch_fine: safeGet(target.clip, "pitch_fine", null),
+    warping: safeGet(target.clip, "warping", null),
+    warp_mode: safeGet(target.clip, "warp_mode", null),
+    start_marker: safeGet(target.clip, "start_marker", null),
+    end_marker: safeGet(target.clip, "end_marker", null),
+    loop_start: safeGet(target.clip, "loop_start", null),
+    loop_end: safeGet(target.clip, "loop_end", null)
+  };
+}
+
+function setClipGain(payload) {
+  var target = audioClipTarget(payload, "ableton_set_clip_gain");
+  if (target.unsupported) return target.unsupported;
+  var gain = Number(payload && payload.gain);
+  if (!isFinite(gain) || gain < 0 || gain > 1) throw new Error("gain must be between 0 and 1.");
+  target.clip.set("gain", gain);
+  return audioClipState(target);
+}
+
+function transposeClip(payload) {
+  var target = audioClipTarget(payload, "ableton_transpose_clip");
+  if (target.unsupported) return target.unsupported;
+  var semitones = Math.floor(Number(payload && payload.semitones));
+  if (!isFinite(semitones) || semitones < -48 || semitones > 48) throw new Error("semitones must be an integer from -48 to 48.");
+  target.clip.set("pitch_coarse", semitones);
+  if (payload && payload.cents !== undefined) {
+    var cents = Number(payload.cents);
+    if (!isFinite(cents) || cents < -50 || cents > 49) throw new Error("cents must be between -50 and 49.");
+    target.clip.set("pitch_fine", cents);
+  }
+  return audioClipState(target);
+}
+
+function warpModeIndex(value) {
+  if (typeof value === "number") {
+    if (value >= 0 && value <= 6 && Math.floor(value) === value) return value;
+    throw new Error("warp_mode index must be 0..6.");
+  }
+  var key = String(value || "").toLowerCase().replace(/[\s-]+/g, "_");
+  var modes = {
+    beats: 0,
+    tones: 1,
+    texture: 2,
+    re_pitch: 3,
+    complex: 4,
+    rex: 5,
+    complex_pro: 6
+  };
+  if (modes[key] === undefined) throw new Error("warp_mode must be beats, tones, texture, re-pitch, complex, rex, or complex_pro.");
+  return modes[key];
+}
+
+function setClipWarp(payload) {
+  var target = audioClipTarget(payload, "ableton_set_clip_warp");
+  if (target.unsupported) return target.unsupported;
+  if (!payload || (payload.warping === undefined && payload.warp_mode === undefined)) throw new Error("warping or warp_mode is required.");
+  if (payload.warping !== undefined) target.clip.set("warping", payload.warping ? 1 : 0);
+  if (payload.warp_mode !== undefined) target.clip.set("warp_mode", warpModeIndex(payload.warp_mode));
+  return audioClipState(target);
+}
+
+function setClipMarkers(payload) {
+  var target = clipSlotFromPayload(payload);
+  if (!clipExists(target.track_index, target.slot_index)) throw new Error("Clip slot does not contain a clip.");
+  var clip = liveObject(target.clip_path);
+  var hasStart = payload && payload.start_marker !== undefined;
+  var hasEnd = payload && payload.end_marker !== undefined;
+  if (!hasStart && !hasEnd) throw new Error("start_marker or end_marker is required.");
+  var startMarker = hasStart ? Number(payload.start_marker) : null;
+  var endMarker = hasEnd ? Number(payload.end_marker) : null;
+  if (hasStart && (!isFinite(startMarker) || startMarker < 0)) throw new Error("start_marker must be a non-negative number.");
+  if (hasEnd && (!isFinite(endMarker) || endMarker < 0)) throw new Error("end_marker must be a non-negative number.");
+  if (hasStart && hasEnd && endMarker < startMarker) throw new Error("end_marker cannot be before start_marker.");
+  var currentEnd = Number(safeGet(clip, "end_marker", 0));
+  if (hasEnd && hasStart && startMarker > currentEnd) {
+    clip.set("end_marker", endMarker);
+    clip.set("start_marker", startMarker);
+  } else {
+    if (hasStart) clip.set("start_marker", startMarker);
+    if (hasEnd) clip.set("end_marker", endMarker);
+  }
+  return {
+    track_index: target.track_index,
+    slot_index: target.slot_index,
+    start_marker: safeGet(clip, "start_marker", null),
+    end_marker: safeGet(clip, "end_marker", null),
+    loop_start: safeGet(clip, "loop_start", null),
+    loop_end: safeGet(clip, "loop_end", null)
+  };
+}
+
 function setMixerParameter(payload, parameterName, minValue, maxValue) {
   var trackIndex = parseTrackIndex(payload);
   var value = Number(payload && payload.value);
@@ -852,6 +977,10 @@ function dispatch(action, payload) {
   if (action === "ableton_insert_midi_notes") return insertMidiNotes(payload);
   if (action === "ableton_load_preset_or_sample") return loadPresetOrSample(payload);
   if (action === "ableton_set_clip_loop") return setClipLoop(payload);
+  if (action === "ableton_set_clip_gain") return setClipGain(payload);
+  if (action === "ableton_transpose_clip") return transposeClip(payload);
+  if (action === "ableton_set_clip_warp") return setClipWarp(payload);
+  if (action === "ableton_set_clip_markers") return setClipMarkers(payload);
   if (action === "ableton_fire_clip") return fireClip(payload);
   if (action === "ableton_stop_clip") return stopClip(payload);
   if (action === "ableton_arm_track") return setTrackBoolean(payload, "arm");

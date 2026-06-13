@@ -33,8 +33,8 @@ Fast path:
 
 5. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.
-   - Builds tempo, track, scene, arrangement marker, mix, send, sparse MIDI motif, clip rename, and clip loop actions.
-   - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit ordered load, rename, and loop actions.
+   - Builds tempo, track, scene, arrangement marker, mix, send, sparse MIDI motif, clip rename, clip gain, transpose, warp, marker, and loop actions.
+   - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit ordered load, rename, shape, and loop actions.
    - Automatically maps approved reference audio to the most relevant concept layers unless those layers already have explicit sample assignments.
    - Preserves each layer's Ableton-native device chain as a staged `devicePlan` for review.
    - Uses created-track placeholders for mix, send, and MIDI actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
@@ -118,7 +118,7 @@ The arrangement plan includes:
 - Initial return-track volume and pan actions for the generated reverb and delay returns.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
 - A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
-- Optional named and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`.
+- Optional named, shaped, and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`. Sample shaping uses conservative layer-specific gain, transpose/detune, warp mode, and start/end marker actions.
 - Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, and reversed fragments. These can be rendered into staging with `ableton_prepare_concept_audio_layers`.
 - A staged automation plan for reverb, delay, filter, and volume movement. `ableton_plan_concept_device_automation_readiness` turns these lanes into parameter-discovery calls and dry-run templates; they remain non-writing until the bridge proves support.
 

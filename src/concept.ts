@@ -748,6 +748,26 @@ function devicesForAutomation(target: ArrangementPlan["automationPlan"][number][
   return devices.filter((device) => patterns[target].test(device));
 }
 
+function sampleClipShapeForLayer(layerName: string, horror: boolean) {
+  const text = layerName.toLowerCase();
+  const clipLength = horror ? 16 : 8;
+  const gain = horror
+    ? text.includes("mechanical") ? 0.52 : text.includes("low") ? 0.58 : 0.65
+    : 0.78;
+  const semitones = horror
+    ? text.includes("stretched") || text.includes("room") ? -12 : text.includes("reversed") ? -7 : text.includes("degraded") ? -5 : text.includes("mechanical") ? -3 : -2
+    : 0;
+  const cents = horror ? (text.includes("mechanical") ? -3 : -7) : 0;
+  const warpMode = text.includes("stretched") || text.includes("room")
+    ? "texture"
+    : text.includes("mechanical")
+      ? "beats"
+      : text.includes("degraded")
+        ? "complex"
+        : "re-pitch";
+  return { clipLength, gain, semitones, cents, warpMode };
+}
+
 function plannedTargetResolution(
   plan: { target: "track" | "return"; track_created_offset?: number; return_created_offset?: number },
   resolution?: CreatedTrackResolution
@@ -1189,7 +1209,7 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       ];
     }),
     ...sampleAssignments.flatMap((assignment) => {
-      const clipLength = horror ? 16 : 8;
+      const shape = sampleClipShapeForLayer(assignment.layer, horror);
       return [
         {
           action: "ableton_load_preset_or_sample",
@@ -1214,13 +1234,56 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
           reason: "Names the newly created approved sample clip so the generated set remains navigable."
         },
         {
+          action: "ableton_set_clip_gain",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            gain: shape.gain
+          },
+          safeToExecute: true,
+          reason: "Sets a conservative layer-specific clip gain for the approved sample."
+        },
+        {
+          action: "ableton_transpose_clip",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            semitones: shape.semitones,
+            cents: shape.cents
+          },
+          safeToExecute: true,
+          reason: "Applies deterministic layer-specific audio detuning for the concept mood."
+        },
+        {
+          action: "ableton_set_clip_warp",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            warping: true,
+            warp_mode: shape.warpMode
+          },
+          safeToExecute: true,
+          reason: "Enables a layer-specific warp mode so the approved sample can follow the generated tempo."
+        },
+        {
+          action: "ableton_set_clip_markers",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            start_marker: 0,
+            end_marker: shape.clipLength
+          },
+          safeToExecute: true,
+          reason: "Bounds the newly created approved sample clip to the generated layer phrase length."
+        },
+        {
           action: "ableton_set_clip_loop",
           payload: {
             track_created_offset: assignment.trackOffset,
             clip_slot_index: assignment.clip_slot_index,
             looping: true,
             loop_start: 0,
-            loop_end: clipLength
+            loop_end: shape.clipLength
           },
           safeToExecute: true,
           reason: "Loops the newly created approved sample clip for immediate arrangement sketching."

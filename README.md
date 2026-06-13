@@ -28,7 +28,7 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Library index | Scan allowed Ableton folders on demand and search indexed samples, presets, clips, templates, and MIDI files. |
 | Set analysis | Read `.als` files as gzip/XML summaries without modifying the original file. |
 | Live session view | Read tracks, scenes, clips, devices, transport, tempo, mixer, and snapshots when the Max for Live bridge is loaded. |
-| Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing. |
+| Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing, including track/scene/clip creation, mixer moves, clip naming/looping, audio clip gain, transpose, warp, and marker shaping. |
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
@@ -254,8 +254,8 @@ Release check: passed
 Safe sweep: passed
 Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 173 tools, 3 resources, 2 prompts
-All-tool contract sweep: 173 registered tools, 173 safe calls
+MCP verifier: 177 tools, 3 resources, 2 prompts
+All-tool contract sweep: 177 registered tools, 177 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
 Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles

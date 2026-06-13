@@ -82,6 +82,10 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `ableton_insert_midi_notes`
 - `ableton_load_preset_or_sample` in `audio_clip` mode for approved local audio files
 - `ableton_set_clip_loop`
+- `ableton_set_clip_gain`
+- `ableton_transpose_clip`
+- `ableton_set_clip_warp`
+- `ableton_set_clip_markers`
 - `ableton_fire_clip`
 - `ableton_stop_clip`
 - `ableton_arm_track`

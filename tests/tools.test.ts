@@ -20,6 +20,10 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_set_tempo");
     expect(registeredToolNames).toContain("ableton_insert_midi_notes");
     expect(registeredToolNames).toContain("ableton_load_preset_or_sample");
+    expect(registeredToolNames).toContain("ableton_set_clip_gain");
+    expect(registeredToolNames).toContain("ableton_transpose_clip");
+    expect(registeredToolNames).toContain("ableton_set_clip_warp");
+    expect(registeredToolNames).toContain("ableton_set_clip_markers");
     expect(registeredToolNames).toContain("ableton_set_track_send");
     expect(registeredToolNames).toContain("ableton_get_return_track_mixer");
     expect(registeredToolNames).toContain("ableton_set_return_track_volume");
@@ -83,6 +87,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_insert_midi_notes).toHaveProperty("notes");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).toHaveProperty("path");
+    expect(registeredToolSchemas.ableton_set_clip_gain).toHaveProperty("gain");
+    expect(registeredToolSchemas.ableton_transpose_clip).toHaveProperty("semitones");
+    expect(registeredToolSchemas.ableton_set_clip_warp).toHaveProperty("warp_mode");
+    expect(registeredToolSchemas.ableton_set_clip_markers).toHaveProperty("start_marker");
     expect(registeredToolSchemas.ableton_convert_audio_file).toHaveProperty("preset");
     expect(registeredToolSchemas.ableton_list_internet_archive_audio_files).toHaveProperty("identifier");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");

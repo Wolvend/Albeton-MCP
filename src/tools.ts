@@ -52,6 +52,7 @@ const ParameterIndex = z.number().int().min(0);
 const BeatTime = z.number().min(0).max(100_000);
 const TrackClipRef = { track_index: TrackIndex, clip_slot_index: ClipSlotIndex };
 const OptionalTrackClipRef = { track_index: TrackIndex.default(0), clip_slot_index: ClipSlotIndex.default(0) };
+const WarpMode = z.enum(["beats", "tones", "texture", "re-pitch", "complex", "rex", "complex_pro"]);
 const AutomationPoint = {
   track_index: TrackIndex,
   device_index: DeviceIndex.optional(),
@@ -134,6 +135,13 @@ async function typedBridgeWrite(action: string, args: any, plan: Record<string, 
   }
   requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
   return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown> };
+}
+
+async function typedBridgeWriteWithGuard(action: string, args: any, plan: Record<string, unknown>, hasTarget: boolean, message: string) {
+  if (!hasTarget) {
+    throw new AbletonMcpError(message, "INVALID_TOOL_ARGUMENTS", ["Provide at least one property to change."]);
+  }
+  return typedBridgeWrite(action, args, plan);
 }
 
 async function unsupportedLiveApiWrite(action: string, args: any, plan: Record<string, unknown>, reason: string) {
@@ -449,6 +457,10 @@ toolDefs.push(
   { name: "ableton_create_midi_clip", description: "Create an empty Session View MIDI clip through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, length: z.number().positive().max(1024).default(4), name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_create_midi_clip", args, { target: "midi_clip", track_index: args.track_index, clip_slot_index: args.clip_slot_index, length: args.length, name: args.name ?? null }) },
   { name: "ableton_insert_midi_notes", description: "Insert bounded MIDI notes into a Session View MIDI clip through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, notes: z.array(MidiNote).min(1).max(512), create_clip_if_missing: z.boolean().default(false), clip_length: z.number().positive().max(1024).default(4), replace_existing: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_insert_midi_notes", args, { target: "midi_clip_notes", track_index: args.track_index, clip_slot_index: args.clip_slot_index, note_count: args.notes.length, create_clip_if_missing: args.create_clip_if_missing, replace_existing: args.replace_existing }) },
   { name: "ableton_set_clip_loop", description: "Set clip loop points through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, looping: z.boolean().optional(), loop_start: BeatTime.optional(), loop_end: BeatTime.optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_set_clip_loop", args, { target: "clip_loop", track_index: args.track_index, clip_slot_index: args.clip_slot_index, looping: args.looping ?? null, loop_start: args.loop_start ?? null, loop_end: args.loop_end ?? null }) },
+  { name: "ableton_set_clip_gain", description: "Set an audio clip gain through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, gain: z.number().min(0).max(1), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_set_clip_gain", args, { target: "audio_clip_gain", track_index: args.track_index, clip_slot_index: args.clip_slot_index, gain: args.gain }) },
+  { name: "ableton_transpose_clip", description: "Set audio clip transpose and optional fine detune through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, semitones: z.number().int().min(-48).max(48), cents: z.number().min(-50).max(49).optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_transpose_clip", args, { target: "audio_clip_pitch", track_index: args.track_index, clip_slot_index: args.clip_slot_index, semitones: args.semitones, cents: args.cents ?? null }) },
+  { name: "ableton_set_clip_warp", description: "Set audio clip warp switch and/or warp mode through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, warping: z.boolean().optional(), warp_mode: WarpMode.optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWriteWithGuard("ableton_set_clip_warp", args, { target: "audio_clip_warp", track_index: args.track_index, clip_slot_index: args.clip_slot_index, warping: args.warping ?? null, warp_mode: args.warp_mode ?? null }, args.warping !== undefined || args.warp_mode !== undefined, "ableton_set_clip_warp requires warping or warp_mode.") },
+  { name: "ableton_set_clip_markers", description: "Set audio or MIDI clip start/end markers through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, start_marker: BeatTime.optional(), end_marker: BeatTime.optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWriteWithGuard("ableton_set_clip_markers", args, { target: "clip_markers", track_index: args.track_index, clip_slot_index: args.clip_slot_index, start_marker: args.start_marker ?? null, end_marker: args.end_marker ?? null }, args.start_marker !== undefined || args.end_marker !== undefined, "ableton_set_clip_markers requires start_marker or end_marker.") },
   { name: "ableton_fire_clip", description: "Launch a Session View clip through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_fire_clip", args, { target: "clip_launch", track_index: args.track_index, clip_slot_index: args.clip_slot_index }) },
   { name: "ableton_stop_clip", description: "Stop one clip slot or all clips on a track through the gated LiveAPI bridge.", inputSchema: { track_index: TrackIndex, clip_slot_index: ClipSlotIndex.optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_stop_clip", args, { target: "clip_stop", track_index: args.track_index, clip_slot_index: args.clip_slot_index ?? "all" }) },
   { name: "ableton_arm_track", description: "Arm or disarm a track through the gated LiveAPI bridge.", inputSchema: { track_index: TrackIndex, enabled: z.boolean(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_arm_track", args, { target: "track_arm", track_index: args.track_index, enabled: args.enabled }) },
