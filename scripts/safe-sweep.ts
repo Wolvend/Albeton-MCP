@@ -127,6 +127,7 @@ const calls: SweepCall[] = [
   { name: "ableton_scan_vst_folders", arguments: {} },
   { name: "ableton_list_installed_plugins", arguments: { page: 1, pageSize: 5 } },
   { name: "ableton_check_plugin_license_metadata", arguments: { metadata: { license: "freeware", source: "https://www.ableton.com/packs/" } } },
+  { name: "ableton_extract_automation_summary", arguments: { track_index: 0, include_devices: true, max_parameters: 8 }, expected: "any" },
   { name: "ableton_extract_groove", arguments: { source: fixtures.textPath } },
   { name: "ableton_plan_export_audio", arguments: { scope: "master", sampleRate: 48000, bitDepth: "24" } },
   { name: "ableton_validate_export_settings", arguments: { settings: { sampleRate: 48000, bitDepth: "24", normalize: false } } },

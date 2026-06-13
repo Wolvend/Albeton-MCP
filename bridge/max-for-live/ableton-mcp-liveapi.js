@@ -432,6 +432,127 @@ function listDeviceParameters(payload) {
   return { track_index: trackIndex, device_index: deviceIndex, parameters: parameters };
 }
 
+function automationParameterTarget(trackIndex, targetType, parameterApi, options) {
+  var parameter = summarizeParameter(parameterApi, options.parameter_index);
+  return {
+    target_id: options.target_id,
+    target_type: targetType,
+    track_index: trackIndex,
+    device_index: options.device_index === undefined ? null : options.device_index,
+    device_name: options.device_name || null,
+    device_class_name: options.device_class_name || null,
+    parameter_index: options.parameter_index,
+    parameter_name: parameter.name,
+    value: parameter.value,
+    min: parameter.min,
+    max: parameter.max,
+    is_enabled: parameter.is_enabled,
+    current_value_write_tool: options.current_value_write_tool || null,
+    automation_write_supported: false
+  };
+}
+
+function automationSummary(payload) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = parseIndex(payload, "track_index");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var includeDevices = !(payload && payload.include_devices === false);
+  var maxParameters = Math.floor(Number(payload && payload.max_parameters ? payload.max_parameters : 256));
+  if (!isFinite(maxParameters) || maxParameters < 1) maxParameters = 256;
+  if (maxParameters > 512) maxParameters = 512;
+
+  var trackPath = "live_set tracks " + trackIndex;
+  var track = liveObject(trackPath);
+  var targets = [];
+  var truncated = false;
+  var mixerPath = trackPath + " mixer_device";
+  if (targets.length < maxParameters) {
+    targets.push(automationParameterTarget(trackIndex, "track_volume", liveObject(mixerPath + " volume"), {
+      target_id: "track:" + trackIndex + ":mixer:volume",
+      parameter_index: 0,
+      current_value_write_tool: { name: "ableton_set_track_volume", arguments: { track_index: trackIndex, value: safeGet(liveObject(mixerPath + " volume"), "value", null), dry_run: true } }
+    }));
+  } else {
+    truncated = true;
+  }
+  if (targets.length < maxParameters) {
+    targets.push(automationParameterTarget(trackIndex, "track_pan", liveObject(mixerPath + " panning"), {
+      target_id: "track:" + trackIndex + ":mixer:panning",
+      parameter_index: 1,
+      current_value_write_tool: { name: "ableton_set_track_pan", arguments: { track_index: trackIndex, value: safeGet(liveObject(mixerPath + " panning"), "value", null), dry_run: true } }
+    }));
+  } else {
+    truncated = true;
+  }
+
+  var mixer = liveObject(mixerPath);
+  var sendCount = childCount(mixer, "sends");
+  for (var sendIndex = 0; sendIndex < sendCount; sendIndex += 1) {
+    if (targets.length >= maxParameters) {
+      truncated = true;
+      break;
+    }
+    var sendParameter = liveObject(mixerPath + " sends " + sendIndex);
+    targets.push(automationParameterTarget(trackIndex, "track_send", sendParameter, {
+      target_id: "track:" + trackIndex + ":send:" + sendIndex,
+      parameter_index: sendIndex,
+      current_value_write_tool: { name: "ableton_set_track_send", arguments: { track_index: trackIndex, send_index: sendIndex, value: safeGet(sendParameter, "value", null), dry_run: true } }
+    }));
+  }
+
+  var deviceTargets = 0;
+  if (includeDevices) {
+    var deviceCount = childCount(track, "devices");
+    for (var deviceIndex = 0; deviceIndex < deviceCount; deviceIndex += 1) {
+      if (targets.length >= maxParameters) {
+        truncated = true;
+        break;
+      }
+      var device = liveObject(trackPath + " devices " + deviceIndex);
+      var deviceName = safeGet(device, "name", "");
+      var className = safeGet(device, "class_name", "");
+      var parameterCount = childCount(device, "parameters");
+      for (var parameterIndex = 0; parameterIndex < parameterCount; parameterIndex += 1) {
+        if (targets.length >= maxParameters) {
+          truncated = true;
+          break;
+        }
+        targets.push(automationParameterTarget(trackIndex, "device_parameter", liveObject(trackPath + " devices " + deviceIndex + " parameters " + parameterIndex), {
+          target_id: "track:" + trackIndex + ":device:" + deviceIndex + ":parameter:" + parameterIndex,
+          device_index: deviceIndex,
+          device_name: deviceName,
+          device_class_name: className,
+          parameter_index: parameterIndex,
+          current_value_write_tool: { name: "ableton_set_device_parameter", arguments: { track_index: trackIndex, device_index: deviceIndex, parameter_index: parameterIndex, value: safeGet(liveObject(trackPath + " devices " + deviceIndex + " parameters " + parameterIndex), "value", null), dry_run: true } }
+        }));
+        deviceTargets += 1;
+      }
+    }
+  }
+
+  return {
+    track_index: trackIndex,
+    track_name: safeGet(track, "name", ""),
+    targets: targets,
+    summary: {
+      total_targets: targets.length,
+      mixer_targets: targets.length - deviceTargets,
+      device_targets: deviceTargets,
+      truncated: truncated,
+      max_parameters: maxParameters
+    },
+    support: {
+      parameter_value_writes: "write_gated",
+      automation_breakpoint_writes: "unsupported"
+    },
+    next_steps: [
+      "Use target_id and parameter_index values to review candidate automation targets.",
+      "Use the current_value_write_tool templates only as dry-runs unless ABLETON_MCP_ENABLE_WRITE=1 is intentionally enabled.",
+      "Automation breakpoint writing still returns unsupported until the bridge has a verified envelope write path."
+    ]
+  };
+}
+
 function listClipSlots(payload) {
   var trackIndex = parseIndex(payload, "track_id");
   if (trackIndex === null) trackIndex = selectedTrackIndex();
@@ -1142,7 +1263,7 @@ function bridgeCapabilities() {
     ["clip_notes", "read_only", "clips"],
     ["clip_envelopes", "unsupported", "automation"],
     ["device_parameter_map", "read_only", "devices"],
-    ["automation_summary", "unsupported", "automation"],
+    ["automation_summary", "read_only", "automation"],
     ["ui_overview", "unsupported", "ui"],
     ["selected_track", "read_only", "selection"],
     ["selected_device", "read_only", "selection"],
@@ -1249,6 +1370,7 @@ function dispatch(action, payload) {
   if (action === "list_devices") return listDevices(payload);
   if (action === "list_device_parameters") return listDeviceParameters(payload);
   if (action === "device_parameter_map") return listDeviceParameters(payload);
+  if (action === "automation_summary") return automationSummary(payload);
   if (action === "selected_track") return { track: summarizeTrack(selectedTrackIndex(), false, false) };
   if (action === "selected_device") return listDeviceParameters({ track_id: selectedTrackIndex(), device_id: 0 });
   if (action === "set_tempo" || action === "ableton_set_tempo") return setTempo(payload);

@@ -49,7 +49,7 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "clip_notes", tool: "ableton_get_clip_notes", status: "read_only", domain: "clips", notes: "Returns unsupported when the current clip/API cannot expose notes reliably." },
   { action: "clip_envelopes", tool: "ableton_get_clip_envelopes", status: "unsupported", domain: "automation", notes: "Detailed clip envelope enumeration needs a reviewed LiveAPI mapping." },
   { action: "device_parameter_map", tool: "ableton_get_device_parameter_map", status: "read_only", domain: "devices" },
-  { action: "automation_summary", tool: "ableton_extract_automation_summary", status: "unsupported", domain: "automation", notes: "Offline set-file summaries are supported; live automation summaries need a reviewed LiveAPI mapping." },
+  { action: "automation_summary", tool: "ableton_extract_automation_summary", status: "read_only", domain: "automation", notes: "Enumerates live mixer and device parameter targets; automation breakpoint writes remain unsupported." },
   { action: "ui_overview", tool: "ableton_get_ui_overview", status: "unsupported", domain: "ui", notes: "Live UI overview is handled by the separate user-enabled UI driver." },
   { action: "selected_track", tool: "ableton_get_selected_track", status: "read_only", domain: "selection" },
   { action: "selected_device", tool: "ableton_get_selected_device", status: "read_only", domain: "selection" },

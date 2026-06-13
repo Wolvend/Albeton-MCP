@@ -119,7 +119,8 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `clip_notes`
 - `clip_envelopes`
 - `device_parameter_map`
+- `automation_summary`
 
-Automation and device/preset insertion actions are dispatched deliberately, but return structured `unsupported: true` responses unless the current LiveAPI target can be handled reliably. Other MCP write tools remain gated and return a structured unsupported-action response until mapped to LiveAPI.
+Automation target discovery is read-only: `automation_summary` lists track volume, pan, sends, and bounded device parameters with dry-run current-value write templates. Automation breakpoint writes and device/preset insertion actions are dispatched deliberately, but return structured `unsupported: true` responses unless the current LiveAPI target can be handled reliably. Other MCP write tools remain gated and return a structured unsupported-action response until mapped to LiveAPI.
 
 Track mixer reads include send summaries with `send_index`, current value, and matching return-track names when available. `ableton_get_routing_overview` returns tracks, return tracks, master state, and a send matrix in one read-only call. `ableton_set_track_send` validates the requested send index against the current track before writing; call `ableton_get_routing_overview` or `ableton_get_track_mixer` plus `ableton_list_return_tracks` before routing layers to returns.

@@ -125,6 +125,8 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_create_arrangement_marker).toHaveProperty("name");
     expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("parameter_index");
     expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("value");
+    expect(registeredToolSchemas.ableton_extract_automation_summary).toHaveProperty("max_parameters");
+    expect(registeredToolSchemas.ableton_extract_automation_summary).toHaveProperty("include_devices");
     expect(registeredToolSchemas.ableton_insert_midi_notes).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_insert_midi_notes).toHaveProperty("notes");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).not.toHaveProperty("payload");
