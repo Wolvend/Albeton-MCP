@@ -10,6 +10,7 @@ import {
   listArrangementPlans,
   listConceptPlans,
   planConceptTrack,
+  prepareConceptAudioLayers,
   readArrangementPlan,
   renderDeliveryPlan,
   sanitizeRemoteSampleText,
@@ -146,6 +147,42 @@ describe("concept-to-music planning", () => {
     expect(stored.sampleAssignments.some((assignment) => assignment.path === sourcePath && assignment.source === "reference_audio")).toBe(true);
   });
 
+  it("plans reference-audio layer preparation from an approved source without writing by default", async () => {
+    await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+    const sourcePath = path.join(LOCAL_PATHS.staging, "prepare-source-memory.wav");
+    await fs.writeFile(sourcePath, "fixture source audio placeholder");
+    const planned = await planConceptTrack({
+      concept: "backrooms dementia song split into degraded layers",
+      target_duration_seconds: 150,
+      intensity: 9,
+      sources: ["local_library"],
+      reference_path: sourcePath
+    });
+    const preparation = await prepareConceptAudioLayers({
+      plan_id: planned.plan.id,
+      output_prefix: "../unsafe prefix",
+      format: "wav",
+      dry_run: true
+    });
+    const conversions = "conversions" in preparation ? preparation.conversions : [];
+
+    expect(preparation.dry_run).toBe(true);
+    expect(conversions.length).toBeGreaterThanOrEqual(3);
+    expect(conversions.map((entry: any) => entry.layer)).toEqual(expect.arrayContaining([
+      "Degraded Memory",
+      "Stretched Room",
+      "Reversed Fragments"
+    ]));
+    expect(conversions.map((entry: any) => entry.conversion.preset)).toEqual(expect.arrayContaining([
+      "liminal_memory",
+      "stretched_ambience",
+      "reversed_fragment"
+    ]));
+    expect(conversions.every((entry: any) => String(entry.conversion.output).includes("unsafe_prefix"))).toBe(true);
+    expect(conversions.every((entry: any) => !String(entry.conversion.output).includes(".."))).toBe(true);
+    expect(preparation.nextStep).toMatch(/ABLETON_MCP_ENABLE_WRITE=1/);
+  });
+
   it("keeps unapproved reference audio informational instead of executable", async () => {
     const unapprovedDir = path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-reference-test");
     await fs.mkdir(unapprovedDir, { recursive: true });
@@ -205,6 +242,21 @@ describe("concept-to-music planning", () => {
       arrangement_id: arrangement.arrangement.id,
       dry_run: false
     })).rejects.toThrow(/ABLETON_MCP_ENABLE_WRITE=0/);
+  });
+
+  it("rejects concept audio preparation without approved reference audio", async () => {
+    const planned = await planConceptTrack({
+      concept: "liminal hallway without source audio",
+      target_duration_seconds: 90,
+      intensity: 7,
+      sources: ["local_library"]
+    });
+
+    await expect(prepareConceptAudioLayers({
+      plan_id: planned.plan.id,
+      format: "wav",
+      dry_run: true
+    })).rejects.toThrow(/reference audio/);
   });
 
   it("sanitizes sample search metadata and keeps staging gated in dry-run", async () => {

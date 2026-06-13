@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import toneMidi from "@tonejs/midi";
+import { convertAudioFile } from "./analysis.js";
 import { bridgeAction, getBridgeSnapshot } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
@@ -25,6 +26,13 @@ export type ConceptPlanInput = {
 export type ExportConceptMidiMotifOptions = {
   plan_id: string;
   output_name?: string;
+  dry_run: boolean;
+};
+
+export type PrepareConceptAudioLayersOptions = {
+  plan_id: string;
+  output_prefix?: string;
+  format: "wav" | "flac" | "mp3";
   dry_run: boolean;
 };
 
@@ -161,6 +169,10 @@ function conceptPlanDir() {
 
 function conceptMidiDir() {
   return path.join(LOCAL_PATHS.staging, "midi");
+}
+
+function conceptAudioDir(planId: string) {
+  return path.join(LOCAL_PATHS.staging, "concepts", planId);
 }
 
 export function sanitizeRemoteSampleText(value: unknown, maxLength = 240) {
@@ -472,6 +484,30 @@ function safeMidiFileName(planId: string, value?: string) {
     throw new AbletonMcpError("MIDI output_name must resolve to a simple .mid filename.", "INVALID_MIDI_OUTPUT_NAME", ["Use letters, numbers, dot, underscore, or dash only."]);
   }
   return withExtension;
+}
+
+function safeFileStem(value: string, fallback: string) {
+  const cleaned = value
+    .trim()
+    .replace(/[\\/]+/g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/\.\.+/g, ".")
+    .replace(/^\.+/, "")
+    .replace(/\.+$/, "")
+    .slice(0, 80);
+  return cleaned.length > 0 ? cleaned : fallback;
+}
+
+function layerSlug(value: string) {
+  return safeFileStem(value.toLowerCase().replace(/[^a-z0-9]+/g, "-"), "layer");
+}
+
+function conversionPresetForLayer(layerName: string): "clean" | "liminal_memory" | "stretched_ambience" | "reversed_fragment" {
+  const text = layerName.toLowerCase();
+  if (text.includes("stretch") || text.includes("room")) return "stretched_ambience";
+  if (text.includes("reverse") || text.includes("fragment")) return "reversed_fragment";
+  if (text.includes("degraded") || text.includes("memory")) return "liminal_memory";
+  return "clean";
 }
 
 function keySignature(planKey: string) {
@@ -1101,6 +1137,98 @@ export async function exportConceptMidiMotif(options: ExportConceptMidiMotifOpti
       attributionPath: redactPath(`${exportPlan.outputPath}.attribution.json`)
     },
     attribution: sidecar
+  };
+}
+
+export async function prepareConceptAudioLayers(options: PrepareConceptAudioLayersOptions) {
+  const plan = await readConceptPlan(options.plan_id);
+  const reference = plan.reference;
+  if (!reference || reference.mediaType !== "audio") {
+    throw new AbletonMcpError("Concept plan does not include reference audio to prepare.", "CONCEPT_REFERENCE_AUDIO_MISSING", ["Create a concept plan with reference_path pointing to an approved local audio file."]);
+  }
+  if (!reference.approvedForAudioPlacement || !reference.sourceAudioPlan) {
+    throw new AbletonMcpError("Concept reference audio is not approved for automatic layer preparation.", "CONCEPT_REFERENCE_AUDIO_NOT_APPROVED", reference.nextSteps ?? ["Stage or import the reference audio into an approved sample root first."]);
+  }
+
+  const format = options.format ?? "wav";
+  const prefix = safeFileStem(options.output_prefix ?? plan.id, plan.id);
+  const layerPlans = reference.sourceAudioPlan.targetLayers.map((target) => {
+    const preset = conversionPresetForLayer(target.layer);
+    const destinationName = `${prefix}-${layerSlug(target.layer)}.${format}`;
+    const output = path.join(conceptAudioDir(plan.id), destinationName);
+    return {
+      layer: target.layer,
+      clip_slot_index: target.clip_slot_index,
+      name: target.name,
+      treatment: target.treatment,
+      followUp: target.followUp,
+      preset,
+      format,
+      input: reference.path,
+      output,
+      redactedOutput: redactPath(output)
+    };
+  });
+
+  if (options.dry_run !== false) {
+    const conversions = [];
+    for (const layer of layerPlans) {
+      conversions.push({
+        layer: layer.layer,
+        clip_slot_index: layer.clip_slot_index,
+        name: layer.name,
+        treatment: layer.treatment,
+        followUp: layer.followUp,
+        ...(await convertAudioFile({
+          input: layer.input,
+          output: layer.output,
+          format: layer.format,
+          preset: layer.preset,
+          dry_run: true
+        }) as Record<string, unknown>)
+      });
+    }
+    return {
+      dry_run: true,
+      plan_id: plan.id,
+      outputRoot: redactPath(conceptAudioDir(plan.id)),
+      conversions,
+      nextStep: "Set dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 to render these approved reference-audio layers."
+    };
+  }
+
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Preparing concept reference-audio layers");
+  const rendered = [];
+  for (const layer of layerPlans) {
+    const converted = await convertAudioFile({
+      input: layer.input,
+      output: layer.output,
+      format: layer.format,
+      preset: layer.preset,
+      dry_run: false
+    });
+    rendered.push({
+      layer: layer.layer,
+      clip_slot_index: layer.clip_slot_index,
+      name: layer.name,
+      treatment: layer.treatment,
+      followUp: layer.followUp,
+      conversion: converted,
+      sample_assignment: {
+        layer: layer.layer,
+        path: redactPath(layer.output),
+        clip_slot_index: layer.clip_slot_index,
+        name: layer.name
+      }
+    });
+  }
+
+  return {
+    dry_run: false,
+    plan_id: plan.id,
+    outputRoot: redactPath(conceptAudioDir(plan.id)),
+    rendered,
+    sample_assignments: rendered.map((entry) => entry.sample_assignment)
   };
 }
 
