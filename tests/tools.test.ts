@@ -21,6 +21,9 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_insert_midi_notes");
     expect(registeredToolNames).toContain("ableton_load_preset_or_sample");
     expect(registeredToolNames).toContain("ableton_set_track_send");
+    expect(registeredToolNames).toContain("ableton_get_return_track_mixer");
+    expect(registeredToolNames).toContain("ableton_set_return_track_volume");
+    expect(registeredToolNames).toContain("ableton_set_return_track_pan");
     expect(registeredToolNames).toContain("ableton_search_freesound");
     expect(registeredToolNames).toContain("ableton_list_internet_archive_audio_files");
     expect(registeredToolNames).toContain("ableton_search_plugin_catalog");
@@ -58,6 +61,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_create_scene).toHaveProperty("scene_index");
     expect(registeredToolSchemas.ableton_set_track_volume).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_set_track_volume).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_get_return_track_mixer).toHaveProperty("return_track_index");
+    expect(registeredToolSchemas.ableton_set_return_track_volume).toHaveProperty("return_track_index");
+    expect(registeredToolSchemas.ableton_set_return_track_volume).toHaveProperty("value");
+    expect(registeredToolSchemas.ableton_set_return_track_pan).toHaveProperty("return_track_index");
     expect(registeredToolSchemas.ableton_insert_instrument).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_insert_instrument).toHaveProperty("device");
     expect(registeredToolSchemas.ableton_insert_effect).not.toHaveProperty("payload");

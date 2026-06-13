@@ -47,6 +47,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_list_return_tracks",
   "ableton_get_master_track",
   "ableton_get_track_mixer",
+  "ableton_get_return_track_mixer",
   "ableton_list_scenes",
   "ableton_list_clips",
   "ableton_list_clip_slots",

@@ -75,8 +75,8 @@ Expected current results:
 
 ```text
 Tests: 22 files, 69 tests passed
-MCP verifier: 169 tools, 3 resources, 2 prompts
-All-tool contract sweep: 169 registered tools, 169 safe calls
+MCP verifier: 172 tools, 3 resources, 2 prompts
+All-tool contract sweep: 172 registered tools, 172 safe calls
 Audit: 0 vulnerabilities
 ```
 

@@ -110,6 +110,7 @@ The arrangement plan includes:
 - Named audio, MIDI, and return tracks.
 - Scene names and arrangement locators for isolation, motif, decay, collapse, and unresolved tail sections.
 - Initial volume, pan, and named reverb/delay return-send targets for each created non-return track.
+- Initial return-track volume and pan actions for the generated reverb and delay returns.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
 - A short editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
 - Optional approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`.

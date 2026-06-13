@@ -186,7 +186,8 @@ function summarizeReturnTrack(returnIndex, includeDevices) {
     mute: safeGet(trackApi, "mute", null),
     solo: safeGet(trackApi, "solo", null),
     device_count: deviceCount,
-    devices: devices
+    devices: devices,
+    mixer: mixerSummary("live_set return_tracks " + returnIndex)
   };
 }
 
@@ -373,6 +374,13 @@ function getTrackMixer(payload) {
   var trackIndex = parseIndex(payload, "track_id");
   if (trackIndex === null) trackIndex = selectedTrackIndex();
   return { track_index: trackIndex, mixer: mixerSummary("live_set tracks " + trackIndex) };
+}
+
+function getReturnTrackMixer(payload) {
+  var returnTrackIndex = parseIndex(payload, "return_track_index");
+  if (returnTrackIndex === null) returnTrackIndex = parseIndex(payload, "return_track_id");
+  if (returnTrackIndex === null) returnTrackIndex = 0;
+  return { return_track_index: returnTrackIndex, mixer: mixerSummary("live_set return_tracks " + returnTrackIndex) };
 }
 
 function fullSnapshot() {
@@ -635,6 +643,17 @@ function setTrackSend(payload) {
   return { track_index: trackIndex, send_index: sendIndex, value: safeGet(parameter, "value", null) };
 }
 
+function setReturnMixerParameter(payload, parameterName, minValue, maxValue) {
+  var returnTrackIndex = parseRequiredIndex(payload, "return_track_index");
+  var value = Number(payload && payload.value);
+  if (!isFinite(value) || value < minValue || value > maxValue) {
+    throw new Error(parameterName + " value must be between " + minValue + " and " + maxValue + ".");
+  }
+  var parameter = liveObject("live_set return_tracks " + returnTrackIndex + " mixer_device " + parameterName);
+  parameter.set("value", value);
+  return { return_track_index: returnTrackIndex, parameter: parameterName, value: safeGet(parameter, "value", null) };
+}
+
 function setDeviceParameter(payload) {
   var trackIndex = parseTrackIndex(payload);
   var deviceIndex = parseIndex(payload, "device_id");
@@ -811,6 +830,7 @@ function dispatch(action, payload) {
   if (action === "list_return_tracks") return { return_tracks: listReturnTracks(false) };
   if (action === "master_track") return { master_track: summarizeMasterTrack(false) };
   if (action === "track_mixer") return getTrackMixer(payload);
+  if (action === "return_track_mixer") return getReturnTrackMixer(payload);
   if (action === "list_scenes") return { scenes: listScenes() };
   if (action === "arrangement_markers") return listArrangementMarkers();
   if (action === "list_clips") return { clips: listClips() };
@@ -840,6 +860,8 @@ function dispatch(action, payload) {
   if (action === "ableton_set_track_volume") return setMixerParameter(payload, "volume", 0, 1);
   if (action === "ableton_set_track_pan") return setMixerParameter(payload, "panning", -1, 1);
   if (action === "ableton_set_track_send") return setTrackSend(payload);
+  if (action === "ableton_set_return_track_volume") return setReturnMixerParameter(payload, "volume", 0, 1);
+  if (action === "ableton_set_return_track_pan") return setReturnMixerParameter(payload, "panning", -1, 1);
   if (action === "ableton_insert_instrument" || action === "ableton_insert_effect") return unsupportedDeviceInsertion(action, payload);
   if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);

@@ -589,7 +589,12 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
   }
 
   if (createdReturnOffset !== null) {
-    payload.send_index = resolution.baseReturnTrackCount + createdReturnOffset;
+    const returnTrackIndex = resolution.baseReturnTrackCount + createdReturnOffset;
+    if (action.action === "ableton_set_return_track_volume" || action.action === "ableton_set_return_track_pan") {
+      payload.return_track_index = returnTrackIndex;
+    } else {
+      payload.send_index = returnTrackIndex;
+    }
     delete payload.return_created_offset;
   }
 
@@ -1082,6 +1087,23 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       ];
     }),
     ...layerTargets.flatMap((target) => {
+      if (target.returnOffset === null) return [];
+      return [
+        {
+          action: "ableton_set_return_track_volume",
+          payload: { return_created_offset: target.returnOffset, value: target.layer.mix.volume },
+          safeToExecute: true,
+          reason: "Return track index is resolved from the live snapshot immediately before execution."
+        },
+        {
+          action: "ableton_set_return_track_pan",
+          payload: { return_created_offset: target.returnOffset, value: target.layer.mix.pan },
+          safeToExecute: true,
+          reason: "Return track index is resolved from the live snapshot immediately before execution."
+        }
+      ];
+    }),
+    ...layerTargets.flatMap((target) => {
       if (target.layer.type !== "midi" || target.trackOffset === null) return [];
       return [{
         action: "ableton_insert_midi_notes",
@@ -1158,6 +1180,7 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
     automationPlan,
     notes: [
       "Created-track placeholders are resolved from a live snapshot immediately before real execution, so the plan can append to a non-empty set.",
+      "Created return-track placeholders are resolved from a live snapshot for return mixer levels and send targets.",
       "Sample placement can be executed from approved local sample paths; device insertion remains staged until a reliable LiveAPI browser or user-enabled UI path is verified.",
       "Automation is represented in the concept plan and should be applied only where bridge support returns success."
     ]
