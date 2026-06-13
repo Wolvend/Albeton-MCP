@@ -64,6 +64,17 @@ export type ReferenceAudioIntakePlanOptions = {
   desired_destination_name?: string;
 };
 
+export type SourceAudioTransformationPlanOptions = {
+  reference_path: string;
+  concept: string;
+  target_duration_seconds?: number;
+  intensity?: number;
+  style?: string;
+  desired_destination_name?: string;
+  output_prefix?: string;
+  format?: "wav" | "flac" | "mp3";
+};
+
 export type ConceptSampleCurationOptions = {
   plan_id: string;
   page: number;
@@ -627,6 +638,127 @@ function sourceAudioTreatmentPlan(horror: boolean, intensity: number): SourceAud
       "Preserve source attribution and local path redaction.",
       "Keep destructive edits outside MCP unless explicitly approved."
     ]
+  };
+}
+
+export async function planSourceAudioTransformation(options: SourceAudioTransformationPlanOptions) {
+  const concept = sanitizeRemoteSampleText(options.concept, 1000);
+  const style = sanitizeRemoteSampleText(options.style ?? (isLiminalHorror(concept) ? "liminal/backrooms/horror" : "cinematic"), 160);
+  const intensity = Math.max(1, Math.min(10, Math.floor(Number(options.intensity ?? 8))));
+  const duration = Math.max(30, Math.min(900, Math.floor(Number(options.target_duration_seconds ?? 150))));
+  const format = options.format ?? "wav";
+  const localReferencePath = hostInputPath(options.reference_path);
+  const outputPrefix = safeFileStem(options.output_prefix ?? (path.basename(localReferencePath, path.extname(localReferencePath)) || "source-memory"), "source-memory")
+    .replace(/^[-_.]+/, "") || "source-memory";
+  const horror = isLiminalHorror(concept, style);
+  const treatment = sourceAudioTreatmentPlan(horror, intensity);
+  const intakeOptions: ReferenceAudioIntakePlanOptions = {
+    reference_path: options.reference_path,
+    concept
+  };
+  if (options.desired_destination_name !== undefined) intakeOptions.desired_destination_name = options.desired_destination_name;
+  const intake = await planReferenceAudioIntake(intakeOptions) as {
+    okToUseAsReference?: boolean;
+    requestedPath?: string;
+    exactNextToolCalls?: {
+      recheckAfterUserCopy?: unknown;
+      conceptWithoutReference?: unknown;
+    };
+  } & Record<string, unknown>;
+  const okToPrepare = intake.okToUseAsReference === true;
+  const redactedReferencePath = typeof intake.requestedPath === "string" ? intake.requestedPath : redactPath(path.resolve(localReferencePath));
+  const targetLayers = treatment.targetLayers.map((target) => {
+    const preset = conversionPresetForLayer(target.layer);
+    const destinationName = `${outputPrefix}-${layerSlug(target.layer)}.${format}`;
+    return {
+      ...target,
+      preset,
+      format,
+      destinationName,
+      dryRunConversionCall: {
+        name: "ableton_convert_audio_file",
+        arguments: {
+          input: redactedReferencePath,
+          output: redactPath(path.join(LOCAL_PATHS.staging, destinationName)),
+          preset,
+          format,
+          dry_run: true
+        }
+      }
+    };
+  });
+
+  return {
+    transformationType: "source_audio_transformation_plan",
+    concept,
+    style,
+    preset: horror ? "liminal_backrooms_horror" : "general_cinematic",
+    target_duration_seconds: duration,
+    intensity,
+    status: okToPrepare ? "ready_for_dry_run_preparation" : "needs_user_staging_or_import",
+    okToPrepare,
+    intake,
+    sourceTreatment: {
+      intent: treatment.intent,
+      globalProcessing: treatment.globalProcessing,
+      targetLayers
+    },
+    sections: sectionMap(duration, horror).map((section, index) => ({
+      ...section,
+      sourceAudioRole: horror
+        ? [
+            "establish barely audible room bed from source noise or tail",
+            "let the degraded motif become briefly identifiable",
+            "stretch and repeat the motif while narrowing bandwidth",
+            "push reversed fragments and low pressure around the source",
+            "leave only distant source residue and long tails"
+          ][index] ?? "support the section without masking"
+        : "support the section as approved source material"
+    })),
+    renderingPlan: {
+      dryRunFirst: true,
+      renderer: "ableton_prepare_concept_audio_layers",
+      realRenderGate: "ABLETON_MCP_ENABLE_WRITE=1",
+      outputPrefix,
+      format,
+      neverOverwrites: true,
+      localPathsRedacted: true
+    },
+    exactNextToolCalls: okToPrepare
+      ? {
+          conceptWithReference: {
+            name: "ableton_plan_concept_track",
+            arguments: {
+              concept,
+              target_duration_seconds: duration,
+              intensity,
+              style,
+              sources: ["local_library"],
+              reference_path: redactedReferencePath
+            }
+          },
+          prepareLayersDryRun: {
+            name: "ableton_prepare_concept_audio_layers",
+            arguments: { plan_id: "concept-...", output_prefix: outputPrefix, format, dry_run: true }
+          },
+          buildArrangementAfterRender: {
+            name: "ableton_build_arrangement_from_prepared_audio",
+            arguments: { preparation_id: "prepared-audio-...", sample_assignments: [] }
+          }
+        }
+      : {
+          stageOrImportFirst: intake.exactNextToolCalls?.recheckAfterUserCopy ?? null,
+          conceptWithoutReference: intake.exactNextToolCalls?.conceptWithoutReference ?? null
+        },
+    safety: {
+      readsUnapprovedPath: false,
+      copiesFiles: false,
+      downloads: false,
+      abletonWrites: false,
+      uiControl: false,
+      arbitraryUrlFetch: false,
+      remoteSampleTextPolicy: "untrusted_data"
+    }
   };
 }
 

@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-211 tools
+212 tools
 3 resources
 2 prompts
 ```
@@ -36,7 +36,7 @@ Primary groups:
 - Screenshot and UI tools
 - Legal sample discovery/import
 - Plugin/package discovery, validation, and download staging
-- Concept-to-music preset catalog, planning, mix planning, device-chain specs, indexed device catalog match reports, user-gated UI placement plans, attribution bundles, production scorecards, sample staging, execution action matrices, execution manifests, execution runbooks, arrangement execution, and delivery planning
+- Concept-to-music preset catalog, planning, source-audio transformation plans, mix planning, device-chain specs, indexed device catalog match reports, user-gated UI placement plans, attribution bundles, production scorecards, sample staging, execution action matrices, execution manifests, execution runbooks, arrangement execution, and delivery planning
 - Export and stem planning
 - Composition helpers
 - Developer/evaluation tools
@@ -58,6 +58,7 @@ Control-mode tools:
 - `ableton_render_concept_device_catalog_matches`: matches staged device-chain names against already-indexed Ableton presets, Max devices, and optional plugin presets without scanning, writing, or exposing local paths.
 - `ableton_plan_concept_device_ui_placement`: plans explicit user-gated foreground UI placement for staged concept devices without moving the mouse, typing, inserting devices, or using raw coordinates.
 - `ableton_plan_reference_audio_intake`: classifies a local reference-audio path as ready, needing staging/import, or unsupported without reading unapproved paths.
+- `ableton_plan_source_audio_transformation`: maps approved or not-yet-staged source audio into liminal concept treatments, layer roles, dry-run conversion templates, and exact next calls without reading unapproved paths or writing files.
 - `ableton_render_concept_execution_action_matrix`: renders each stored arrangement action with bridge capability status, write gates, placeholder dependencies, staged-only notes, and direct dry-run availability.
 - `ableton_render_concept_execution_runbook`: renders a read-only execution rehearsal with ordered phases, gates, dependencies, expected postconditions, and inspection calls before approval or real writes.
 - `ableton_extract_automation_summary`: reads live mixer/device automation target candidates with bounded parameter output; breakpoint writes remain unsupported unless a bridge reports support.

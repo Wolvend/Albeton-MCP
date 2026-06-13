@@ -153,6 +153,7 @@ const calls: SweepCall[] = [
   { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep", actions: ["ableton_set_track_volume"], dry_run: true } } },
   { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } },
   { name: "ableton_plan_reference_audio_intake", arguments: { reference_path: "%USERPROFILE%\\Documents\\Codex\\source-memory.mp3", concept: "safe sweep backrooms source memory", desired_destination_name: "safe-sweep-source-memory.mp3" } },
+  { name: "ableton_plan_source_audio_transformation", arguments: { reference_path: "%USERPROFILE%\\Documents\\Codex\\source-memory.mp3", concept: "safe sweep backrooms source memory", target_duration_seconds: 120, intensity: 8, style: "liminal/backrooms/horror", desired_destination_name: "safe-sweep-source-memory.mp3", output_prefix: "safe-sweep-source", format: "wav" } },
   { name: "ableton_curate_concept_samples", arguments: { plan_id: safeConcept.plan.id, search: false, page: 1, pageSize: 3 } },
   { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: safeArrangement.arrangement.id, check_bridge: false } },
   { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: safeArrangement.arrangement.id } },

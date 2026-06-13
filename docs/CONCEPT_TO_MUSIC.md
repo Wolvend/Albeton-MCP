@@ -36,6 +36,8 @@ Fast path:
    - Returns the approved staging/import roots, a sanitized destination name, and exact next calls for rechecking or concept planning.
    - Use this before giving `ableton_plan_concept_track` a source song from outside the Ableton MCP allowlist.
 
+   `ableton_plan_source_audio_transformation` builds on this intake check. It maps the source song into reviewable concept-layer treatments such as degraded memory, stretched room wash, distant room-tone bed, and reversed fragments; returns dry-run conversion templates and exact next calls; and still does not read unapproved paths, copy files, download samples, write Ableton state, or use UI/mouse control.
+
 3. `ableton_plan_concept_track`
    - Stores a concept plan under `diagnostics\runtime\concept-plans`.
    - Produces sections, tempo/key, layer roles, search queries, device-chain suggestions, mix targets, and approval checklist.

@@ -161,6 +161,9 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_list_concept_presets).toHaveProperty("page");
     expect(registeredToolSchemas.ableton_plan_reference_audio_intake).toHaveProperty("reference_path");
     expect(registeredToolSchemas.ableton_plan_reference_audio_intake).toHaveProperty("desired_destination_name");
+    expect(registeredToolSchemas.ableton_plan_source_audio_transformation).toHaveProperty("reference_path");
+    expect(registeredToolSchemas.ableton_plan_source_audio_transformation).toHaveProperty("output_prefix");
+    expect(registeredToolSchemas.ableton_plan_source_audio_transformation).toHaveProperty("format");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_get_concept_plan).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_get_arrangement_plan).toHaveProperty("arrangement_id");

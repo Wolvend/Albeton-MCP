@@ -348,6 +348,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_browse_drum_hits", arguments: { query: "kick", page: 1, pageSize: 5 } },
     { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } },
     { name: "ableton_plan_reference_audio_intake", arguments: { reference_path: "%USERPROFILE%\\Documents\\Codex\\outside-source-memory.mp3", concept: "contract sweep backrooms source memory", desired_destination_name: "contract-sweep-source-memory.mp3" } },
+    { name: "ableton_plan_source_audio_transformation", arguments: { reference_path: "%USERPROFILE%\\Documents\\Codex\\outside-source-memory.mp3", concept: "contract sweep backrooms source memory", target_duration_seconds: 120, intensity: 8, style: "liminal/backrooms/horror", desired_destination_name: "contract-sweep-source-memory.mp3", output_prefix: "contract-sweep-source", format: "wav" } },
     { name: "ableton_plan_concept_track", arguments: { concept: "liminal backrooms horror contract sweep", target_duration_seconds: 120, intensity: 7, style: "liminal/backrooms/horror", sources: ["local_library", "internet_archive"], reference_path: fixtures.stagedAudioPath } },
     { name: "ableton_list_concept_plans", arguments: { page: 1, pageSize: 5 } },
     { name: "ableton_get_concept_plan", arguments: { plan_id: conceptPlanId } },
