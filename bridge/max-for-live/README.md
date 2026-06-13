@@ -70,6 +70,7 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `list_clip_slots`
 - `list_devices`
 - `list_device_parameters`
+- `browser_device_tree`
 - `selected_track`
 - `selected_device`
 - `ableton_set_tempo`
@@ -122,5 +123,7 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `automation_summary`
 
 Automation target discovery is read-only: `automation_summary` lists track volume, pan, sends, and bounded device parameters with dry-run current-value write templates. Automation breakpoint writes and device/preset insertion actions are dispatched deliberately, but return structured `unsupported: true` responses unless the current LiveAPI target can be handled reliably. `ableton_insert_midi_notes` supports bounded replacement with `replace_existing=true`, and `ableton_humanize_midi_clip` supports deterministic seeded note rewrites, only after `get_notes_extended` and `remove_notes_extended` succeed for the target clip; otherwise they stop before insertion with an unsupported response. Other MCP write tools remain gated and return a structured unsupported-action response until mapped to LiveAPI.
+
+`browser_device_tree` reads bounded `live_app browser` category metadata for `ableton_browse_live_devices check_bridge=true`. `max_items` is a total per-category item budget, with `max_depth` capped at 2. It is discovery-only and does not load BrowserItems, hot-swap, click, type, or insert devices.
 
 Track mixer reads include send summaries with `send_index`, current value, and matching return-track names when available. `ableton_get_routing_overview` returns tracks, return tracks, master state, and a send matrix in one read-only call. `ableton_set_track_send` validates the requested send index against the current track before writing; call `ableton_get_routing_overview` or `ableton_get_track_mixer` plus `ableton_list_return_tracks` before routing layers to returns.

@@ -45,6 +45,7 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "list_clip_slots", tool: "ableton_list_clip_slots", status: "read_only", domain: "clips" },
   { action: "list_devices", tool: "ableton_list_devices", status: "read_only", domain: "devices" },
   { action: "list_device_parameters", tool: "ableton_list_device_parameters", status: "read_only", domain: "devices" },
+  { action: "browser_device_tree", tool: "ableton_browse_live_devices", status: "read_only", domain: "browser", notes: "Reads bounded Ableton Browser categories from the loaded Max for Live bridge when requested." },
   { action: "arrangement_markers", tool: "ableton_list_arrangement_markers", status: "read_only", domain: "arrangement" },
   { action: "clip_notes", tool: "ableton_get_clip_notes", status: "read_only", domain: "clips", notes: "Returns unsupported when the current clip/API cannot expose notes reliably." },
   { action: "clip_envelopes", tool: "ableton_get_clip_envelopes", status: "unsupported", domain: "automation", notes: "Detailed clip envelope enumeration needs a reviewed LiveAPI mapping." },

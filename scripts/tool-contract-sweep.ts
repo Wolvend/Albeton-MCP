@@ -345,7 +345,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_plan_export_audio", arguments: { scope: "master", sampleRate: 48000, bitDepth: "24", normalize: false } },
     { name: "ableton_validate_export_settings", arguments: { settings: { sampleRate: 48000, bitDepth: "24", normalize: false } } },
     { name: "ableton_prepare_stems_plan", arguments: { groups: ["drums", "bass"], prefix: "contract-sweep" } },
-    { name: "ableton_browse_live_devices", arguments: { category: "effects" } },
+    { name: "ableton_browse_live_devices", arguments: { category: "effects", max_items: 8, max_depth: 1, check_bridge: false } },
     { name: "ableton_browse_max_devices", arguments: { query: "bridge" } },
     { name: "ableton_browse_drum_hits", arguments: { query: "kick", page: 1, pageSize: 5 } },
     { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } },

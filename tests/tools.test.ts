@@ -212,6 +212,9 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_render_concept_timeline).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_render_concept_mix_plan).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_render_concept_automation_map).toHaveProperty("plan_id");
+    expect(registeredToolSchemas.ableton_browse_live_devices).toHaveProperty("check_bridge");
+    expect(registeredToolSchemas.ableton_browse_live_devices).toHaveProperty("max_items");
+    expect(registeredToolSchemas.ableton_browse_live_devices).toHaveProperty("max_depth");
     expect(registeredToolSchemas.ableton_generate_midi_clip_plan).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_generate_midi_clip_plan).toHaveProperty("intensity");
     expect(registeredToolSchemas.ableton_generate_midi_clip_plan).toHaveProperty("track_index");

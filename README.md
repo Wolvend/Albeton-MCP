@@ -248,7 +248,7 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 24 files, 99 tests passed
+Tests: 24 files, 101 tests passed
 Lint: passed
 Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed

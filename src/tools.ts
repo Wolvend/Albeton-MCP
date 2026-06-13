@@ -1673,7 +1673,24 @@ toolDefs.push(
     return { ok: true, validation: { sampleRateOk: sampleRate >= 44100 && sampleRate <= 192000, bitDepthOk: ["16", "24", "32"].includes(bitDepth), normalizeRisk: Boolean(args.settings.normalize), notes: ["Check master peak/headroom before export.", "Use clear file names and preserve project backups."], settings: args.settings } };
   } },
   { name: "ableton_prepare_stems_plan", description: "Plan stem export groups and naming without changing Ableton.", inputSchema: { groups: z.array(z.string().min(1).max(80)).default(["drums", "bass", "music", "vocals", "fx"]), prefix: z.string().max(80).default("ableton-mcp-stems") }, annotations: ro, handler: async (args) => ({ ok: true, stemsPlan: productionPlan("stems_export", { prefix: args.prefix, groups: args.groups, naming: args.groups.map((group: string) => `${args.prefix}-${group}.wav`) }) }) },
-  { name: "ableton_browse_live_devices", description: "Return a curated Ableton-native device browser plan without scanning private folders.", inputSchema: { category: z.string().max(80).default("") }, annotations: ro, handler: async (args) => ({ ok: true, browser: productionPlan("live_devices", { category: args.category, devices: ["Instrument Rack", "Drum Rack", "Simpler", "Operator", "Wavetable", "EQ Eight", "Compressor", "Saturator", "Echo", "Hybrid Reverb"] }) }) },
+  { name: "ableton_browse_live_devices", description: "Return a curated Ableton-native device browser plan, optionally backed by bounded Live Browser data from the loaded bridge.", inputSchema: { category: z.string().max(80).default(""), max_items: z.number().int().min(1).max(64).default(16), max_depth: z.number().int().min(0).max(2).default(1), check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
+    const curated = productionPlan("live_devices", {
+      category: args.category,
+      devices: ["Instrument Rack", "Drum Rack", "Simpler", "Operator", "Wavetable", "EQ Eight", "Compressor", "Saturator", "Echo", "Hybrid Reverb"],
+      bridgeDiscovery: {
+        available: true,
+        call: { name: "ableton_browse_live_devices", arguments: { category: args.category, max_items: args.max_items, max_depth: args.max_depth, check_bridge: true } },
+        action: "browser_device_tree",
+        note: "Requires Ableton open with the Max for Live bridge loaded; it reads BrowserItem metadata only and does not load devices."
+      }
+    });
+    if (!args.check_bridge) return { ok: true, browser: curated };
+    return {
+      ok: true,
+      browser: curated,
+      liveBrowser: await bridgeAction("browser_device_tree", { category: args.category, max_items: args.max_items, max_depth: args.max_depth }) as Record<string, unknown>
+    };
+  } },
   { name: "ableton_browse_max_devices", description: "Return a Max for Live device browser plan limited to Ableton User Library and project bridge files.", inputSchema: { query: z.string().max(120).default("") }, annotations: ro, handler: async (args) => ({ ok: true, browser: productionPlan("max_for_live_devices", { query: args.query, roots: [redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), redactPath(path.join(LOCAL_PATHS.userLibrary, "Presets", "MIDI Effects", "Max MIDI Effect"))] }) }) },
   { name: "ableton_browse_drum_hits", description: "Search indexed local drum-hit samples with pagination.", inputSchema: { query: z.string().max(120).default("kick OR snare OR hat"), ...Page }, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
 

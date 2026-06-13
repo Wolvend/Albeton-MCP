@@ -56,6 +56,7 @@ Control-mode tools:
 - `ableton_get_routing_overview`: reads tracks, returns, master state, and the send matrix in one call so agents can plan layered reverb/delay/texture routing quickly.
 - `ableton_plan_concept_routing_readiness`: maps a stored concept arrangement's planned sends to routing-overview discovery calls and exact dry-run send templates.
 - `ableton_plan_concept_device_automation_readiness`: maps staged concept device chains and automation lanes to device discovery, `ableton_extract_automation_summary`, and dry-run write templates.
+- `ableton_browse_live_devices`: returns an offline Ableton-native device browser plan by default; with `check_bridge=true`, reads bounded `live_app browser` BrowserItem metadata through the Max for Live bridge without loading or inserting devices. `max_items` is a total per-category item budget and `max_depth` is capped at 2.
 - `ableton_render_concept_device_chain_spec`: renders the staged device chains as a production-ready review spec with layer roles, device order, conservative parameter hints, automation links, discovery calls, and dry-run templates.
 - `ableton_render_concept_device_catalog_matches`: matches staged device-chain names against already-indexed Ableton presets, Max devices, and optional plugin presets without scanning, writing, or exposing local paths.
 - `ableton_plan_concept_device_ui_placement`: plans explicit user-gated foreground UI placement for staged concept devices without moving the mouse, typing, inserting devices, or using raw coordinates.

@@ -985,6 +985,117 @@ function unsupportedDeviceInsertion(action, payload) {
   });
 }
 
+function normalizeBrowserCategory(category) {
+  var value = String(category || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  var aliases = {
+    audio_effect: "audio_effects",
+    audio_effects: "audio_effects",
+    effect: "audio_effects",
+    effects: "audio_effects",
+    instrument: "instruments",
+    instruments: "instruments",
+    midi_effect: "midi_effects",
+    midi_effects: "midi_effects",
+    max: "max_for_live",
+    max_for_live: "max_for_live",
+    m4l: "max_for_live",
+    plugin: "plugins",
+    plugins: "plugins",
+    drum: "drums",
+    drums: "drums",
+    sound: "sounds",
+    sounds: "sounds",
+    clip: "clips",
+    clips: "clips",
+    sample: "samples",
+    samples: "samples"
+  };
+  return aliases[value] || value;
+}
+
+function browserDeviceCategories(requestedCategory) {
+  var defaults = ["instruments", "audio_effects", "midi_effects", "max_for_live", "plugins"];
+  var category = normalizeBrowserCategory(requestedCategory);
+  if (!category) return defaults;
+  for (var i = 0; i < defaults.length; i += 1) {
+    if (defaults[i] === category) return [category];
+  }
+  if (category === "drums" || category === "sounds" || category === "clips" || category === "samples") return [category];
+  return defaults;
+}
+
+function browserItemSummary(itemPath, index, depth, maxDepth, maxItems, budget) {
+  var itemApi = liveObject(itemPath);
+  var childTotal = childCount(itemApi, "children");
+  var children = [];
+  if (depth < maxDepth && budget.remaining > 0) {
+    var childLimit = Math.min(childTotal, maxItems, budget.remaining);
+    for (var i = 0; i < childLimit; i += 1) {
+      budget.remaining -= 1;
+      children.push(browserItemSummary(itemPath + " children " + i, i, depth + 1, maxDepth, maxItems, budget));
+    }
+  }
+  return {
+    id: objectId(itemApi),
+    index: index,
+    name: safeGet(itemApi, "name", ""),
+    path_hint: itemPath,
+    is_loadable: safeGet(itemApi, "is_loadable", null),
+    is_device: safeGet(itemApi, "is_device", null),
+    is_folder: safeGet(itemApi, "is_folder", null),
+    child_count: childTotal,
+    children_returned: children.length,
+    children: children
+  };
+}
+
+function browserCategorySummary(browserApi, category, maxItems, maxDepth) {
+  var directCount = childCount(browserApi, category);
+  var budget = { remaining: maxItems };
+  var items = [];
+  var i;
+  if (directCount > 0) {
+    for (i = 0; i < Math.min(directCount, maxItems) && budget.remaining > 0; i += 1) {
+      budget.remaining -= 1;
+      items.push(browserItemSummary("live_app browser " + category + " " + i, i, 0, maxDepth, maxItems, budget));
+    }
+    return { category: category, child_collection: category, total: directCount, returned: items.length, items: items };
+  }
+
+  var categoryPath = "live_app browser " + category;
+  var categoryApi = liveObject(categoryPath);
+  var childTotal = childCount(categoryApi, "children");
+  for (i = 0; i < Math.min(childTotal, maxItems) && budget.remaining > 0; i += 1) {
+    budget.remaining -= 1;
+    items.push(browserItemSummary(categoryPath + " children " + i, i, 0, maxDepth, maxItems, budget));
+  }
+  return { category: category, child_collection: "children", total: childTotal, returned: items.length, items: items };
+}
+
+function browserDeviceTree(payload) {
+  var maxItems = Math.max(1, Math.min(64, Number(payload && payload.max_items ? payload.max_items : 16)));
+  var maxDepth = Math.max(0, Math.min(2, Number(payload && payload.max_depth !== undefined ? payload.max_depth : 1)));
+  var browserApi = liveObject("live_app browser");
+  var categories = browserDeviceCategories(payload && payload.category);
+  var results = [];
+  for (var i = 0; i < categories.length; i += 1) {
+    results.push(browserCategorySummary(browserApi, categories[i], maxItems, maxDepth));
+  }
+  return {
+    source: "live_app browser",
+    read_only: true,
+    category_filter: payload && payload.category ? String(payload.category).slice(0, 80) : "",
+    max_items: maxItems,
+    max_depth: maxDepth,
+    categories: results,
+    nextSteps: [
+      "Review BrowserItem names and loadability before planning device placement.",
+      "Use ableton_plan_concept_device_ui_placement if a foreground Browser workflow is required.",
+      "Do not assume device insertion is supported until the bridge reports a reliable load path for the target."
+    ]
+  };
+}
+
 function fireClip(payload) {
   var target = clipSlotFromPayload(payload);
   return { track_index: target.track_index, slot_index: target.slot_index, result: safeCall(target.slot, "fire") };
@@ -1461,6 +1572,7 @@ function bridgeCapabilities() {
     ["list_clip_slots", "read_only", "clips"],
     ["list_devices", "read_only", "devices"],
     ["list_device_parameters", "read_only", "devices"],
+    ["browser_device_tree", "read_only", "browser"],
     ["arrangement_markers", "read_only", "arrangement"],
     ["clip_notes", "read_only", "clips"],
     ["clip_envelopes", "unsupported", "automation"],
@@ -1571,6 +1683,7 @@ function dispatch(action, payload) {
   if (action === "clip_envelopes") return getClipEnvelopes(payload);
   if (action === "list_devices") return listDevices(payload);
   if (action === "list_device_parameters") return listDeviceParameters(payload);
+  if (action === "browser_device_tree") return browserDeviceTree(payload);
   if (action === "device_parameter_map") return listDeviceParameters(payload);
   if (action === "automation_summary") return automationSummary(payload);
   if (action === "selected_track") return { track: summarizeTrack(selectedTrackIndex(), false, false) };

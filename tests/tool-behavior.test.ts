@@ -198,6 +198,36 @@ describe("MCP tool behavior", () => {
     });
   }, INTEGRATION_TIMEOUT_MS);
 
+  it("returns offline device browsing guidance with an opt-in bridge discovery path", async () => {
+    await withClient(async (client) => {
+      const structured = await callStructured(client, "ableton_browse_live_devices", {
+        category: "audio_effects",
+        max_items: 8,
+        max_depth: 1,
+        check_bridge: false
+      });
+      const browser = structured.browser as Record<string, any>;
+
+      expect(structured.ok).toBe(true);
+      expect(browser.kind).toBe("live_devices");
+      expect(browser.safeByDefault).toBe(true);
+      expect(browser.payload.devices).toContain("Hybrid Reverb");
+      expect(browser.payload.bridgeDiscovery).toMatchObject({
+        available: true,
+        action: "browser_device_tree",
+        call: {
+          name: "ableton_browse_live_devices",
+          arguments: {
+            category: "audio_effects",
+            max_items: 8,
+            max_depth: 1,
+            check_bridge: true
+          }
+        }
+      });
+    });
+  }, INTEGRATION_TIMEOUT_MS);
+
   it("plans a side-effect-free agent music session across client runtimes", async () => {
     await withClient(async (client) => {
       const structured = await callStructured(client, "ableton_plan_agent_music_session", {

@@ -37,6 +37,12 @@ describe("bridge mock contract", () => {
       status: "read_only"
     }));
     expect(matrix.actions).toContainEqual(expect.objectContaining({
+      action: "browser_device_tree",
+      tool: "ableton_browse_live_devices",
+      status: "read_only",
+      domain: "browser"
+    }));
+    expect(matrix.actions).toContainEqual(expect.objectContaining({
       action: "ableton_insert_effect",
       status: "unsupported"
     }));
