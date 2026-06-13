@@ -25,6 +25,7 @@ import {
   prepareConceptAudioLayers,
   renderConceptAttributionBundle,
   renderConceptAutomationMap,
+  renderConceptExecutionActionMatrix,
   renderConceptExecutionManifest,
   renderConceptMixPlan,
   renderConceptProductionScorecard,
@@ -246,6 +247,10 @@ describe("concept-to-music planning", () => {
     }]);
     const stored = await readArrangementPlan(arrangement.arrangement.id);
     const dryRun = await executeConceptPlan({ arrangement_id: arrangement.arrangement.id, dry_run: true });
+    const actionMatrix = await renderConceptExecutionActionMatrix({
+      arrangement_id: arrangement.arrangement.id,
+      check_bridge: false
+    });
     const readiness = await planConceptDeviceAutomationReadiness({
       arrangement_id: arrangement.arrangement.id,
       check_bridge: false
@@ -323,6 +328,22 @@ describe("concept-to-music planning", () => {
       approval_confirmed: false
     });
     expect(approvalRequirement.approval_id).toMatch(/^approval-[a-f0-9]{16}$/);
+    expect(actionMatrix.safety.writesAbleton).toBe(false);
+    expect(actionMatrix.summary.totalActions).toBe(arrangement.arrangement.actions.length);
+    expect(actionMatrix.summary.bridgeStatusCounts.write_gated).toBeGreaterThan(0);
+    expect(actionMatrix.summary.approvedSamplePlacements).toBeGreaterThan(0);
+    expect(actionMatrix.summary.stagedDeviceChains).toBeGreaterThan(0);
+    expect(actionMatrix.exactNextToolCalls.preflight).toMatchObject({
+      name: "ableton_preflight_concept_execution",
+      arguments: { arrangement_id: arrangement.arrangement.id, check_bridge: true }
+    });
+    const sampleMatrixAction = actionMatrix.actions.find((action) => action.action === "ableton_load_preset_or_sample");
+    expect(sampleMatrixAction?.requiresApprovedLocalSample).toBe(true);
+    expect(sampleMatrixAction?.directDryRunToolCall).toBeNull();
+    expect(sampleMatrixAction?.directDryRunBlockedReason).toContain("redacted");
+    const midiMatrixAction = actionMatrix.actions.find((action) => action.action === "ableton_insert_midi_notes");
+    expect(midiMatrixAction?.bridgeCapability.status).toBe("write_gated");
+    expect(midiMatrixAction?.dependencies).toContain("live_bridge_snapshot_resolution");
     expect(readiness.bridge).toMatchObject({ checked: false, reachable: null });
     expect(readiness.summary.deviceChains).toBeGreaterThan(0);
     expect(readiness.summary.automationTargets).toBeGreaterThan(0);

@@ -72,6 +72,7 @@ describe("MCP tool behavior", () => {
       expect(tools).toEqual(expect.arrayContaining([
         "ableton_plan_concept_track",
         "ableton_curate_concept_samples",
+        "ableton_render_concept_execution_action_matrix",
         "ableton_render_concept_automation_map",
         "ableton_render_concept_execution_manifest",
         "ableton_mcp_get_safe_tool_allowlist"
@@ -150,6 +151,7 @@ describe("MCP tool behavior", () => {
       expect(bootstrap.recommendedAgentWorkflow.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
         "ableton_plan_full_concept_production",
         "ableton_curate_concept_samples",
+        "ableton_render_concept_execution_action_matrix",
         "ableton_preflight_concept_execution"
       ]));
       expect(bootstrap.safetyDefaults).toMatchObject({

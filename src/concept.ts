@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import toneMidi from "@tonejs/midi";
 import { convertAudioFile } from "./analysis.js";
-import { bridgeAction, getBridgeSnapshot } from "./bridge.js";
+import { bridgeAction, getBridgeCapabilityMatrix, getBridgeSnapshot, type BridgeActionCapability } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
 import { buildSampleAttribution, downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
@@ -60,6 +60,8 @@ export type ConceptExecutionPreflightOptions = {
   arrangement_id: string;
   check_bridge?: boolean;
 };
+
+export type ConceptExecutionActionMatrixOptions = ConceptExecutionPreflightOptions;
 
 export type ConceptExecutionApprovalBundleOptions = ConceptExecutionPreflightOptions;
 
@@ -1076,6 +1078,205 @@ function actionForExecutionReport(action: ArrangementAction, index: number) {
     placeholders: actionPlaceholderSummary(action),
     requiresApprovedLocalSample: actionNeedsApprovedSample(action),
     executionGate: action.safeToExecute ? "ABLETON_MCP_ENABLE_WRITE=1 plus dry_run=false" : "not_executable"
+  };
+}
+
+function bridgeCapabilityByAction() {
+  return new Map<string, BridgeActionCapability>(
+    (getBridgeCapabilityMatrix().actions as BridgeActionCapability[]).map((entry) => [entry.action, entry])
+  );
+}
+
+function unknownBridgeCapability(action: string): BridgeActionCapability {
+  return {
+    action,
+    tool: action,
+    status: "unsupported",
+    domain: "unknown",
+    notes: "This action is not present in the local bridge capability matrix."
+  };
+}
+
+function countByString<T>(items: T[], keyFor: (item: T) => string) {
+  return items.reduce<Record<string, number>>((counts, item) => {
+    const key = keyFor(item);
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function actionMatrixDependencies(action: ArrangementAction, placeholders: ReturnType<typeof actionPlaceholderSummary>) {
+  const dependencies = [];
+  if (placeholders.track_created_offset || placeholders.return_created_offset || placeholders.scene_created_offset) {
+    dependencies.push("live_bridge_snapshot_resolution");
+  }
+  if (action.action === "ableton_set_track_send") {
+    dependencies.push("return_track_send_index_resolution");
+  }
+  if (action.action === "ableton_insert_midi_notes") {
+    dependencies.push("empty_or_created_midi_clip_slot");
+  }
+  if (action.action === "ableton_load_preset_or_sample") {
+    dependencies.push("approved_local_sample_path");
+    dependencies.push("empty_audio_clip_slot");
+  }
+  if (action.action.includes("_clip") && action.action !== "ableton_create_clip" && action.action !== "ableton_create_midi_clip") {
+    dependencies.push("existing_target_clip");
+  }
+  return dependencies;
+}
+
+function actionMatrixNotes(
+  action: ArrangementAction,
+  capability: BridgeActionCapability,
+  unresolvedPlaceholders: boolean
+) {
+  const notes = [];
+  if (!action.safeToExecute) notes.push("This stored action is marked not safe and will be skipped by the executor.");
+  if (capability.status === "unsupported") notes.push(capability.notes ?? "The bridge reports this action as unsupported.");
+  if (unresolvedPlaceholders) notes.push("Generated track, return, or scene offsets require live bridge preflight before direct action calls.");
+  if (actionNeedsApprovedSample(action)) notes.push("The approved local sample path is redacted in reports; execute through the stored plan, not copied direct calls.");
+  return notes;
+}
+
+function actionMatrixGate(action: ArrangementAction, capability: BridgeActionCapability) {
+  if (!action.safeToExecute) return "not_executable";
+  if (capability.status === "unsupported") return "unsupported_by_current_bridge";
+  if (capability.status === "write_gated") return "ableton_execute_concept_plan dry_run=false plus ABLETON_MCP_ENABLE_WRITE=1 plus matching approval_id";
+  if (capability.status === "read_only" || capability.status === "diagnostic") return "read_only";
+  return "unknown";
+}
+
+export async function renderConceptExecutionActionMatrix(options: ConceptExecutionActionMatrixOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const capabilityMap = bridgeCapabilityByAction();
+  const checkBridge = options.check_bridge === true;
+  const bridge = {
+    checked: checkBridge,
+    reachable: null as boolean | null,
+    resolution: null as CreatedTrackResolution | null,
+    error: null as string | null,
+    nextSteps: [] as string[]
+  };
+
+  if (checkBridge) {
+    try {
+      bridge.resolution = bridgeSnapshotResolution(await getBridgeSnapshot(false));
+      bridge.reachable = true;
+    } catch (error) {
+      bridge.reachable = false;
+      bridge.error = error instanceof Error ? error.message : String(error);
+      bridge.nextSteps = bridgeSetupHints(error);
+    }
+  }
+
+  const actions = arrangement.actions.map((action, index) => {
+    const placeholders = actionPlaceholderSummary(action);
+    const unresolvedPlaceholders = Object.values(placeholders).some(Boolean) && !bridge.resolution;
+    const capability = capabilityMap.get(action.action) ?? unknownBridgeCapability(action.action);
+    const resolvedPayload = bridge.resolution ? actionPayloadWithCreatedTrack(action, bridge.resolution) : null;
+    const directDryRunAvailable = action.safeToExecute
+      && capability.status === "write_gated"
+      && !unresolvedPlaceholders
+      && !actionNeedsApprovedSample(action);
+    return {
+      index,
+      action: action.action,
+      phase: actionPhase(action.action),
+      safeToExecute: action.safeToExecute,
+      reason: action.reason,
+      payloadTemplate: redactActionPayload(action.payload),
+      resolvedPayload: resolvedPayload ? redactActionPayload(resolvedPayload) : null,
+      placeholders,
+      dependencies: actionMatrixDependencies(action, placeholders),
+      bridgeCapability: {
+        action: capability.action,
+        tool: capability.tool ?? action.action,
+        status: capability.status,
+        domain: capability.domain,
+        requiresWriteGate: capability.requiresWriteGate === true,
+        dryRunFirst: capability.dryRunFirst === true,
+        notes: capability.notes ?? null
+      },
+      requiresApprovedLocalSample: actionNeedsApprovedSample(action),
+      executionGate: actionMatrixGate(action, capability),
+      realExecutionReady: action.safeToExecute
+        && capability.status === "write_gated"
+        && bridge.reachable === true
+        && !unresolvedPlaceholders,
+      directDryRunToolCall: directDryRunAvailable
+        ? { name: action.action, arguments: { ...redactActionPayload(resolvedPayload ?? action.payload), dry_run: true } }
+        : null,
+      directDryRunBlockedReason: directDryRunAvailable
+        ? null
+        : actionNeedsApprovedSample(action)
+          ? "Approved sample paths are intentionally redacted; use the stored-plan executor dry run."
+          : unresolvedPlaceholders
+            ? "Run with check_bridge=true after the bridge is loaded to resolve generated indexes."
+            : capability.status !== "write_gated"
+              ? `Bridge capability status is ${capability.status}.`
+              : action.safeToExecute ? null : "Action is not safe to execute.",
+      notes: actionMatrixNotes(action, capability, unresolvedPlaceholders)
+    };
+  });
+
+  return {
+    planType: "concept_execution_action_matrix",
+    arrangement_id: arrangement.id,
+    conceptPlanId: arrangement.conceptPlanId,
+    safety: {
+      readOnly: true,
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      arbitraryBridgePayloads: false,
+      storedPlanOnly: true,
+      realWritesRequire: [
+        "ABLETON_MCP_ENABLE_WRITE=1",
+        "dry_run=false",
+        "matching approval_id",
+        "approval_confirmed=true",
+        "successful bridge preflight"
+      ]
+    },
+    bridge,
+    summary: {
+      totalActions: actions.length,
+      safeActions: actions.filter((action) => action.safeToExecute).length,
+      skippedActions: actions.filter((action) => !action.safeToExecute).length,
+      phases: countByString(actions, (action) => action.phase),
+      bridgeStatusCounts: countByString(actions, (action) => String(action.bridgeCapability.status)),
+      bridgeDomains: countByString(actions, (action) => String(action.bridgeCapability.domain)),
+      requiresPlaceholderResolution: actions.filter((action) => Object.values(action.placeholders).some(Boolean)).length,
+      approvedSamplePlacements: actions.filter((action) => action.requiresApprovedLocalSample).length,
+      directDryRunToolCalls: actions.filter((action) => action.directDryRunToolCall !== null).length,
+      realExecutionReadyActions: actions.filter((action) => action.realExecutionReady).length,
+      stagedDeviceChains: arrangement.devicePlan.length,
+      stagedAutomationTargets: arrangement.automationPlan.length
+    },
+    actions,
+    stagedReview: {
+      devicePlan: arrangement.devicePlan,
+      automationPlan: arrangement.automationPlan,
+      reason: "Device insertion and automation breakpoint writing remain staged until the loaded bridge reports reliable support."
+    },
+    exactNextToolCalls: {
+      preflight: { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      executionManifest: { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: arrangement.id } },
+      approvalBundle: { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      dryRunExecution: { name: "ableton_execute_concept_plan", arguments: { arrangement_id: arrangement.id, dry_run: true } },
+      realExecutionTemplate: { name: "ableton_execute_concept_plan", arguments: { arrangement_id: arrangement.id, approval_id: "approval-...", approval_confirmed: true, dry_run: false } }
+    },
+    nextSteps: bridge.reachable === true
+      ? [
+        "Review resolvedPayload and stagedReview before approving real execution.",
+        "Run the approval bundle and dry-run executor before setting ABLETON_MCP_ENABLE_WRITE=1."
+      ]
+      : [
+        "Use this matrix to audit the stored plan without side effects.",
+        "Open Ableton, load the bridge, then rerun with check_bridge=true to resolve generated track, return, and scene indexes.",
+        "Keep real execution behind the approval bundle and write gate."
+      ]
   };
 }
 

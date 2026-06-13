@@ -41,6 +41,7 @@ import {
   prepareConceptAudioLayers,
   renderConceptAttributionBundle,
   renderConceptAutomationMap,
+  renderConceptExecutionActionMatrix,
   renderConceptMixPlan,
   renderConceptExecutionManifest,
   renderConceptProductionScorecard,
@@ -531,6 +532,7 @@ function clientBootstrapBundle() {
       { name: "ableton_plan_full_concept_production", arguments: { concept: "describe the place, feeling, or soundtrack brief", include_sample_search: true } },
       { name: "ableton_curate_concept_samples", arguments: { plan_id: "concept-...", search: true, allowed_only: true } },
       { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: "concept-..." } },
+      { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
       { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
       { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-...", check_bridge: true } }
     ],
@@ -635,6 +637,7 @@ async function agentMusicSessionPlan(args: {
       phase: "live_preflight_and_approval",
       objective: "Probe the bridge and require an approval bundle before any real Ableton write.",
       calls: [
+        { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: "arrangement-...", check_bridge: args.check_bridge } },
         { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
         { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
         { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-...", approval_id: "approval-...", approval_confirmed: true, dry_run: true } }
@@ -1093,6 +1096,7 @@ toolDefs.push(
   { name: "ableton_build_arrangement_from_prepared_audio", description: "Build a stored arrangement plan from a stored prepared-audio manifest without exposing local paths.", inputSchema: { preparation_id: PreparedAudioId, sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]) }, annotations: ro, handler: async (args) => ({ ok: true, preparedArrangement: await buildArrangementFromPreparedAudio(args) as any }) },
   { name: "ableton_export_concept_midi_motif", description: "Render a stored concept plan's sparse motif as a staged MIDI file; dry-run by default and never overwrites.", inputSchema: { plan_id: ConceptPlanId, output_name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, export: await exportConceptMidiMotif(args) as any }) },
   { name: "ableton_preflight_concept_execution", description: "Read-only preflight for a stored arrangement: validates action counts, bridge readiness, placeholder resolution, and likely clip-slot blockers before real execution.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(true) }, annotations: ro, handler: async (args) => ({ ok: true, preflight: await preflightConceptExecution(args) as any }) },
+  { name: "ableton_render_concept_execution_action_matrix", description: "Render every stored concept action with bridge capability status, gates, placeholder dependencies, and dry-run call availability.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, actionMatrix: await renderConceptExecutionActionMatrix(args) as any }) },
   { name: "ableton_create_concept_execution_approval_bundle", description: "Create a read-only approval bundle for a stored arrangement with redacted plan, preflight, required gates, and exact next tool calls.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, approvalBundle: await createConceptExecutionApprovalBundle(args) as any }) },
   { name: "ableton_render_concept_execution_manifest", description: "Render a read-only execution manifest for a stored arrangement with grouped actions, gates, staged review, and exact next calls.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, manifest: await renderConceptExecutionManifest(args) as any }) },
   { name: "ableton_render_concept_attribution_bundle", description: "Render a read-only attribution bundle for a stored concept arrangement, including sidecar license, source URL, checksum, and missing-attribution warnings.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, attribution: await renderConceptAttributionBundle(args) as any }) },

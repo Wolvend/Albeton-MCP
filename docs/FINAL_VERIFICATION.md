@@ -7,10 +7,10 @@ This report records the latest verification pass for the Ableton MCP production 
 ## Current Surface
 
 ```text
-Tools: 205
+Tools: 206
 Resources: 3
 Prompts: 2
-HyperNimbus Docker MCP enabled tools: 130
+HyperNimbus Docker MCP enabled tools: 131
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 22 test files and 82 tests passed, including bridge capability matrix checks, bridge send-summary source checks, typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only concept sample curation checks, read-only concept execution manifest checks, read-only concept attribution bundle checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, concept execution unsupported-bridge response detection, redacted concept execution journal writing and inspection, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, production-readiness and agent music-session workflow reporting across gates, clients, bridge state, concept workflow, and safety posture, track-send discovery schema checks, OpenClaw client config documentation checks, safe HyperNimbus/OpenClaw allowlist reporting checks, Docker MCP profile allowlist parsing checks, risky-tool drift rejection checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 22 test files and 82 tests passed, including bridge capability matrix checks, bridge send-summary source checks, typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only concept sample curation checks, read-only concept execution action matrix checks, read-only concept execution manifest checks, read-only concept attribution bundle checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, concept execution unsupported-bridge response detection, redacted concept execution journal writing and inspection, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, production-readiness and agent music-session workflow reporting across gates, clients, bridge state, concept workflow, and safety posture, track-send discovery schema checks, OpenClaw client config documentation checks, safe HyperNimbus/OpenClaw allowlist reporting checks, Docker MCP profile allowlist parsing checks, risky-tool drift rejection checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -59,13 +59,13 @@ Result: succeeded. Release check found no missing required files or scripts. It 
 npm run sweep:safe
 ```
 
-Result: succeeded. Safe sweep called 114 read-only and dry-run tools with 0 unexpected failures, including `ableton_plan_agent_music_session`, `ableton_curate_concept_samples`, `ableton_mcp_get_client_bootstrap_bundle`, `ableton_mcp_get_safe_tool_allowlist`, `ableton_get_production_readiness` with non-probing bridge mode, `ableton_get_bridge_capabilities`, `ableton_list_track_sends`, `ableton_get_routing_overview`, `ableton_extract_automation_summary`, `ableton_plan_concept_routing_readiness`, `ableton_render_concept_automation_map`, `ableton_get_return_track_mixer`, return/track color dry-runs, return-track rename dry-run, `ableton_set_return_track_volume` dry-run, master mixer dry-runs, scene launch/tempo/signature/color/rename dry-runs, audio clip shaping/color dry-runs, `ableton_list_internet_archive_audio_files`, `ableton_list_concept_presets`, `ableton_render_concept_execution_manifest`, `ableton_render_concept_attribution_bundle`, `ableton_render_concept_production_scorecard`, `ableton_list_concept_plans`, `ableton_list_arrangement_plans`, and `ableton_list_concept_execution_journals`.
+Result: succeeded. Safe sweep called 115 read-only and dry-run tools with 0 unexpected failures, including `ableton_plan_agent_music_session`, `ableton_curate_concept_samples`, `ableton_render_concept_execution_action_matrix`, `ableton_mcp_get_client_bootstrap_bundle`, `ableton_mcp_get_safe_tool_allowlist`, `ableton_get_production_readiness` with non-probing bridge mode, `ableton_get_bridge_capabilities`, `ableton_list_track_sends`, `ableton_get_routing_overview`, `ableton_extract_automation_summary`, `ableton_plan_concept_routing_readiness`, `ableton_render_concept_automation_map`, `ableton_get_return_track_mixer`, return/track color dry-runs, return-track rename dry-run, `ableton_set_return_track_volume` dry-run, master mixer dry-runs, scene launch/tempo/signature/color/rename dry-runs, audio clip shaping/color dry-runs, `ableton_list_internet_archive_audio_files`, `ableton_list_concept_presets`, `ableton_render_concept_execution_manifest`, `ableton_render_concept_attribution_bundle`, `ableton_render_concept_production_scorecard`, `ableton_list_concept_plans`, `ableton_list_arrangement_plans`, and `ableton_list_concept_execution_journals`.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 205 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now exercises safe agent music-session orchestration, layer-specific concept sample curation, safe client bootstrap reporting, safe allowlist reporting, production-readiness reporting, read-only bridge capability reporting, track-send discovery, a full routing overview, concept attribution bundle, concept production scorecard, concept routing readiness, concept automation map rendering, and redacted execution-journal inspection before live bridge writes. The concept workflow sweep exercises the read-only concept preset catalog -> stored concept plan with approved reference audio -> full concept production plan with scorecard -> read-only concept timeline -> read-only concept mix plan -> read-only concept automation map -> stored arrangement plan with scene tempo/signature/color setup, return-track mixer/color actions, scene and return-track rename dry-runs, and clip rename/loop/gain/transpose/warp/marker/color polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> non-approving approval bundle -> read-only execution manifest -> read-only attribution bundle -> read-only production scorecard -> read-only routing readiness -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution -> redacted execution-journal listing/read probe.
+Result: succeeded. All-tool contract sweep called all 206 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now exercises safe agent music-session orchestration, layer-specific concept sample curation, safe client bootstrap reporting, safe allowlist reporting, production-readiness reporting, read-only bridge capability reporting, track-send discovery, a full routing overview, concept action-matrix review, concept attribution bundle, concept production scorecard, concept routing readiness, concept automation map rendering, and redacted execution-journal inspection before live bridge writes. The concept workflow sweep exercises the read-only concept preset catalog -> stored concept plan with approved reference audio -> full concept production plan with scorecard -> read-only concept timeline -> read-only concept mix plan -> read-only concept automation map -> stored arrangement plan with scene tempo/signature/color setup, return-track mixer/color actions, scene and return-track rename dry-runs, and clip rename/loop/gain/transpose/warp/marker/color polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> read-only execution action matrix -> non-approving approval bundle -> read-only execution manifest -> read-only attribution bundle -> read-only production scorecard -> read-only routing readiness -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution -> redacted execution-journal listing/read probe.
 
 The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature/color/rename tools, typed track/return/master volume/pan/color tools, typed return-track rename, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, `ableton_set_clip_markers`, and `ableton_set_clip_color` contracts. Concept arrangement plans now include created-track and created-scene placeholders for scene setup, color, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, clip colors, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, a deterministic approval id, and a read-only readiness handoff that links concept automation lanes to `ableton_extract_automation_summary` target discovery; real execution requires approval confirmation, reruns preflight, writes a redacted execution journal, resolves executable placeholders from a live snapshot immediately before write-gated bridge calls, and stops on bridge-level `unsupported: true` results.
 
@@ -75,7 +75,7 @@ LiveAPI bridge source now includes track mixer send summaries in mixer reads/sna
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 205 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 206 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -89,7 +89,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 npm run docker:hypernimbus:verify
 ```
 
-Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server. The verifier parsed Docker's enabled tool list and reported `expectedAllowedTools: 130`, `observedAllowedTools: 130`, `missingSafeTools: []`, `unexpectedAbletonTools: []`, and `unexpectedRiskyTools: []`.
+Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server. The verifier parsed Docker's enabled tool list and reported `expectedAllowedTools: 131`, `observedAllowedTools: 131`, `missingSafeTools: []`, `unexpectedAbletonTools: []`, and `unexpectedRiskyTools: []`.
 
 The profile was reapplied after adding the safe concept sample curation tool:
 
@@ -97,7 +97,7 @@ The profile was reapplied after adding the safe concept sample curation tool:
 npm run docker:hypernimbus:apply
 ```
 
-Result: succeeded. The command exported a backup to `diagnostics/runtime/docker-mcp/hypernimbus.before.yaml`, replaced the local `ableton-mcp` catalog entry, disabled all Ableton MCP tools, and enabled the 130-tool safe allowlist.
+Result: succeeded. The command exported a backup to `diagnostics/runtime/docker-mcp/hypernimbus.before.yaml`, replaced the local `ableton-mcp` catalog entry, disabled all Ableton MCP tools, and enabled the 131-tool safe allowlist.
 
 The profile now includes:
 
@@ -132,7 +132,7 @@ The host HTTP service can be started with:
 .\launch.ps1 docker -SkipSetup
 ```
 
-For this verification run, the host HTTP service was restarted after the latest build so Docker could query the rebuilt 205-tool server. A direct Streamable HTTP MCP probe reported `toolCount: 205`, `hasAgentMusicSession: true`, `hasConceptSampleCuration: true`, `hasClientBootstrapBundle: true`, `hasAttributionBundle: true`, `hasAutomationMap: true`, and `hasExecutionJournals: true`.
+For this verification run, the host HTTP service was restarted after the latest build so Docker could query the rebuilt 206-tool server. A direct Streamable HTTP MCP probe reported `toolCount: 206`, `hasAgentMusicSession: true`, `hasConceptSampleCuration: true`, `hasExecutionActionMatrix: true`, `hasClientBootstrapBundle: true`, `hasAttributionBundle: true`, `hasAutomationMap: true`, and `hasExecutionJournals: true`.
 
 Health result:
 
@@ -156,7 +156,7 @@ Docker gateway dry-run:
 docker mcp gateway run --profile hypernimbus --dry-run --block-secrets
 ```
 
-Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 130 tools.
+Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 131 tools.
 
 Note: `--block-network` is not used for this gateway check because `ableton-mcp` is configured as a Docker MCP remote server at `http://127.0.0.1:17366/mcp`; blocking network access can prevent Docker Gateway from reaching that local MCP endpoint.
 
@@ -174,7 +174,7 @@ openclaw mcp doctor ableton-mcp --probe
 wsl.exe -d Ubuntu --cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp -e bash -lc 'ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh check --skip-setup'
 ```
 
-Result: succeeded under WSL with 205 tools, 3 resources, and 2 prompts. It ran tests, lint, doctor, release check, safe sweep, all-tool sweep, MCP verifier, and npm audit. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL with 206 tools, 3 resources, and 2 prompts. It ran tests, lint, doctor, release check, safe sweep, all-tool sweep, MCP verifier, and npm audit. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ```powershell
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh live-smoke'

@@ -65,6 +65,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_build_arrangement_from_prepared_audio");
     expect(registeredToolNames).toContain("ableton_export_concept_midi_motif");
     expect(registeredToolNames).toContain("ableton_preflight_concept_execution");
+    expect(registeredToolNames).toContain("ableton_render_concept_execution_action_matrix");
     expect(registeredToolNames).toContain("ableton_create_concept_execution_approval_bundle");
     expect(registeredToolNames).toContain("ableton_render_concept_execution_manifest");
     expect(registeredToolNames).toContain("ableton_render_concept_attribution_bundle");
@@ -162,6 +163,8 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_export_concept_midi_motif).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_export_concept_midi_motif).toHaveProperty("output_name");
     expect(registeredToolSchemas.ableton_preflight_concept_execution).toHaveProperty("check_bridge");
+    expect(registeredToolSchemas.ableton_render_concept_execution_action_matrix).toHaveProperty("arrangement_id");
+    expect(registeredToolSchemas.ableton_render_concept_execution_action_matrix).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_create_concept_execution_approval_bundle).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_render_concept_execution_manifest).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_render_concept_attribution_bundle).toHaveProperty("arrangement_id");

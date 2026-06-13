@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-205 tools
+206 tools
 3 resources
 2 prompts
 ```
@@ -36,7 +36,7 @@ Primary groups:
 - Screenshot and UI tools
 - Legal sample discovery/import
 - Plugin/package discovery, validation, and download staging
-- Concept-to-music preset catalog, planning, mix planning, attribution bundles, production scorecards, sample staging, execution manifests, arrangement execution, and delivery planning
+- Concept-to-music preset catalog, planning, mix planning, attribution bundles, production scorecards, sample staging, execution action matrices, execution manifests, arrangement execution, and delivery planning
 - Export and stem planning
 - Composition helpers
 - Developer/evaluation tools
@@ -54,6 +54,7 @@ Control-mode tools:
 - `ableton_get_routing_overview`: reads tracks, returns, master state, and the send matrix in one call so agents can plan layered reverb/delay/texture routing quickly.
 - `ableton_plan_concept_routing_readiness`: maps a stored concept arrangement's planned sends to routing-overview discovery calls and exact dry-run send templates.
 - `ableton_plan_concept_device_automation_readiness`: maps staged concept device chains and automation lanes to device discovery, `ableton_extract_automation_summary`, and dry-run write templates.
+- `ableton_render_concept_execution_action_matrix`: renders each stored arrangement action with bridge capability status, write gates, placeholder dependencies, staged-only notes, and direct dry-run availability.
 - `ableton_extract_automation_summary`: reads live mixer/device automation target candidates with bounded parameter output; breakpoint writes remain unsupported unless a bridge reports support.
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
 - `ableton_curate_concept_samples`: maps stored concept layers to licensed sample-search candidates, layer review notes, and dry-run staging templates without downloads.

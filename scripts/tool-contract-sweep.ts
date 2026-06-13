@@ -109,6 +109,67 @@ async function ensureFixtures(): Promise<SweepFixtures> {
       attributionPath: null
     }]
   }, null, 2)}\n`);
+  await fs.writeFile(path.join(manifestDir, "arrangement-0000000000000000.json"), `${JSON.stringify({
+    id: "arrangement-0000000000000000",
+    conceptPlanId,
+    createdAt: new Date().toISOString(),
+    actions: [
+      {
+        action: "ableton_set_tempo",
+        payload: { tempo: 72 },
+        safeToExecute: true,
+        reason: "Contract sweep fixture tempo action."
+      },
+      {
+        action: "ableton_create_audio_track",
+        payload: { name: "Contract Sweep Audio" },
+        safeToExecute: true,
+        reason: "Contract sweep fixture track creation."
+      },
+      {
+        action: "ableton_set_track_volume",
+        payload: { track_created_offset: 0, value: 0.7 },
+        safeToExecute: true,
+        reason: "Contract sweep fixture mixer action."
+      },
+      {
+        action: "ableton_load_preset_or_sample",
+        payload: {
+          track_created_offset: 0,
+          clip_slot_index: 0,
+          path: stagedAudioPath,
+          mode: "audio_clip",
+          name: "Contract Sweep Tone"
+        },
+        safeToExecute: true,
+        reason: "Contract sweep fixture approved sample action."
+      }
+    ],
+    sampleAssignments: [{
+      layer: "Degraded Memory",
+      path: stagedAudioPath,
+      redactedPath: stagedAudioPath,
+      clip_slot_index: 0,
+      name: "Contract Sweep Tone",
+      source: "manual_assignment"
+    }],
+    devicePlan: [{
+      layer: "Degraded Memory",
+      devices: ["EQ Eight", "Hybrid Reverb"],
+      target: "track",
+      track_created_offset: 0,
+      execution: "staged",
+      reason: "Contract sweep fixture staged device review."
+    }],
+    automationPlan: [{
+      layer: "Degraded Memory",
+      automation: "Slow volume fade for contract sweep fixture.",
+      target: "volume",
+      execution: "staged",
+      reason: "Contract sweep fixture staged automation review."
+    }],
+    notes: ["Contract sweep fixture arrangement for read-only concept report tools."]
+  }, null, 2)}\n`);
 
   return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath, preparedAudioId };
 }
@@ -301,6 +362,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_list_concept_execution_journals", arguments: { page: 1, pageSize: 5 } },
     { name: "ableton_get_concept_execution_journal", arguments: { execution_id: "execution-0000000000000-00000000" }, expected: "any" },
     { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
+    { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: "arrangement-0000000000000000" } },
     { name: "ableton_render_concept_attribution_bundle", arguments: { arrangement_id: "arrangement-0000000000000000" } },
