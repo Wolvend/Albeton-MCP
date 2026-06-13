@@ -130,6 +130,23 @@ async function bridgeRead(action: string, payload: Record<string, unknown> = {})
   return { ok: true, bridge: await bridgeAction(action, payload) as Record<string, unknown> };
 }
 
+async function listTrackSends(args: { track_index?: number }) {
+  const target = args.track_index ?? "selected";
+  const bridge = await bridgeAction("track_mixer", { track_id: target }) as Record<string, unknown>;
+  const mixer = bridge && typeof bridge === "object" ? bridge.mixer as Record<string, unknown> | undefined : undefined;
+  const sends = Array.isArray(mixer?.sends) ? mixer.sends : [];
+  return {
+    ok: true,
+    track: target,
+    sends,
+    bridge,
+    nextSteps: [
+      "Use send_index values with ableton_set_track_send after dry-run review.",
+      "Use ableton_list_return_tracks to inspect return-track devices and names before routing layers."
+    ]
+  };
+}
+
 async function bridgeCapabilityReport(checkBridge: boolean) {
   const capabilities = getBridgeCapabilityMatrix();
   if (!checkBridge) {
@@ -532,6 +549,7 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_list_return_tracks", description: "List live return tracks via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_return_tracks") },
   { name: "ableton_get_master_track", description: "Get the master track summary and mixer state via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("master_track") },
   { name: "ableton_get_track_mixer", description: "Get selected or indexed track mixer volume and pan parameters via bridge.", inputSchema: { track_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => bridgeRead("track_mixer", { track_id: args.track_id ?? "selected" }) },
+  { name: "ableton_list_track_sends", description: "List selected or indexed track send parameters and matching return names via bridge.", inputSchema: { track_index: TrackIndex.optional() }, annotations: ro, handler: async (args) => listTrackSends(args) },
   { name: "ableton_get_return_track_mixer", description: "Get indexed return-track mixer volume and pan parameters via bridge.", inputSchema: { return_track_index: ReturnTrackIndex.default(0) }, annotations: ro, handler: async (args) => bridgeRead("return_track_mixer", args) },
   { name: "ableton_list_scenes", description: "List live scenes via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_scenes") },
   { name: "ableton_list_clips", description: "List live clips via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_clips") },
