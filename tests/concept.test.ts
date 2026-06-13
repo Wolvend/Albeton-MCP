@@ -10,6 +10,7 @@ import {
   executeConceptPlan,
   extractUnsupportedBridgeResult,
   exportConceptMidiMotif,
+  generateMidiClipPlan,
   getArrangementPlanForReport,
   getConceptExecutionJournalForReport,
   getConceptPlanForReport,
@@ -175,6 +176,55 @@ describe("concept-to-music planning", () => {
       downloads: false,
       uiControl: false,
       remoteHttpExposure: false
+    });
+  });
+
+  it("generates deterministic editable MIDI clip notes with dry-run insertion calls", () => {
+    const first = generateMidiClipPlan({
+      concept: "a backrooms hallway memory song under fluorescent lights",
+      key: "C minor",
+      bars: 8,
+      style: "liminal/backrooms/horror",
+      intensity: 8,
+      track_index: 2,
+      clip_slot_index: 1
+    });
+    const second = generateMidiClipPlan({
+      concept: "a backrooms hallway memory song under fluorescent lights",
+      key: "C minor",
+      bars: 8,
+      style: "liminal/backrooms/horror",
+      intensity: 8,
+      track_index: 2,
+      clip_slot_index: 1
+    });
+
+    expect(first).toEqual(second);
+    expect(first).toMatchObject({
+      preset: "liminal_backrooms_horror",
+      key: "C minor",
+      bars: 8,
+      clip_length_beats: 32,
+      track_index: 2,
+      clip_slot_index: 1,
+      safety: {
+        writesAbleton: false,
+        downloads: false,
+        uiControl: false
+      }
+    });
+    expect(first.note_count).toBeGreaterThan(5);
+    expect(first.notes.every((note) => note.start_time >= 0 && note.start_time < first.clip_length_beats)).toBe(true);
+    expect(first.notes.some((note) => "probability" in note && typeof note.probability === "number")).toBe(true);
+    expect(first.exactNextToolCalls.insertNotesDryRun).toMatchObject({
+      name: "ableton_insert_midi_notes",
+      arguments: {
+        track_index: 2,
+        clip_slot_index: 1,
+        create_clip_if_missing: true,
+        clip_length: 32,
+        dry_run: true
+      }
     });
   });
 

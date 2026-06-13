@@ -26,6 +26,7 @@ import {
   curateConceptSamples,
   executeConceptPlan,
   exportConceptMidiMotif,
+  generateMidiClipPlan,
   getArrangementPlanForReport,
   getConceptExecutionJournalForReport,
   getConceptPlanForReport,
@@ -1143,7 +1144,7 @@ toolDefs.push(
   { name: "ableton_render_delivery_plan", description: "Plan final master/stem export settings for a stored concept plan without rendering.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, delivery: await renderDeliveryPlan(args.plan_id) as any }) },
 
   { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1).max(2000) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },
-  { name: "ableton_generate_midi_clip_plan", description: "Generate a MIDI clip plan.", inputSchema: { key: z.string().default("C minor"), bars: z.number().int().min(1).max(64).default(8), style: z.string().default("electronic") }, annotations: ro, handler: async (args) => ({ ok: true, midiClipPlan: args }) },
+  { name: "ableton_generate_midi_clip_plan", description: "Generate deterministic editable MIDI notes plus exact dry-run insertion calls without changing Ableton.", inputSchema: { key: z.string().default("C minor"), bars: z.number().int().min(1).max(64).default(8), style: z.string().default("electronic"), concept: z.string().max(1000).optional(), intensity: z.number().int().min(1).max(10).default(6), track_index: TrackIndex.default(0), clip_slot_index: ClipSlotIndex.default(0) }, annotations: ro, handler: async (args) => ({ ok: true, midiClipPlan: generateMidiClipPlan(args) }) },
   { name: "ableton_generate_drum_rack_plan", description: "Generate a drum rack plan.", inputSchema: { style: z.string().default("house") }, annotations: ro, handler: async (args) => ({ ok: true, drumRackPlan: { style: args.style, pads: ["kick", "snare", "closed_hat", "open_hat", "clap", "perc"] } }) },
   { name: "ableton_suggest_instrument_chain", description: "Suggest Ableton-native instrument chain.", inputSchema: { role: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, chain: { role: args.role, devices: ["Instrument Rack", "EQ Eight", "Compressor"] } }) },
   { name: "ableton_suggest_effect_chain", description: "Suggest Ableton-native effect chain.", inputSchema: { source: z.string().min(1) }, annotations: ro, handler: async (args) => ({ ok: true, chain: { source: args.source, devices: ["EQ Eight", "Compressor", "Saturator", "Reverb"] } }) },

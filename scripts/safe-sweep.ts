@@ -144,7 +144,7 @@ const calls: SweepCall[] = [
   { name: "ableton_list_internet_archive_audio_files", arguments: { identifier: "opensource_audio", page: 1, pageSize: 5 }, expected: "any" },
   { name: "ableton_preview_remote_sample", arguments: { url: "https://archive.org/download/example/file.wav", license: "CC0" } },
   { name: "ableton_generate_session_plan", arguments: { brief: "safe sweep" } },
-  { name: "ableton_generate_midi_clip_plan", arguments: {} },
+  { name: "ableton_generate_midi_clip_plan", arguments: { concept: "safe sweep liminal memory motif", key: "C minor", bars: 8, style: "liminal/backrooms/horror", intensity: 7, track_index: 0, clip_slot_index: 0 } },
   { name: "ableton_generate_drum_rack_plan", arguments: {} },
   { name: "ableton_suggest_instrument_chain", arguments: { role: "lead" } },
   { name: "ableton_suggest_effect_chain", arguments: { source: "drums" } },

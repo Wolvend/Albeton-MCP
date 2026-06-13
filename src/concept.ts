@@ -37,6 +37,16 @@ export type PrepareConceptAudioLayersOptions = {
   dry_run: boolean;
 };
 
+export type MidiClipPlanOptions = {
+  key: string;
+  bars: number;
+  style: string;
+  concept?: string;
+  intensity?: number;
+  track_index?: number;
+  clip_slot_index?: number;
+};
+
 export type BuildArrangementFromPreparedAudioOptions = {
   preparation_id: string;
   sample_assignments?: SampleLayerAssignmentInput[];
@@ -983,6 +993,124 @@ function motifNotes(horror: boolean, intensity: number) {
     { pitch: 64, start_time: 4, duration: 1.5, velocity: velocityBase - 4 },
     { pitch: 60, start_time: 7, duration: 1, velocity: velocityBase - 10 }
   ];
+}
+
+const RootPitchClasses: Record<string, number> = {
+  c: 0,
+  "c#": 1,
+  db: 1,
+  d: 2,
+  "d#": 3,
+  eb: 3,
+  e: 4,
+  f: 5,
+  "f#": 6,
+  gb: 6,
+  g: 7,
+  "g#": 8,
+  ab: 8,
+  a: 9,
+  "a#": 10,
+  bb: 10,
+  b: 11
+};
+
+function keyRootPitchClass(key: string) {
+  const match = key.trim().toLowerCase().match(/^([a-g](?:#|b)?)/);
+  return match ? RootPitchClasses[match[1]!] ?? 0 : 0;
+}
+
+function transposeMotifNotes(notes: ReturnType<typeof motifNotes>, key: string, basePitchClass: number) {
+  const targetPitchClass = keyRootPitchClass(key);
+  let interval = targetPitchClass - basePitchClass;
+  if (interval > 6) interval -= 12;
+  if (interval < -6) interval += 12;
+  return notes.map((note) => ({
+    ...note,
+    pitch: Math.max(0, Math.min(127, note.pitch + interval))
+  }));
+}
+
+export function generateMidiClipPlan(options: MidiClipPlanOptions) {
+  const concept = options.concept ?? "";
+  const style = options.style || "electronic";
+  const key = options.key || "C minor";
+  const bars = Math.max(1, Math.min(64, Math.floor(options.bars || 4)));
+  const clipLengthBeats = bars * 4;
+  const intensity = Math.max(1, Math.min(10, Math.floor(options.intensity ?? 6)));
+  const horror = isLiminalHorror(concept, style);
+  const baseNotes = motifNotes(horror, intensity);
+  const patternLength = horror ? 16 : 8;
+  const transposed = transposeMotifNotes(baseNotes, key, horror ? 2 : 9);
+  const notes = [];
+  for (let offset = 0; offset < clipLengthBeats && notes.length < 128; offset += patternLength) {
+    const repeat = Math.floor(offset / patternLength);
+    for (const note of transposed) {
+      const startTime = note.start_time + offset;
+      if (startTime >= clipLengthBeats) continue;
+      notes.push({
+        ...note,
+        start_time: startTime,
+        duration: Math.min(note.duration, Math.max(0.25, clipLengthBeats - startTime)),
+        velocity: Math.max(1, Math.min(127, Math.round(note.velocity - (repeat * (horror ? 4 : 2)))))
+      });
+    }
+  }
+  const trackIndex = options.track_index ?? 0;
+  const clipSlotIndex = options.clip_slot_index ?? 0;
+  const name = horror ? "Sparse Motif - liminal memory" : `${style.slice(0, 48) || "MIDI"} Motif`;
+  return {
+    key,
+    bars,
+    style,
+    concept: concept ? sanitizeRemoteSampleText(concept, 500) : null,
+    intensity,
+    preset: horror ? "liminal_backrooms_horror" : "general_motif",
+    clip_length_beats: clipLengthBeats,
+    track_index: trackIndex,
+    clip_slot_index: clipSlotIndex,
+    name,
+    note_count: notes.length,
+    notes,
+    density: {
+      notes_per_bar: Number((notes.length / bars).toFixed(2)),
+      sparse: notes.length / bars <= 2
+    },
+    exactNextToolCalls: {
+      createClipDryRun: {
+        name: "ableton_create_midi_clip",
+        arguments: { track_index: trackIndex, clip_slot_index: clipSlotIndex, length: clipLengthBeats, name, dry_run: true }
+      },
+      insertNotesDryRun: {
+        name: "ableton_insert_midi_notes",
+        arguments: {
+          track_index: trackIndex,
+          clip_slot_index: clipSlotIndex,
+          notes,
+          create_clip_if_missing: true,
+          clip_length: clipLengthBeats,
+          name,
+          dry_run: true
+        }
+      }
+    },
+    productionNotes: horror
+      ? [
+        "Keep this motif sparse and slightly too exposed; let room tone and reverb carry most of the length.",
+        "Use a soft, decayed instrument before adding distortion or heavy modulation.",
+        "Review velocity and probability before real insertion if the target Ableton version exposes note probability."
+      ]
+      : [
+        "Use this as an editable motif seed, not a finished composition.",
+        "Review register, instrument choice, and velocity before real insertion."
+      ],
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      nextStep: "Review the insertNotesDryRun call, then use ableton_insert_midi_notes with dry_run=true before any write-gated execution."
+    }
+  };
 }
 
 function safeMidiFileName(planId: string, value?: string) {

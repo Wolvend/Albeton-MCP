@@ -96,6 +96,7 @@ Fast path:
    - Dry-run by default.
    - Renders the stored plan's sparse motif as a `.mid` file under `samples\staging\midi` only after `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Never overwrites an existing MIDI file and writes an attribution sidecar with checksum, source plan ID, tempo, key, and note count.
+   - For quick standalone motif review before a full arrangement exists, use `ableton_generate_midi_clip_plan`; it returns deterministic editable notes and exact `ableton_insert_midi_notes` dry-run arguments without writing files or contacting Ableton.
 
 14. `ableton_prepare_concept_audio_layers`
    - Dry-run by default.
@@ -242,7 +243,7 @@ The arrangement plan includes:
 - A read-only user-gated UI placement plan for staged devices that returns screenshot-first readiness calls without moving the mouse, typing, or inserting devices.
 - A read-only execution runbook that groups planned actions into practical production phases with gates, dependencies, postconditions, and inspection calls.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
-- A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
+- A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact or reviewable through `ableton_generate_midi_clip_plan` as ready-to-dry-run `ableton_insert_midi_notes` arguments.
 - Optional named, shaped, and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Distant Room Tone`, `Mechanical Texture`, or `Reversed Fragments`. Sample shaping uses conservative layer-specific gain, transpose/detune, warp mode, and start/end marker actions.
 - Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, distant room-tone bed, and reversed fragments. These can be rendered into staging with `ableton_prepare_concept_audio_layers`.
 - A staged automation plan for reverb, delay, filter, and volume movement. `ableton_plan_concept_device_automation_readiness` now links each non-MIDI lane to `ableton_extract_automation_summary` so agents can inspect mixer volume, send, and device parameter candidates before any write; automation remains non-writing until the bridge proves support.

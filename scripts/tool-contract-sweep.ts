@@ -381,7 +381,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_render_concept_automation_map", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_render_delivery_plan", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_generate_session_plan", arguments: { brief: "contract sweep" } },
-    { name: "ableton_generate_midi_clip_plan", arguments: { key: "C minor", bars: 4, style: "electronic" } },
+    { name: "ableton_generate_midi_clip_plan", arguments: { concept: "contract sweep liminal memory motif", key: "C minor", bars: 8, style: "liminal/backrooms/horror", intensity: 7, track_index: 0, clip_slot_index: 0 } },
     { name: "ableton_generate_drum_rack_plan", arguments: { style: "house" } },
     { name: "ableton_suggest_instrument_chain", arguments: { role: "lead" } },
     { name: "ableton_suggest_effect_chain", arguments: { source: "drums" } },
