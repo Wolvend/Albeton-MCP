@@ -90,6 +90,57 @@ describe("concept-to-music planning", () => {
     expect(delivery.export.sampleRate).toBe(48000);
   });
 
+  it("turns approved reference audio into redacted source-treatment assignments", async () => {
+    await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+    const sourcePath = path.join(LOCAL_PATHS.staging, "backrooms-source-memory.mp3");
+    await fs.writeFile(sourcePath, "fixture source audio placeholder");
+    const planned = await planConceptTrack({
+      concept: "backrooms dementia song becoming hallway ambience",
+      target_duration_seconds: 150,
+      intensity: 9,
+      sources: ["local_library"],
+      reference_path: sourcePath
+    });
+    const arrangement = await buildLayeredArrangementPlan(planned.plan.id);
+    const stored = await readArrangementPlan(arrangement.arrangement.id);
+
+    expect(planned.plan.reference?.mediaType).toBe("audio");
+    expect(planned.plan.reference?.approvedForAudioPlacement).toBe(true);
+    expect(planned.plan.reference?.path).not.toBe(sourcePath);
+    expect(planned.plan.reference?.sourceAudioPlan?.targetLayers.map((layer) => layer.layer)).toEqual(expect.arrayContaining([
+      "Degraded Memory",
+      "Stretched Room",
+      "Reversed Fragments"
+    ]));
+    expect(arrangement.arrangement.sourceAudioPlan?.referencePath).not.toBe(sourcePath);
+    expect(arrangement.arrangement.sourceAudioPlan?.assignments.length).toBeGreaterThanOrEqual(3);
+    expect(arrangement.arrangement.sampleAssignments.every((assignment) => assignment.path !== sourcePath)).toBe(true);
+    expect(arrangement.arrangement.sampleAssignments.some((assignment) => assignment.source === "reference_audio")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_load_preset_or_sample").length).toBeGreaterThanOrEqual(3);
+    expect(stored.sampleAssignments.some((assignment) => assignment.path === sourcePath && assignment.source === "reference_audio")).toBe(true);
+  });
+
+  it("keeps unapproved reference audio informational instead of executable", async () => {
+    const unapprovedDir = path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-reference-test");
+    await fs.mkdir(unapprovedDir, { recursive: true });
+    const sourcePath = path.join(unapprovedDir, "outside-approved-roots.mp3");
+    await fs.writeFile(sourcePath, "fixture source audio placeholder");
+    const planned = await planConceptTrack({
+      concept: "liminal horror reference that still needs staging",
+      target_duration_seconds: 90,
+      intensity: 7,
+      sources: ["local_library"],
+      reference_path: sourcePath
+    });
+    const arrangement = await buildLayeredArrangementPlan(planned.plan.id);
+
+    expect(planned.plan.reference?.mediaType).toBe("audio");
+    expect(planned.plan.reference?.approvedForAudioPlacement).toBe(false);
+    expect(planned.plan.reference?.nextSteps?.join(" ")).toMatch(/samples\/staging|Codex Imports|User Library|Live Recordings/);
+    expect(arrangement.arrangement.sourceAudioPlan).toBeUndefined();
+    expect(arrangement.arrangement.sampleAssignments.some((assignment) => assignment.source === "reference_audio")).toBe(false);
+  });
+
   it("rejects real concept execution while write gate is disabled", async () => {
     const planned = await planConceptTrack({
       concept: "backrooms pressure with a distant broken melody",

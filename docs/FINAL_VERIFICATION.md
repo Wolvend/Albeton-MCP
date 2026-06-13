@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 22 test files and 57 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged device-chain and automation actions, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 22 test files and 59 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -175,6 +175,7 @@ Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` du
 - HyperNimbus uses the safe tool allowlist.
 - Downloads, writes, and UI/mouse control remain disabled by default.
 - Remote sample metadata and concept sample preview URLs are sanitized or validated against the approved sample URL policy before being returned.
+- Concept reference audio now becomes executable only when it is already under approved sample roots; MCP responses redact the local path while stored plans retain the path for later gated execution.
 - `ableton_list_internet_archive_audio_files` extracts bounded Internet Archive audio candidates from item metadata, validates item identifiers, constructs `archive.org/download` URLs, preserves attribution metadata, and recognizes common Creative Commons URL license forms.
 - Real staged sample downloads now persist sidecar attribution with source URL, destination name, license policy, creator/title/identifier metadata, checksum, byte count, and staging time.
 - `ableton_generate_attribution_report` now reads only bounded `.attribution.json` sidecars from sample staging and Codex Imports, redacts local paths, and sanitizes remote title/creator text for display.

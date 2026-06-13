@@ -7,6 +7,7 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
 1. `ableton_plan_concept_track`
    - Stores a concept plan under `diagnostics\runtime\concept-plans`.
    - Produces sections, tempo/key, layer roles, search queries, device-chain suggestions, mix targets, and approval checklist.
+   - Accepts `reference_path` for a local reference file. If the path is an approved audio file under sample staging, Codex Imports, the Ableton User Library, or Live Recordings, the plan adds a source-audio treatment plan.
 
 2. `ableton_search_concept_samples`
    - Searches approved metadata sources without downloading.
@@ -22,6 +23,7 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
    - Converts the concept plan into a stored Ableton action plan.
    - Builds tempo, track, scene, arrangement marker, mix, send, and sparse MIDI motif actions.
    - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit `ableton_load_preset_or_sample` actions.
+   - Automatically maps approved reference audio to the most relevant concept layers unless those layers already have explicit sample assignments.
    - Preserves each layer's Ableton-native device chain as a staged `devicePlan` for review.
    - Uses created-track placeholders for mix, send, and MIDI actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
 
@@ -67,9 +69,10 @@ The arrangement plan includes:
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
 - A short editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer.
 - Optional approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`.
+- Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, and reversed fragments.
 - A staged automation plan for reverb, delay, filter, and volume movement. These lanes are review metadata until the live set has verified device/parameter targets.
 
-Sample placement remains staged until local sample paths are approved. Assignment paths must come from sample staging, Codex Imports, the Ableton User Library, or Live Recordings; tool responses redact the local path while stored plans retain the executable path. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects. Device chains are stored as reviewable `devicePlan` entries because named device insertion through LiveAPI requires a verified Browser or hot-swap target for the running Ableton version.
+Sample placement remains staged until local sample paths are approved. Assignment paths and executable reference audio must come from sample staging, Codex Imports, the Ableton User Library, or Live Recordings; tool responses redact the local path while stored plans retain the executable path. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects. Device chains are stored as reviewable `devicePlan` entries because named device insertion through LiveAPI requires a verified Browser or hot-swap target for the running Ableton version.
 
 ## Example
 
@@ -82,6 +85,7 @@ ableton_plan_concept_track:
     - local_library
     - internet_archive
     - freesound
+  reference_path: "C:\\Users\\LIZ\\Desktop\\MCP\\ableton-mcp\\samples\\staging\\source-song.mp3"
 ```
 
 Then:

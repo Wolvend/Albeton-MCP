@@ -55,10 +55,28 @@ type ConceptPlan = {
   sources: ConceptSource[];
   reference?: {
     path: string;
+    redactedPath: string;
+    mediaType: "audio" | "file";
+    approvedForAudioPlacement: boolean;
+    sourceAudioPlan?: SourceAudioTreatmentPlan | undefined;
+    nextSteps?: string[] | undefined;
   };
   sections: ConceptSection[];
   layers: ConceptLayer[];
   approvalChecklist: string[];
+};
+
+type SourceAudioTreatmentPlan = {
+  intent: string;
+  targetLayers: Array<{
+    layer: string;
+    clip_slot_index: number;
+    name: string;
+    treatment: string;
+    warp: string;
+    followUp: string[];
+  }>;
+  globalProcessing: string[];
 };
 
 type ArrangementAction = {
@@ -79,7 +97,19 @@ type ArrangementPlan = {
     redactedPath: string;
     clip_slot_index: number;
     name: string | null;
+    source: "manual_assignment" | "reference_audio";
+    treatment?: string | undefined;
   }>;
+  sourceAudioPlan?: {
+    referencePath: string;
+    assignments: Array<{
+      layer: string;
+      clip_slot_index: number;
+      name: string;
+      treatment: string;
+      followUp: string[];
+    }>;
+  } | undefined;
   devicePlan: Array<{
     layer: string;
     devices: string[];
@@ -109,6 +139,9 @@ export type SampleLayerAssignmentInput = {
   path: string;
   clip_slot_index?: number;
   name?: string;
+  source?: "manual_assignment" | "reference_audio" | undefined;
+  treatment?: string | undefined;
+  followUp?: string[] | undefined;
 };
 
 const AudioFileExtensions = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg"]);
@@ -159,6 +192,67 @@ async function resolveApprovedConceptSamplePath(inputPath: string) {
     throw new AbletonMcpError("Concept sample assignments must come from staging, Codex Imports, the Ableton User Library, or Live Recordings.", "SAMPLE_PATH_NOT_APPROVED", ["Stage downloads first, or choose a sample already under the Ableton User Library."]);
   }
   return { real: safe.real, redacted: redactPath(safe.real), extension };
+}
+
+function isAudioFilePath(inputPath: string) {
+  return AudioFileExtensions.has(path.extname(inputPath).toLowerCase());
+}
+
+function sourceAudioTreatmentPlan(horror: boolean, intensity: number): SourceAudioTreatmentPlan {
+  if (horror) {
+    return {
+      intent: "Transform the provided source audio into a degraded liminal memory rather than treating it as a clean backing track.",
+      targetLayers: [
+        {
+          layer: "Degraded Memory",
+          clip_slot_index: 0,
+          name: "Source Memory - degraded motif",
+          treatment: "Use a recognizable excerpt, pitch it down slightly, narrow the bandwidth, add tape saturation, and let it decay under long reverb.",
+          warp: "Complex Pro or texture-friendly stretch; preserve unstable timing instead of hard quantizing.",
+          followUp: ["Find the most melodic 8-16 bar phrase.", "Low-pass until the source feels distant.", "Automate reverb send upward through the Decay Loop section."]
+        },
+        {
+          layer: "Stretched Room",
+          clip_slot_index: 1,
+          name: "Source Memory - stretched room wash",
+          treatment: "Stretch a quieter section into an ambient wash, remove transient focus, and blend it under room tone.",
+          warp: "Long stretch with crossfades; avoid tempo-locked rhythmic clarity.",
+          followUp: ["Use only low-mid detail under the main motif.", "High-pass rumble before reverb.", "Keep level below the Degraded Memory layer."]
+        },
+        {
+          layer: "Reversed Fragments",
+          clip_slot_index: 2,
+          name: "Source Memory - reversed fragments",
+          treatment: "Reverse short fragments and place them before section changes as impossible-memory swells.",
+          warp: "Manual reverse/resample step; keep fragments short and sparse.",
+          followUp: ["Place fragments before Spatial Collapse and Unresolved Tail.", "Filter out harsh highs.", "Send more to delay than to the dry channel."]
+        }
+      ],
+      globalProcessing: [
+        "Keep the original source recognizable only in brief windows.",
+        "Favor reverb, delay throws, filtering, saturation, and negative space over dense layering.",
+        `Use intensity ${intensity}/10 as the upper bound for distortion and instability.`
+      ]
+    };
+  }
+
+  return {
+    intent: "Use the provided source audio as the main recognizable material while keeping all edits staged and reviewable.",
+    targetLayers: [
+      {
+        layer: "Core Texture",
+        clip_slot_index: 0,
+        name: "Source Texture",
+        treatment: "Use an approved excerpt as the main texture and shape it with EQ, compression, and shared space.",
+        warp: "Use a stable warp mode that preserves the source character.",
+        followUp: ["Choose one clear excerpt.", "Trim silence.", "Balance against the generated MIDI motif."]
+      }
+    ],
+    globalProcessing: [
+      "Preserve source attribution and local path redaction.",
+      "Keep destructive edits outside MCP unless explicitly approved."
+    ]
+  };
 }
 
 function seconds(value: number) {
@@ -383,10 +477,25 @@ function arrangementForReport(arrangement: ArrangementPlan): ArrangementPlan {
       ...assignment,
       path: assignment.redactedPath
     })),
+    sourceAudioPlan: arrangement.sourceAudioPlan ? {
+      ...arrangement.sourceAudioPlan,
+      referencePath: redactPath(arrangement.sourceAudioPlan.referencePath)
+    } : undefined,
     actions: arrangement.actions.map((action) => ({
       ...action,
       payload: redactActionPayload(action.payload)
     }))
+  };
+}
+
+function conceptForReport(plan: ConceptPlan): ConceptPlan {
+  if (!plan.reference) return plan;
+  return {
+    ...plan,
+    reference: {
+      ...plan.reference,
+      path: plan.reference.redactedPath
+    }
   };
 }
 
@@ -465,11 +574,43 @@ export async function planConceptTrack(input: ConceptPlanInput) {
 
   if (input.reference_path) {
     const safe = await resolveSafePath(input.reference_path, { mustExist: true });
-    plan.reference = { path: redactPath(safe.real) };
+    const redactedPath = redactPath(safe.real);
+    if (isAudioFilePath(safe.real)) {
+      try {
+        const approved = await resolveApprovedConceptSamplePath(safe.real);
+        plan.reference = {
+          path: approved.real,
+          redactedPath: approved.redacted,
+          mediaType: "audio",
+          approvedForAudioPlacement: true,
+          sourceAudioPlan: sourceAudioTreatmentPlan(horror, input.intensity)
+        };
+      } catch {
+        plan.reference = {
+          path: safe.real,
+          redactedPath,
+          mediaType: "audio",
+          approvedForAudioPlacement: false,
+          sourceAudioPlan: sourceAudioTreatmentPlan(horror, input.intensity),
+          nextSteps: [
+            "Copy or import the source audio into samples/staging, Codex Imports, the Ableton User Library, or Live Recordings before automatic placement.",
+            "Build the arrangement with explicit sample_assignments after the path is approved."
+          ]
+        };
+      }
+    } else {
+      plan.reference = {
+        path: safe.real,
+        redactedPath,
+        mediaType: "file",
+        approvedForAudioPlacement: false,
+        nextSteps: ["Use a common audio file extension to enable source-audio treatment planning."]
+      };
+    }
   }
 
   const filePath = await writeJson(`${plan.id}.json`, plan);
-  return { plan, storedPath: redactPath(filePath) };
+  return { plan: conceptForReport(plan), storedPath: redactPath(filePath) };
 }
 
 export async function searchConceptSamples(options: { plan_id?: string; concept?: string; page: number; pageSize: number }) {
@@ -571,8 +712,23 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       nextTrackOffset += 1;
     }
   }
+  const explicitAssignmentLayers = new Set(sampleAssignmentsInput.map((assignment) => assignment.layer.trim().toLowerCase()));
+  const referenceAssignments: SampleLayerAssignmentInput[] = plan.reference?.mediaType === "audio" && plan.reference.approvedForAudioPlacement && plan.reference.sourceAudioPlan
+    ? plan.reference.sourceAudioPlan.targetLayers
+      .filter((target) => !explicitAssignmentLayers.has(target.layer.toLowerCase()))
+      .map((target) => ({
+        layer: target.layer,
+        path: plan.reference!.path,
+        clip_slot_index: target.clip_slot_index,
+        name: target.name,
+        source: "reference_audio",
+        treatment: target.treatment,
+        followUp: target.followUp
+      }))
+    : [];
+  const allSampleAssignments = [...referenceAssignments, ...sampleAssignmentsInput];
   const sampleAssignments = [];
-  for (const assignment of sampleAssignmentsInput) {
+  for (const assignment of allSampleAssignments) {
     const layerName = assignment.layer.trim();
     const target = layerTargets.find((candidate) => candidate.layer.name.toLowerCase() === layerName.toLowerCase());
     if (!target) {
@@ -588,7 +744,10 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       path: sample.real,
       redactedPath: sample.redacted,
       clip_slot_index: assignment.clip_slot_index ?? 0,
-      name: assignment.name?.trim().slice(0, 128) || target.layer.name
+      name: assignment.name?.trim().slice(0, 128) || target.layer.name,
+      source: assignment.source ?? "manual_assignment",
+      treatment: assignment.treatment,
+      followUp: assignment.followUp ?? []
     });
   }
   const actions: ArrangementAction[] = [
@@ -700,8 +859,22 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       path: assignment.path,
       redactedPath: assignment.redactedPath,
       clip_slot_index: assignment.clip_slot_index,
-      name: assignment.name
+      name: assignment.name,
+      source: assignment.source,
+      treatment: assignment.treatment
     })),
+    sourceAudioPlan: plan.reference?.mediaType === "audio" && plan.reference.approvedForAudioPlacement && plan.reference.sourceAudioPlan ? {
+      referencePath: plan.reference.path,
+      assignments: sampleAssignments
+        .filter((assignment) => assignment.source === "reference_audio")
+        .map((assignment) => ({
+          layer: assignment.layer,
+          clip_slot_index: assignment.clip_slot_index,
+          name: assignment.name ?? assignment.layer,
+          treatment: assignment.treatment ?? "Use as approved reference audio material.",
+          followUp: assignment.followUp ?? []
+        }))
+    } : undefined,
     devicePlan,
     automationPlan,
     notes: [
