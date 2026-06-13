@@ -174,6 +174,7 @@ function summarizeTrack(trackIndex, includeDevices, includeClips) {
     fired_slot_index: safeGet(trackApi, "fired_slot_index", null),
     device_count: deviceCount,
     clip_slot_count: clipSlotCount,
+    mixer: mixerSummary("live_set tracks " + trackIndex),
     devices: devices,
     clips: clips
   };
@@ -226,8 +227,25 @@ function mixerSummary(trackPath) {
   var panning = liveObject(mixerPath + " panning");
   return {
     volume: summarizeParameter(volume, 0),
-    panning: summarizeParameter(panning, 1)
+    panning: summarizeParameter(panning, 1),
+    sends: summarizeSends(trackPath)
   };
+}
+
+function summarizeSends(trackPath) {
+  var mixerPath = trackPath + " mixer_device";
+  var mixer = liveObject(mixerPath);
+  var sendCount = childCount(mixer, "sends");
+  var returnTrackCount = childCount(liveObject("live_set"), "return_tracks");
+  var sends = [];
+  for (var i = 0; i < sendCount; i += 1) {
+    var send = summarizeParameter(liveObject(mixerPath + " sends " + i), i);
+    send.send_index = i;
+    send.return_track_index = i < returnTrackCount ? i : null;
+    send.return_track_name = i < returnTrackCount ? safeGet(liveObject("live_set return_tracks " + i), "name", "") : "";
+    sends.push(send);
+  }
+  return sends;
 }
 
 function summarizeScene(sceneIndex) {
@@ -824,9 +842,14 @@ function setTrackSend(payload) {
   var sendIndex = parseRequiredIndex(payload, "send_index");
   var value = Number(payload && payload.value);
   if (!isFinite(value) || value < 0 || value > 1) throw new Error("Send value must be between 0 and 1.");
-  var parameter = liveObject("live_set tracks " + trackIndex + " mixer_device sends " + sendIndex);
+  var mixerPath = "live_set tracks " + trackIndex + " mixer_device";
+  var sendCount = childCount(liveObject(mixerPath), "sends");
+  if (sendIndex >= sendCount) {
+    throw new Error("send_index " + sendIndex + " is out of range; track " + trackIndex + " has " + sendCount + " sends. Call ableton_get_track_mixer and ableton_list_return_tracks first.");
+  }
+  var parameter = liveObject(mixerPath + " sends " + sendIndex);
   parameter.set("value", value);
-  return { track_index: trackIndex, send_index: sendIndex, value: safeGet(parameter, "value", null) };
+  return { track_index: trackIndex, send_index: sendIndex, value: safeGet(parameter, "value", null), mixer: mixerSummary("live_set tracks " + trackIndex) };
 }
 
 function setReturnMixerParameter(payload, parameterName, minValue, maxValue) {
