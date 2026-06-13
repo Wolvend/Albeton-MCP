@@ -878,6 +878,24 @@ function redactActionPayload(payload: Record<string, unknown>) {
   return redacted;
 }
 
+export function extractUnsupportedBridgeResult(response: unknown) {
+  const envelope = response && typeof response === "object" ? response as { data?: unknown } : {};
+  const data = envelope.data && typeof envelope.data === "object"
+    ? envelope.data as Record<string, unknown>
+    : response && typeof response === "object"
+      ? response as Record<string, unknown>
+      : null;
+  if (!data || data.unsupported !== true) return null;
+  return {
+    action: typeof data.action === "string" ? data.action : null,
+    reason: typeof data.reason === "string" ? data.reason : "Bridge reported this action as unsupported.",
+    nextSteps: Array.isArray(data.nextSteps)
+      ? data.nextSteps.filter((step): step is string => typeof step === "string")
+      : [],
+    details: data.details ?? null
+  };
+}
+
 function arrangementForReport(arrangement: ArrangementPlan): ArrangementPlan {
   return {
     ...arrangement,
@@ -3084,7 +3102,21 @@ export async function executeConceptPlan(options: ConceptExecutionOptions) {
       continue;
     }
     const payload = actionPayloadWithCreatedTrack(action, resolution);
-    results.push({ action: action.action, bridge: await bridgeAction(action.action, payload), resolvedPayload: redactActionPayload(payload) });
+    const bridge = await bridgeAction(action.action, payload);
+    const unsupported = extractUnsupportedBridgeResult(bridge);
+    if (unsupported) {
+      throw new AbletonMcpError(
+        `Concept execution stopped because ${action.action} is unsupported by the loaded bridge.`,
+        "CONCEPT_EXECUTION_UNSUPPORTED_ACTION",
+        [
+          `Bridge reason: ${unsupported.reason}`,
+          ...unsupported.nextSteps,
+          "Some earlier approved actions may already have run; inspect the Ableton set before retrying.",
+          "Rerun ableton_preflight_concept_execution after updating the bridge or removing the unsupported action from the stored plan."
+        ]
+      );
+    }
+    results.push({ action: action.action, bridge, resolvedPayload: redactActionPayload(payload) });
   }
   return { dry_run: false, arrangement_id: arrangement.id, resolution, results };
 }

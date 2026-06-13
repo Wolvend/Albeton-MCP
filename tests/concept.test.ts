@@ -7,6 +7,7 @@ import {
   buildLayeredArrangementPlan,
   createConceptExecutionApprovalBundle,
   executeConceptPlan,
+  extractUnsupportedBridgeResult,
   exportConceptMidiMotif,
   getArrangementPlanForReport,
   getConceptPlanForReport,
@@ -33,6 +34,27 @@ import {
 import { LOCAL_PATHS } from "../src/config.js";
 
 describe("concept-to-music planning", () => {
+  it("extracts unsupported bridge responses from successful bridge envelopes", () => {
+    const unsupported = extractUnsupportedBridgeResult({
+      ok: true,
+      data: {
+        unsupported: true,
+        action: "ableton_insert_effect",
+        reason: "Device insertion is not available.",
+        nextSteps: ["Use read tools first.", 42, "Use UI fallback only by choice."],
+        details: { requested_device: "Hybrid Reverb" }
+      }
+    });
+
+    expect(unsupported).toMatchObject({
+      action: "ableton_insert_effect",
+      reason: "Device insertion is not available.",
+      nextSteps: ["Use read tools first.", "Use UI fallback only by choice."],
+      details: { requested_device: "Hybrid Reverb" }
+    });
+    expect(extractUnsupportedBridgeResult({ ok: true, data: { created: true } })).toBeNull();
+  });
+
   it("lists read-only concept production presets with safe next calls", () => {
     const presets = listConceptPresets();
     const horror = presets.find((preset) => preset.id === "liminal_backrooms_horror");
