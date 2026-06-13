@@ -1,6 +1,6 @@
 # MCP Tool Catalog
 
-The server currently registers 200 MCP tools.
+The server currently registers 204 MCP tools.
 
 Use this command to inspect the live catalog:
 
@@ -18,7 +18,7 @@ Some LiveAPI write requests are intentionally capability-limited until the runni
 | --- | --- |
 | Environment and setup | `ableton_find_installation`, `ableton_get_environment`, `ableton_validate_config`, `ableton_live_status` |
 | Control mode status | `ableton_control_mode_status`, `ableton_bridge_status`, `ableton_get_bridge_capabilities`, `ableton_ui_driver_status` |
-| Production readiness | `ableton_get_production_readiness` reports planning/live-read/write-ready status across gates, client profiles, bridge reachability, concept workflow, and safety posture; `ableton_ui_control_consent_status`, `ableton_plan_ui_control_session` |
+| Production readiness | `ableton_get_production_readiness` reports planning/live-read/write-ready status across gates, client profiles, bridge reachability, concept workflow, and safety posture; `ableton_plan_agent_music_session` returns the exact safe agent workflow for turning a brief into concept, sample, arrangement, approval, and delivery calls; `ableton_ui_control_consent_status`, `ableton_plan_ui_control_session` |
 | Named UI actions | `ableton_list_safe_ui_actions`, `ableton_plan_ui_action_sequence`, `ableton_run_ui_action_sequence` |
 | Library and cache | `ableton_scan_library`, `ableton_search_library`, `ableton_get_scan_status` |
 | Ableton set analysis | `ableton_analyze_set`, `ableton_get_set_summary`, `ableton_compare_sets` |

@@ -78,6 +78,7 @@ const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
 const PreparedAudioId = z.string().regex(/^prepared-audio-[a-f0-9]{16}$/);
 const ConceptExecutionJournalId = z.string().regex(/^execution-\d+-[a-f0-9]{8}$/);
+const AgentMusicClient = z.enum(["codex", "hypernimbus", "openclaw", "claude", "openrouter", "gemini", "llama.cpp", "antigravity"]).default("codex");
 const ConceptSampleAssignment = z.object({
   layer: z.string().min(1).max(128),
   path: z.string().min(1),
@@ -523,6 +524,7 @@ function clientBootstrapBundle() {
       }
     },
     recommendedAgentWorkflow: [
+      { name: "ableton_plan_agent_music_session", arguments: { concept: "describe the place, feeling, or soundtrack brief", client: "codex", include_sample_search: true, check_bridge: false } },
       { name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
       { name: "ableton_list_concept_presets", arguments: {} },
       { name: "ableton_plan_full_concept_production", arguments: { concept: "describe the place, feeling, or soundtrack brief", include_sample_search: true } },
@@ -549,6 +551,137 @@ function clientBootstrapBundle() {
       "Use safeToolAllowlist.csv as an include list for OpenClaw/HyperNimbus-style tool filtering.",
       "Run live-smoke only after Ableton is open and the Max for Live bridge is loaded."
     ]
+  };
+}
+
+async function agentMusicSessionPlan(args: {
+  concept: string;
+  target_duration_seconds: number;
+  intensity: number;
+  style?: string;
+  reference_path?: string;
+  client: string;
+  include_sample_search: boolean;
+  include_audio_preparation: boolean;
+  check_bridge: boolean;
+}) {
+  const concept = args.concept.trim().replace(/\s+/g, " ");
+  const style = args.style?.trim() || (concept.toLowerCase().match(/backrooms|liminal|horror|dementia|memory|abandoned/) ? "liminal/backrooms/horror" : "cinematic electronic");
+  const readiness = await productionReadinessReport(args.check_bridge);
+  const safeAllowlist = safeToolAllowlistReport();
+  const conceptArguments: Record<string, unknown> = {
+    concept,
+    target_duration_seconds: args.target_duration_seconds,
+    intensity: args.intensity,
+    style,
+    sources: ["local_library", "internet_archive", "freesound"]
+  };
+  if (args.reference_path) conceptArguments.reference_path = "<same reference_path supplied to ableton_plan_agent_music_session>";
+
+  const phases = [
+    {
+      phase: "readiness",
+      objective: "Decide whether this run is offline planning, live read/dry-run, or gated write-ready.",
+      calls: [
+        { name: "ableton_get_production_readiness", arguments: { check_bridge: args.check_bridge } },
+        { name: "ableton_control_mode_status", arguments: {} },
+        { name: "ableton_mcp_get_safe_tool_allowlist", arguments: {} }
+      ]
+    },
+    {
+      phase: "concept_architecture",
+      objective: "Convert the brief into a deterministic production blueprint with sections, layers, device intentions, and approval checks.",
+      calls: [
+        { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 10 } },
+        { name: "ableton_plan_concept_track", arguments: conceptArguments },
+        { name: "ableton_render_concept_timeline", arguments: { plan_id: "concept-..." } },
+        { name: "ableton_render_concept_mix_plan", arguments: { plan_id: "concept-..." } },
+        { name: "ableton_render_concept_automation_map", arguments: { plan_id: "concept-..." } }
+      ]
+    },
+    {
+      phase: "sample_discovery",
+      objective: "Find licensed metadata candidates first; do not download or import during this phase.",
+      enabled: args.include_sample_search,
+      calls: args.include_sample_search ? [
+        { name: "ableton_search_concept_samples", arguments: { plan_id: "concept-...", page: 1, pageSize: 5 } },
+        { name: "ableton_generate_attribution_report", arguments: { page: 1, pageSize: 25 } }
+      ] : []
+    },
+    {
+      phase: "arrangement_plan",
+      objective: "Turn reviewed layers and approved local samples into a stored arrangement plan with no arbitrary bridge payloads.",
+      calls: [
+        { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: "concept-...", sample_assignments: [] } },
+        { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: "arrangement-..." } },
+        { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: "arrangement-...", check_bridge: false } },
+        { name: "ableton_plan_concept_routing_readiness", arguments: { arrangement_id: "arrangement-...", check_bridge: args.check_bridge } },
+        { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: "arrangement-...", check_bridge: args.check_bridge } }
+      ]
+    },
+    {
+      phase: "optional_audio_preparation",
+      objective: "Render approved local reference audio into reviewable prepared layers before any Ableton write.",
+      enabled: args.include_audio_preparation,
+      calls: args.include_audio_preparation ? [
+        { name: "ableton_prepare_concept_audio_layers", arguments: { plan_id: "concept-...", format: "wav", dry_run: true } },
+        { name: "ableton_build_arrangement_from_prepared_audio", arguments: { preparation_id: "prepared-audio-..." } }
+      ] : []
+    },
+    {
+      phase: "live_preflight_and_approval",
+      objective: "Probe the bridge and require an approval bundle before any real Ableton write.",
+      calls: [
+        { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
+        { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
+        { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-...", approval_id: "approval-...", approval_confirmed: true, dry_run: true } }
+      ]
+    },
+    {
+      phase: "delivery",
+      objective: "Prepare export and attribution instructions after the arrangement is reviewed.",
+      calls: [
+        { name: "ableton_render_delivery_plan", arguments: { plan_id: "concept-..." } },
+        { name: "ableton_render_concept_attribution_bundle", arguments: { arrangement_id: "arrangement-..." } },
+        { name: "ableton_plan_export_audio", arguments: { scope: "master", sampleRate: 48000, bitDepth: "24", normalize: false } }
+      ]
+    }
+  ];
+
+  return {
+    client: args.client,
+    concept,
+    style,
+    target_duration_seconds: args.target_duration_seconds,
+    intensity: args.intensity,
+    referenceAudio: {
+      provided: Boolean(args.reference_path),
+      path: args.reference_path ? redactPath(args.reference_path) : null,
+      policy: "Use only through allowed local sample roots or staging/import tools; stored concept tools validate and redact executable paths."
+    },
+    readiness,
+    safeToolAllowlist: {
+      profile: safeAllowlist.profile,
+      endpoint: safeAllowlist.endpoint,
+      count: safeAllowlist.count,
+      includesThisTool: safeAllowlist.tools.includes("ableton_plan_agent_music_session")
+    },
+    phases,
+    automationModel: {
+      default: "staged_approval",
+      realWritesRequire: ["ABLETON_MCP_ENABLE_WRITE=1", "approval_id", "approval_confirmed=true", "dry_run=false"],
+      downloadsRequire: "ABLETON_MCP_ENABLE_DOWNLOADS=1",
+      uiFallbackRequires: "ABLETON_MCP_ENABLE_UI_CONTROL=1 plus user-started UI driver",
+      arbitraryBridgePayloads: false
+    },
+    qualityTargets: [
+      "Layer from source emotion first, not tool availability.",
+      "Build contrast between motif, ambience, pressure, texture, and silence.",
+      "Use licensed metadata search before downloads.",
+      "Prefer Ableton LiveAPI bridge for background control; keep UI/mouse fallback separate.",
+      "Stop on unsupported bridge actions and report next steps instead of pretending success."
+    ],
+    nextBestCall: { name: "ableton_plan_concept_track", arguments: conceptArguments }
   };
 }
 
@@ -739,6 +872,7 @@ const toolDefs: ToolDef[] = [
   } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
   { name: "ableton_mcp_get_safe_tool_allowlist", description: "Return the HyperNimbus/OpenClaw safe tool allowlist as structured data and CSV without changing client configuration.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, safeToolAllowlist: safeToolAllowlistReport() }) },
+  { name: "ableton_plan_agent_music_session", description: "Return a safe step-by-step agent workflow for turning a mood/place brief into a layered Ableton production without side effects.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), reference_path: z.string().min(1).optional(), client: AgentMusicClient, include_sample_search: z.boolean().default(true), include_audio_preparation: z.boolean().default(true), check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, workflow: await agentMusicSessionPlan(args) }) },
   { name: "ableton_get_production_readiness", description: "Summarize Ableton MCP readiness for professional music-production work.", inputSchema: { check_bridge: z.boolean().default(true) }, annotations: ro, handler: async (args) => ({ ok: true, readiness: await productionReadinessReport(args.check_bridge) }) },
   { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
     const dir = path.join(LOCAL_PATHS.diagnostics, "reports");

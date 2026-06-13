@@ -63,6 +63,7 @@ const calls: SweepCall[] = [
   { name: "ableton_plan_ui_action_sequence", arguments: { actions: ["focus_window", "capture_screenshot"], dry_run: true } },
   { name: "ableton_run_ui_action_sequence", arguments: { actions: ["focus_window", "capture_screenshot"], dry_run: true }, expected: "any" },
   { name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
+  { name: "ableton_plan_agent_music_session", arguments: { concept: "safe sweep liminal concept session", target_duration_seconds: 90, intensity: 6, style: "liminal/backrooms/horror", client: "codex", check_bridge: false } },
   { name: "ableton_bridge_status", arguments: {} },
   { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false } },
   { name: "ableton_ui_driver_status", arguments: {} },

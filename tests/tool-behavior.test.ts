@@ -87,6 +87,51 @@ describe("MCP tool behavior", () => {
     });
   }, INTEGRATION_TIMEOUT_MS);
 
+  it("plans a side-effect-free agent music session across client runtimes", async () => {
+    await withClient(async (client) => {
+      const structured = await callStructured(client, "ableton_plan_agent_music_session", {
+        concept: "a backrooms hallway where a memory song collapses under fluorescent lights",
+        target_duration_seconds: 120,
+        intensity: 8,
+        style: "liminal/backrooms/horror",
+        client: "openclaw",
+        include_sample_search: true,
+        include_audio_preparation: true,
+        check_bridge: false
+      });
+      const workflow = structured.workflow as Record<string, any>;
+
+      expect(structured.ok).toBe(true);
+      expect(workflow.client).toBe("openclaw");
+      expect(workflow.style).toBe("liminal/backrooms/horror");
+      expect(workflow.safeToolAllowlist).toMatchObject({
+        endpoint: "http://127.0.0.1:17366/mcp",
+        includesThisTool: true
+      });
+      expect(workflow.automationModel).toMatchObject({
+        default: "staged_approval",
+        arbitraryBridgePayloads: false
+      });
+      expect(workflow.automationModel.realWritesRequire).toEqual(expect.arrayContaining([
+        "ABLETON_MCP_ENABLE_WRITE=1",
+        "approval_id"
+      ]));
+      expect(workflow.phases.map((phase: Record<string, unknown>) => phase.phase)).toEqual(expect.arrayContaining([
+        "concept_architecture",
+        "sample_discovery",
+        "live_preflight_and_approval"
+      ]));
+      expect(workflow.nextBestCall).toMatchObject({
+        name: "ableton_plan_concept_track"
+      });
+      expect(workflow.nextBestCall.arguments.sources).toEqual(expect.arrayContaining([
+        "local_library",
+        "internet_archive",
+        "freesound"
+      ]));
+    });
+  }, INTEGRATION_TIMEOUT_MS);
+
   it("reports a safe client bootstrap bundle for MCP consumers", async () => {
     await withClient(async (client) => {
       const structured = await callStructured(client, "ableton_mcp_get_client_bootstrap_bundle", {});

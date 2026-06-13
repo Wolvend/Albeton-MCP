@@ -21,6 +21,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_plan_ui_action_sequence",
   "ableton_control_mode_status",
   "ableton_get_production_readiness",
+  "ableton_plan_agent_music_session",
   "ableton_get_scan_status",
   "ableton_search_library",
   "ableton_search_samples",

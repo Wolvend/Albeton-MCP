@@ -148,6 +148,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_ui_driver_ping", arguments: {}, expected: "any" },
     { name: "ableton_control_mode_status", arguments: {} },
     { name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
+    { name: "ableton_plan_agent_music_session", arguments: { concept: "liminal backrooms horror contract sweep", target_duration_seconds: 120, intensity: 7, style: "liminal/backrooms/horror", client: "openclaw", include_sample_search: true, include_audio_preparation: true, check_bridge: false, reference_path: fixtures.stagedAudioPath } },
     { name: "ableton_export_diagnostic_report", arguments: { full_local_paths: false } },
     { name: "ableton_scan_library", arguments: { root: fixtures.dir, limit: 5 } },
     { name: "ableton_get_scan_status", arguments: {} },
