@@ -634,6 +634,26 @@ function clientBootstrapBundle() {
       { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
       { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-...", check_bridge: true } }
     ],
+    optionalGatedWorkflows: {
+      conceptDeviceUiSession: {
+        enabledByDefault: false,
+        excludedFromSafeToolAllowlist: true,
+        requiredGate: "ABLETON_MCP_ENABLE_UI_CONTROL=1 plus user-started UI driver",
+        purpose: "Collect screenshot evidence for staged device placement when LiveAPI named-device insertion is unsupported.",
+        boundaries: {
+          clicks: false,
+          typing: false,
+          deviceInsertion: false,
+          bridgeWrites: false,
+          rawCoordinates: false
+        },
+        calls: [
+          { name: "ableton_plan_concept_device_ui_placement", arguments: { arrangement_id: "arrangement-...", max_devices: 24, include_catalog_matches: true } },
+          { name: "ableton_begin_concept_device_ui_session", arguments: { arrangement_id: "arrangement-...", max_devices: 12, include_catalog_matches: true, dry_run: true } },
+          { name: "ableton_begin_concept_device_ui_session", arguments: { arrangement_id: "arrangement-...", max_devices: 12, include_catalog_matches: true, dry_run: false }, requires: ["ABLETON_MCP_ENABLE_UI_CONTROL=1", "user-started UI driver", "no concurrent bridge writes"] }
+        ]
+      }
+    },
     verificationCommands: [
       "npm run build",
       "npm test",
@@ -671,6 +691,7 @@ async function agentMusicSessionPlan(args: {
   const style = args.style?.trim() || (concept.toLowerCase().match(/backrooms|liminal|horror|dementia|memory|abandoned/) ? "liminal/backrooms/horror" : "cinematic electronic");
   const readiness = await productionReadinessReport(args.check_bridge);
   const safeAllowlist = safeToolAllowlistReport();
+  const safeTools = safeAllowlist.tools as readonly string[];
   const conceptArguments: Record<string, unknown> = {
     concept,
     target_duration_seconds: args.target_duration_seconds,
@@ -772,9 +793,29 @@ async function agentMusicSessionPlan(args: {
       profile: safeAllowlist.profile,
       endpoint: safeAllowlist.endpoint,
       count: safeAllowlist.count,
-      includesThisTool: safeAllowlist.tools.includes("ableton_plan_agent_music_session")
+      includesThisTool: safeTools.includes("ableton_plan_agent_music_session"),
+      excludesUserGatedUiSession: !safeTools.includes("ableton_begin_concept_device_ui_session")
     },
     phases,
+    optionalGatedWorkflows: {
+      conceptDeviceUiSession: {
+        enabledByDefault: false,
+        excludedFromSafeToolAllowlist: true,
+        requiredGate: "ABLETON_MCP_ENABLE_UI_CONTROL=1 plus user-started UI driver",
+        purpose: "Use only when staged concept devices need foreground Browser/Detail screenshot evidence before a user-approved device placement workflow.",
+        calls: [
+          { name: "ableton_plan_concept_device_ui_placement", arguments: { arrangement_id: "arrangement-...", max_devices: 24, include_catalog_matches: true } },
+          { name: "ableton_begin_concept_device_ui_session", arguments: { arrangement_id: "arrangement-...", max_devices: 12, include_catalog_matches: true, dry_run: true } }
+        ],
+        boundaries: {
+          clicks: false,
+          typing: false,
+          deviceInsertion: false,
+          bridgeWrites: false,
+          rawCoordinates: false
+        }
+      }
+    },
     automationModel: {
       default: "staged_approval",
       realWritesRequire: ["ABLETON_MCP_ENABLE_WRITE=1", "approval_id", "approval_confirmed=true", "dry_run=false"],

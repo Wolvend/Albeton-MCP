@@ -109,8 +109,15 @@ describe("MCP tool behavior", () => {
       expect(workflow.style).toBe("liminal/backrooms/horror");
       expect(workflow.safeToolAllowlist).toMatchObject({
         endpoint: "http://127.0.0.1:17366/mcp",
-        includesThisTool: true
+        includesThisTool: true,
+        excludesUserGatedUiSession: true
       });
+      expect(workflow.optionalGatedWorkflows.conceptDeviceUiSession).toMatchObject({
+        enabledByDefault: false,
+        excludedFromSafeToolAllowlist: true,
+        requiredGate: "ABLETON_MCP_ENABLE_UI_CONTROL=1 plus user-started UI driver"
+      });
+      expect(workflow.optionalGatedWorkflows.conceptDeviceUiSession.calls.map((call: Record<string, unknown>) => call.name)).toContain("ableton_begin_concept_device_ui_session");
       expect(workflow.automationModel).toMatchObject({
         default: "staged_approval",
         arbitraryBridgePayloads: false
@@ -149,6 +156,15 @@ describe("MCP tool behavior", () => {
       expect(bootstrap.clients.openclaw.commands.join("\n")).toContain("openclaw mcp doctor ableton-mcp --probe");
       expect(bootstrap.clients.openRouter.note).toContain("host app");
       expect(bootstrap.clients.llamaCpp.note).toContain("wrapper");
+      expect(bootstrap.optionalGatedWorkflows.conceptDeviceUiSession).toMatchObject({
+        enabledByDefault: false,
+        excludedFromSafeToolAllowlist: true,
+        requiredGate: "ABLETON_MCP_ENABLE_UI_CONTROL=1 plus user-started UI driver"
+      });
+      expect(bootstrap.optionalGatedWorkflows.conceptDeviceUiSession.calls.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_plan_concept_device_ui_placement",
+        "ableton_begin_concept_device_ui_session"
+      ]));
       expect(bootstrap.recommendedAgentWorkflow.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
         "ableton_plan_full_concept_production",
         "ableton_curate_concept_samples",
