@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildArrangementFromPreparedAudio,
   buildLayeredArrangementPlan,
+  createConceptExecutionApprovalBundle,
   executeConceptPlan,
   exportConceptMidiMotif,
   getArrangementPlanForReport,
@@ -119,6 +120,37 @@ describe("concept-to-music planning", () => {
     expect(preflight.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: "BRIDGE_NOT_CHECKED", severity: "warning" })
     ]));
+  });
+
+  it("creates a redacted non-approving execution approval bundle", async () => {
+    await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+    const stagedPath = path.join(LOCAL_PATHS.staging, "approval-bundle-room-tone.wav");
+    await fs.writeFile(stagedPath, "fixture approval bundle audio");
+    const planned = await planConceptTrack({
+      concept: "approval bundle liminal room tone",
+      target_duration_seconds: 90,
+      intensity: 7,
+      sources: ["local_library"]
+    });
+    const arrangement = await buildLayeredArrangementPlan(planned.plan.id, [{
+      layer: "Stretched Room",
+      path: stagedPath,
+      clip_slot_index: 0,
+      name: "Approval Bundle Room Tone"
+    }]);
+
+    const bundle = await createConceptExecutionApprovalBundle({
+      arrangement_id: arrangement.arrangement.id,
+      check_bridge: false
+    });
+
+    expect(bundle.approved).toBe(false);
+    expect(bundle.approvalRequired).toBe(true);
+    expect(bundle.gates.write.required).toBe(true);
+    expect(bundle.exactToolCalls.realExecutionAfterApproval.arguments).toMatchObject({ dry_run: false });
+    expect(bundle.preflight.readyForRealWrite).toBe(false);
+    expect(bundle.arrangement.actions.some((action) => action.payload.path === stagedPath)).toBe(false);
+    expect(bundle.securityBoundaries.join(" ")).toMatch(/does not approve execution/i);
   });
 
   it("plans concept MIDI motif export without writing by default", async () => {

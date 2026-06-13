@@ -21,6 +21,7 @@ import { assertAllowedSampleUrl } from "./network.js";
 import {
   buildLayeredArrangementPlan,
   buildArrangementFromPreparedAudio,
+  createConceptExecutionApprovalBundle,
   executeConceptPlan,
   exportConceptMidiMotif,
   getArrangementPlanForReport,
@@ -566,6 +567,7 @@ toolDefs.push(
   { name: "ableton_build_arrangement_from_prepared_audio", description: "Build a stored arrangement plan from a stored prepared-audio manifest without exposing local paths.", inputSchema: { preparation_id: PreparedAudioId, sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]) }, annotations: ro, handler: async (args) => ({ ok: true, preparedArrangement: await buildArrangementFromPreparedAudio(args) as any }) },
   { name: "ableton_export_concept_midi_motif", description: "Render a stored concept plan's sparse motif as a staged MIDI file; dry-run by default and never overwrites.", inputSchema: { plan_id: ConceptPlanId, output_name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, export: await exportConceptMidiMotif(args) as any }) },
   { name: "ableton_preflight_concept_execution", description: "Read-only preflight for a stored arrangement: validates action counts, bridge readiness, placeholder resolution, and likely clip-slot blockers before real execution.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(true) }, annotations: ro, handler: async (args) => ({ ok: true, preflight: await preflightConceptExecution(args) as any }) },
+  { name: "ableton_create_concept_execution_approval_bundle", description: "Create a read-only approval bundle for a stored arrangement with redacted plan, preflight, required gates, and exact next tool calls.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, approvalBundle: await createConceptExecutionApprovalBundle(args) as any }) },
   { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default.", inputSchema: { arrangement_id: ArrangementPlanId, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run }) as any }) },
   { name: "ableton_render_delivery_plan", description: "Plan final master/stem export settings for a stored concept plan without rendering.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, delivery: await renderDeliveryPlan(args.plan_id) as any }) },
 

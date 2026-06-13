@@ -66,12 +66,17 @@ Fast path:
    - Checks the stored arrangement action counts, bridge reachability, created-track placeholder resolution, staged review items, and likely clip-slot blockers.
    - Reports `readyForRealWrite=false` unless a bridge snapshot is checked successfully and no blockers are found.
 
-11. `ableton_execute_concept_plan`
+11. `ableton_create_concept_execution_approval_bundle`
+   - Read-only.
+   - Packages the redacted concept, redacted arrangement, preflight result, required gates, exact next tool calls, and approval checklist.
+   - Always returns `approved=false`; it is a review artifact, not an execution grant.
+
+12. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-12. `ableton_render_delivery_plan`
+13. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -142,6 +147,7 @@ ableton_export_concept_midi_motif with dry_run=true
 ableton_prepare_concept_audio_layers with dry_run=true
 ableton_build_arrangement_from_prepared_audio after real layer preparation
 ableton_preflight_concept_execution with check_bridge=true
+ableton_create_concept_execution_approval_bundle
 ableton_execute_concept_plan with dry_run=true
 ```
 

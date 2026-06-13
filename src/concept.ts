@@ -52,6 +52,8 @@ export type ConceptExecutionPreflightOptions = {
   check_bridge?: boolean;
 };
 
+export type ConceptExecutionApprovalBundleOptions = ConceptExecutionPreflightOptions;
+
 type ConceptLayer = {
   name: string;
   type: "audio" | "midi" | "return";
@@ -1560,6 +1562,75 @@ export async function preflightConceptExecution(options: ConceptExecutionPreflig
       nextSteps: bridgeSetupHints(error)
     };
   }
+}
+
+export async function createConceptExecutionApprovalBundle(options: ConceptExecutionApprovalBundleOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const preflight = await preflightConceptExecution(options);
+
+  return {
+    bundleType: "concept_execution_approval",
+    approved: false,
+    approvalRequired: true,
+    concept: conceptForReport(concept),
+    arrangement: arrangementForReport(arrangement),
+    preflight,
+    gates: {
+      write: {
+        required: true,
+        enabled: FLAGS.write,
+        env: "ABLETON_MCP_ENABLE_WRITE=1"
+      },
+      downloads: {
+        required: false,
+        enabled: FLAGS.downloads,
+        env: "ABLETON_MCP_ENABLE_DOWNLOADS=1"
+      },
+      uiControl: {
+        required: false,
+        enabled: FLAGS.uiControl,
+        env: "ABLETON_MCP_ENABLE_UI_CONTROL=1"
+      }
+    },
+    exactToolCalls: {
+      recheckPreflight: {
+        name: "ableton_preflight_concept_execution",
+        arguments: {
+          arrangement_id: arrangement.id,
+          check_bridge: true
+        }
+      },
+      dryRunExecution: {
+        name: "ableton_execute_concept_plan",
+        arguments: {
+          arrangement_id: arrangement.id,
+          dry_run: true
+        }
+      },
+      realExecutionAfterApproval: {
+        name: "ableton_execute_concept_plan",
+        arguments: {
+          arrangement_id: arrangement.id,
+          dry_run: false
+        }
+      }
+    },
+    approvalChecklist: [
+      "Review the redacted arrangement actions and staged device/automation plans.",
+      "Run ableton_preflight_concept_execution with check_bridge=true after the Ableton bridge is loaded.",
+      "Confirm preflight.readyForRealWrite is true before enabling writes.",
+      "Enable ABLETON_MCP_ENABLE_WRITE=1 only for the session where real execution is intended.",
+      "Keep downloads and UI control disabled unless a separate user-approved step requires them."
+    ],
+    securityBoundaries: [
+      "This bundle does not approve execution.",
+      "This bundle does not download files.",
+      "This bundle does not send write commands to Ableton.",
+      "This bundle does not use UI or mouse control.",
+      "Stored executable local paths are redacted in this response."
+    ]
+  };
 }
 
 export async function executeConceptPlan(options: { arrangement_id: string; dry_run: boolean }) {
