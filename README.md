@@ -32,7 +32,7 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
-| Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, sample-search plan, mix plan, arrangement skeleton, execution manifest, and delivery plan. |
+| Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, layer sample curation plan, mix plan, arrangement skeleton, execution manifest, and delivery plan. |
 | Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
 | Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
 | Safety/evals | Run security checks, runtime reports, bridge mock checks, sample license tests, and full MCP verification. |
@@ -247,18 +247,18 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 22 files, 81 tests passed
+Tests: 22 files, 82 tests passed
 Lint: passed
 Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed
 Safe sweep: passed
 Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 204 tools, 3 resources, 2 prompts
-All-tool contract sweep: 204 registered tools, 204 safe calls
+MCP verifier: 205 tools, 3 resources, 2 prompts
+All-tool contract sweep: 205 registered tools, 205 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; agent music-session orchestration available through ableton_plan_agent_music_session; layer sample curation available through ableton_curate_concept_samples
 Audit: 0 vulnerabilities
 ```
 

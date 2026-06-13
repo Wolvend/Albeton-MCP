@@ -109,6 +109,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_list_concept_execution_journals",
   "ableton_get_concept_execution_journal",
   "ableton_search_concept_samples",
+  "ableton_curate_concept_samples",
   "ableton_plan_full_concept_production",
   "ableton_build_layered_arrangement_plan",
   "ableton_preflight_concept_execution",

@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-204 tools
+205 tools
 3 resources
 2 prompts
 ```
@@ -56,6 +56,7 @@ Control-mode tools:
 - `ableton_plan_concept_device_automation_readiness`: maps staged concept device chains and automation lanes to device discovery, `ableton_extract_automation_summary`, and dry-run write templates.
 - `ableton_extract_automation_summary`: reads live mixer/device automation target candidates with bounded parameter output; breakpoint writes remain unsupported unless a bridge reports support.
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
+- `ableton_curate_concept_samples`: maps stored concept layers to licensed sample-search candidates, layer review notes, and dry-run staging templates without downloads.
 - `ableton_render_concept_attribution_bundle`: reports attribution sidecars for one stored concept arrangement without broad scans or path exposure.
 - `ableton_render_concept_production_scorecard`: scores a stored concept arrangement for layer coverage, sample readiness, routing, staged device/automation readiness, execution safety, and delivery readiness.
 - `ableton_list_concept_execution_journals` and `ableton_get_concept_execution_journal`: inspect redacted real-execution diagnostics after write-gated concept runs.

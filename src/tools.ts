@@ -23,6 +23,7 @@ import {
   buildLayeredArrangementPlan,
   buildArrangementFromPreparedAudio,
   createConceptExecutionApprovalBundle,
+  curateConceptSamples,
   executeConceptPlan,
   exportConceptMidiMotif,
   getArrangementPlanForReport,
@@ -528,6 +529,7 @@ function clientBootstrapBundle() {
       { name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
       { name: "ableton_list_concept_presets", arguments: {} },
       { name: "ableton_plan_full_concept_production", arguments: { concept: "describe the place, feeling, or soundtrack brief", include_sample_search: true } },
+      { name: "ableton_curate_concept_samples", arguments: { plan_id: "concept-...", search: true, allowed_only: true } },
       { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: "concept-..." } },
       { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } },
       { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-...", check_bridge: true } }
@@ -605,6 +607,7 @@ async function agentMusicSessionPlan(args: {
       enabled: args.include_sample_search,
       calls: args.include_sample_search ? [
         { name: "ableton_search_concept_samples", arguments: { plan_id: "concept-...", page: 1, pageSize: 5 } },
+        { name: "ableton_curate_concept_samples", arguments: { plan_id: "concept-...", search: true, allowed_only: true, page: 1, pageSize: 5 } },
         { name: "ableton_generate_attribution_report", arguments: { page: 1, pageSize: 25 } }
       ] : []
     },
@@ -1082,6 +1085,7 @@ toolDefs.push(
   { name: "ableton_list_concept_execution_journals", description: "List redacted concept execution journals from the bounded diagnostics journal store.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, journals: paginate(await listConceptExecutionJournals(), args.page, args.pageSize) }) },
   { name: "ableton_get_concept_execution_journal", description: "Read one redacted concept execution journal by generated execution id.", inputSchema: { execution_id: ConceptExecutionJournalId }, annotations: ro, handler: async (args) => ({ ok: true, executionJournal: await getConceptExecutionJournalForReport(args.execution_id) as any }) },
   { name: "ableton_search_concept_samples", description: "Search approved sample metadata for a stored concept plan or direct concept without downloading.", inputSchema: { plan_id: ConceptPlanId.optional(), concept: z.string().min(3).max(1000).optional(), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, samples: await searchConceptSamples({ plan_id: args.plan_id, concept: args.concept, page: args.page, pageSize: args.pageSize }) as any }) },
+  { name: "ableton_curate_concept_samples", description: "Map a stored concept plan's layers to licensed sample-search candidates and staging templates without downloading.", inputSchema: { plan_id: ConceptPlanId, search: z.boolean().default(false), allowed_only: z.boolean().default(true), max_layers: z.number().int().min(1).max(12).default(8), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, curation: await curateConceptSamples(args) as any }) },
   { name: "ableton_plan_full_concept_production", description: "Create a full safe concept-to-music plan: concept, sample metadata search, arrangement, production scorecard, dry-run execution preview, and delivery plan.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), sources: ConceptSources, reference_path: z.string().min(1).optional(), sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]), include_sample_search: z.boolean().default(true), sample_page_size: z.number().int().min(1).max(12).default(6) }, annotations: webro, handler: async (args) => ({ ok: true, production: await planConceptProduction(args) as any }) },
   { name: "ableton_stage_concept_samples", description: "Stage approved concept samples; dry-run by default and download-gated for real staging.", inputSchema: { samples: z.array(z.object({ url: z.string().url(), destinationName: z.string().min(1).max(160), metadata: z.record(z.unknown()).default({}) })).min(1).max(12), ...DryRun }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, staging: await stageConceptSamples({ samples: args.samples, dry_run: args.dry_run }) as any }) },
   { name: "ableton_build_layered_arrangement_plan", description: "Convert a stored concept plan into a stored Ableton track/scene/action plan.", inputSchema: { plan_id: ConceptPlanId, sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]) }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await buildLayeredArrangementPlan(args.plan_id, args.sample_assignments) as any }) },

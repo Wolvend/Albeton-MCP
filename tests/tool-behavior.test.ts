@@ -71,6 +71,7 @@ describe("MCP tool behavior", () => {
       expect(safeToolAllowlist.endpoint).toBe("http://127.0.0.1:17366/mcp");
       expect(tools).toEqual(expect.arrayContaining([
         "ableton_plan_concept_track",
+        "ableton_curate_concept_samples",
         "ableton_render_concept_automation_map",
         "ableton_render_concept_execution_manifest",
         "ableton_mcp_get_safe_tool_allowlist"
@@ -121,6 +122,8 @@ describe("MCP tool behavior", () => {
         "sample_discovery",
         "live_preflight_and_approval"
       ]));
+      const sampleDiscovery = workflow.phases.find((phase: Record<string, unknown>) => phase.phase === "sample_discovery");
+      expect(sampleDiscovery.calls.map((call: Record<string, unknown>) => call.name)).toContain("ableton_curate_concept_samples");
       expect(workflow.nextBestCall).toMatchObject({
         name: "ableton_plan_concept_track"
       });
@@ -146,6 +149,7 @@ describe("MCP tool behavior", () => {
       expect(bootstrap.clients.llamaCpp.note).toContain("wrapper");
       expect(bootstrap.recommendedAgentWorkflow.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
         "ableton_plan_full_concept_production",
+        "ableton_curate_concept_samples",
         "ableton_preflight_concept_execution"
       ]));
       expect(bootstrap.safetyDefaults).toMatchObject({

@@ -6,6 +6,7 @@ import {
   buildArrangementFromPreparedAudio,
   buildLayeredArrangementPlan,
   createConceptExecutionApprovalBundle,
+  curateConceptSamples,
   executeConceptPlan,
   extractUnsupportedBridgeResult,
   exportConceptMidiMotif,
@@ -171,6 +172,50 @@ describe("concept-to-music planning", () => {
       "Memory Reverb",
       "Distant Delay"
     ]));
+  });
+
+  it("curates concept sample searches per layer without downloading", async () => {
+    const planned = await planConceptTrack({
+      concept: "a backrooms hallway where an old memory song decays under fluorescent lights",
+      target_duration_seconds: 150,
+      intensity: 8,
+      sources: ["local_library", "internet_archive", "freesound"]
+    });
+    const curation = await curateConceptSamples({
+      plan_id: planned.plan.id,
+      search: false,
+      allowed_only: true,
+      max_layers: 3,
+      page: 1,
+      pageSize: 2
+    });
+
+    expect(curation.curationType).toBe("concept_sample_curation");
+    expect(curation.summary).toMatchObject({
+      audioLayers: 3,
+      searchPerformed: false,
+      candidates: 0,
+      downloadsPerformed: false,
+      writesAbleton: false
+    });
+    expect(curation.layerCuration.map((layer: any) => layer.layer)).toEqual([
+      "Degraded Memory",
+      "Stretched Room",
+      "Distant Room Tone"
+    ]);
+    expect(curation.layerCuration[0]?.queries.join(" ")).toMatch(/piano|tape|memory/i);
+    expect(curation.layerCuration[0]?.exactSearchCalls.map((call: any) => call.name)).toEqual(expect.arrayContaining([
+      "ableton_search_internet_archive_audio",
+      "ableton_search_freesound"
+    ]));
+    expect(curation.layerCuration.every((layer: any) => layer.reviewNotes.some((note: string) => note.includes("untrusted")))).toBe(true);
+    expect(curation.nextSteps.join(" ")).toContain("ableton_stage_concept_samples");
+    expect(curation.safety).toMatchObject({
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      remoteSampleTextPolicy: "untrusted_data"
+    });
   });
 
   it("builds a stored arrangement plan and keeps execution dry-run by default", async () => {

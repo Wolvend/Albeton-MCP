@@ -58,6 +58,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_list_concept_presets");
     expect(registeredToolNames).toContain("ableton_plan_concept_track");
     expect(registeredToolNames).toContain("ableton_search_concept_samples");
+    expect(registeredToolNames).toContain("ableton_curate_concept_samples");
     expect(registeredToolNames).toContain("ableton_stage_concept_samples");
     expect(registeredToolNames).toContain("ableton_build_layered_arrangement_plan");
     expect(registeredToolNames).toContain("ableton_prepare_concept_audio_layers");
@@ -150,6 +151,9 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_list_concept_execution_journals).toHaveProperty("page");
     expect(registeredToolSchemas.ableton_get_concept_execution_journal).toHaveProperty("execution_id");
     expect(registeredToolSchemas.ableton_plan_full_concept_production).toHaveProperty("include_sample_search");
+    expect(registeredToolSchemas.ableton_curate_concept_samples).toHaveProperty("plan_id");
+    expect(registeredToolSchemas.ableton_curate_concept_samples).toHaveProperty("search");
+    expect(registeredToolSchemas.ableton_curate_concept_samples).toHaveProperty("allowed_only");
     expect(registeredToolSchemas.ableton_plan_full_concept_production).toHaveProperty("sample_assignments");
     expect(registeredToolSchemas.ableton_build_layered_arrangement_plan).toHaveProperty("sample_assignments");
     expect(registeredToolSchemas.ableton_prepare_concept_audio_layers).toHaveProperty("plan_id");

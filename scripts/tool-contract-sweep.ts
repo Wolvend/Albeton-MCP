@@ -290,6 +290,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_list_concept_plans", arguments: { page: 1, pageSize: 5 } },
     { name: "ableton_get_concept_plan", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_search_concept_samples", arguments: { concept: "liminal backrooms horror contract sweep", page: 1, pageSize: 1 }, expected: "any" },
+    { name: "ableton_curate_concept_samples", arguments: { plan_id: conceptPlanId, search: false, allowed_only: true, max_layers: 3, page: 1, pageSize: 2 } },
     { name: "ableton_plan_full_concept_production", arguments: { concept: "liminal backrooms horror contract sweep", target_duration_seconds: 120, intensity: 7, style: "liminal/backrooms/horror", sources: ["local_library"], include_sample_search: false, sample_page_size: 1 } },
     { name: "ableton_stage_concept_samples", arguments: { samples: [{ url: "https://archive.org/download/opensource_audio/opensource_audio_meta.xml", destinationName: "contract-sweep.wav", metadata: { license: "CC0" } }], dry_run: true } },
     { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: conceptPlanId, sample_assignments: [{ layer: "Stretched Room", path: fixtures.stagedAudioPath, clip_slot_index: 1, name: "Contract Sweep Room Tone" }] } },
