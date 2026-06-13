@@ -37,6 +37,7 @@ import {
   renderConceptTimeline,
   readArrangementPlan,
   recordConceptExecutionJournalEvent,
+  resolveConceptActionPayloadForBridge,
   renderDeliveryPlan,
   sanitizeRemoteSampleText,
   startConceptExecutionJournal,
@@ -65,6 +66,38 @@ describe("concept-to-music planning", () => {
       details: { requested_device: "Hybrid Reverb" }
     });
     expect(extractUnsupportedBridgeResult({ ok: true, data: { created: true } })).toBeNull();
+  });
+
+  it("resolves created return-track placeholders to the correct bridge fields", () => {
+    const resolution = {
+      baseTrackCount: 10,
+      baseReturnTrackCount: 2,
+      baseSceneCount: 5
+    };
+
+    expect(resolveConceptActionPayloadForBridge({
+      action: "ableton_rename_return_track",
+      payload: { return_created_offset: 1, name: "Memory Reverb" }
+    }, resolution)).toEqual({
+      return_track_index: 3,
+      name: "Memory Reverb"
+    });
+    expect(resolveConceptActionPayloadForBridge({
+      action: "ableton_set_return_track_volume",
+      payload: { return_created_offset: 1, value: 0.62 }
+    }, resolution)).toEqual({
+      return_track_index: 3,
+      value: 0.62
+    });
+    expect(resolveConceptActionPayloadForBridge({
+      action: "ableton_set_track_send",
+      payload: { track_created_offset: 0, return_created_offset: 1, value: 0.45 }
+    }, resolution)).toEqual({
+      track_id: 10,
+      track_index: 10,
+      send_index: 3,
+      value: 0.45
+    });
   });
 
   it("writes redacted concept execution journal events", async () => {

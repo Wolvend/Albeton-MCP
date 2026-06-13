@@ -85,7 +85,8 @@ Fast path:
    - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit ordered load, rename, shape, and loop actions.
    - Automatically maps approved reference audio to the most relevant concept layers unless those layers already have explicit sample assignments.
    - Preserves each layer's Ableton-native device chain as a staged `devicePlan` for review.
-   - Uses created-track and created-scene placeholders for mix, send, MIDI, and scene setup actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
+   - Uses created-track, created-return, and created-scene placeholders for mix, send, MIDI, return-bus, and scene setup actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
+   - Created return placeholders resolve to `return_track_index` for return-track actions and to `send_index` for track-send actions, keeping reverb/delay bus creation and routing distinct.
 
 12. `ableton_list_arrangement_plans` / `ableton_get_arrangement_plan`
    - Resume stored arrangement plans before execution.

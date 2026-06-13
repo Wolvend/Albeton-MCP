@@ -1053,7 +1053,10 @@ function motifExportPlan(plan: ConceptPlan, outputName?: string) {
   };
 }
 
-function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: CreatedTrackResolution) {
+export function resolveConceptActionPayloadForBridge(
+  action: { action: string; payload: Record<string, unknown> },
+  resolution: CreatedTrackResolution
+) {
   const payload = { ...action.payload };
   const createdTrackOffset = typeof payload.track_created_offset === "number" ? payload.track_created_offset : null;
   const createdReturnOffset = typeof payload.return_created_offset === "number" ? payload.return_created_offset : null;
@@ -1067,7 +1070,12 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
 
   if (createdReturnOffset !== null) {
     const returnTrackIndex = resolution.baseReturnTrackCount + createdReturnOffset;
-    if (action.action === "ableton_set_return_track_volume" || action.action === "ableton_set_return_track_pan" || action.action === "ableton_set_return_track_color") {
+    if (
+      action.action === "ableton_set_return_track_volume" ||
+      action.action === "ableton_set_return_track_pan" ||
+      action.action === "ableton_set_return_track_color" ||
+      action.action === "ableton_rename_return_track"
+    ) {
       payload.return_track_index = returnTrackIndex;
     } else {
       payload.send_index = returnTrackIndex;
@@ -1081,6 +1089,10 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
   }
 
   return payload;
+}
+
+function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: CreatedTrackResolution) {
+  return resolveConceptActionPayloadForBridge(action, resolution);
 }
 
 function dataFromBridgeResponse(snapshot: unknown): Record<string, unknown> {
