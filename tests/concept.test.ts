@@ -27,8 +27,10 @@ import {
   renderConceptProductionScorecard,
   renderConceptTimeline,
   readArrangementPlan,
+  recordConceptExecutionJournalEvent,
   renderDeliveryPlan,
   sanitizeRemoteSampleText,
+  startConceptExecutionJournal,
   stageConceptSamples
 } from "../src/concept.js";
 import { LOCAL_PATHS } from "../src/config.js";
@@ -53,6 +55,36 @@ describe("concept-to-music planning", () => {
       details: { requested_device: "Hybrid Reverb" }
     });
     expect(extractUnsupportedBridgeResult({ ok: true, data: { created: true } })).toBeNull();
+  });
+
+  it("writes redacted concept execution journal events", async () => {
+    const journal = await startConceptExecutionJournal({
+      arrangement_id: "arrangement-1111111111111111",
+      approval_id: "approval-2222222222222222",
+      executableActions: 1,
+      totalActions: 2
+    });
+    const samplePath = path.join(LOCAL_PATHS.staging, "journal-secret-room-tone.wav");
+    await recordConceptExecutionJournalEvent(journal, {
+      type: "action_started",
+      action: "ableton_load_preset_or_sample",
+      payload: { path: samplePath }
+    });
+    const summary = await recordConceptExecutionJournalEvent(journal, {
+      type: "action_failed",
+      action: "ableton_load_preset_or_sample",
+      error: { code: "TEST_ONLY", message: "fixture" }
+    }, "failed");
+    const stored = JSON.parse(await fs.readFile(journal.path, "utf8")) as Record<string, any>;
+
+    expect(summary).toMatchObject({ id: journal.id, status: "failed", events: 2 });
+    expect(summary.path).toContain("%USERPROFILE%");
+    expect(JSON.stringify(stored)).not.toContain(samplePath);
+    expect(JSON.stringify(stored)).toContain("%USERPROFILE%");
+    expect(stored.events.map((event: Record<string, unknown>) => event.type)).toEqual([
+      "action_started",
+      "action_failed"
+    ]);
   });
 
   it("lists read-only concept production presets with safe next calls", () => {

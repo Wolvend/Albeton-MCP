@@ -136,6 +136,7 @@ Fast path:
    - Dry-run by default.
    - Real execution requires `dry_run=false`, `ABLETON_MCP_ENABLE_WRITE=1`, the matching `approval_id`, `approval_confirmed=true`, and a successful bridge preflight.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
+   - Writes a redacted execution journal under `diagnostics\runtime\concept-executions` before live preflight and after each action outcome.
    - Stops immediately with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` if the loaded bridge returns `unsupported: true` for any approved action, so clients do not mistake a bridge limitation for successful execution.
 
 22. `ableton_render_delivery_plan`

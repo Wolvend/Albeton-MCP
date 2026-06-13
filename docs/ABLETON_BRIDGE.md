@@ -68,7 +68,7 @@ The bridge currently covers broad read visibility plus common write-gated operat
 
 The bridge returns explicit `unsupported: true` results for operations that are not reliable in the current LiveAPI context, including generic device/preset insertion, macro mapping, groove application, automation writes, clip quantization, and MIDI humanization paths that cannot be proven for the selected target. MCP dry-runs for those tools report the limitation up front with next-step hints instead of pretending execution is available. MCP clients should treat those responses as setup or capability limits, not as success.
 
-Stored concept-plan execution also treats bridge-level `unsupported: true` as a hard stop. If any approved action in `ableton_execute_concept_plan` receives that response, execution raises `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` and tells the client to inspect the set before retrying, because earlier approved actions may already have run.
+Stored concept-plan execution also treats bridge-level `unsupported: true` as a hard stop. Before live preflight and after each action outcome, `ableton_execute_concept_plan` writes a redacted journal under `diagnostics\runtime\concept-executions`. If any approved action receives `unsupported: true`, execution raises `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` and tells the client to inspect the set before retrying, because earlier approved actions may already have run.
 
 ## Queueing and fallback
 

@@ -253,6 +253,10 @@ function conceptPlanDir() {
   return path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-plans");
 }
 
+function conceptExecutionDir() {
+  return path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-executions");
+}
+
 function conceptMidiDir() {
   return path.join(LOCAL_PATHS.staging, "midi");
 }
@@ -878,6 +882,16 @@ function redactActionPayload(payload: Record<string, unknown>) {
   return redacted;
 }
 
+export function redactExecutionJournalValue(value: unknown): unknown {
+  if (typeof value === "string") return redactPath(value);
+  if (Array.isArray(value)) return value.map((item) => redactExecutionJournalValue(item));
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+    key,
+    redactExecutionJournalValue(entry)
+  ]));
+}
+
 export function extractUnsupportedBridgeResult(response: unknown) {
   const envelope = response && typeof response === "object" ? response as { data?: unknown } : {};
   const data = envelope.data && typeof envelope.data === "object"
@@ -893,6 +907,88 @@ export function extractUnsupportedBridgeResult(response: unknown) {
       ? data.nextSteps.filter((step): step is string => typeof step === "string")
       : [],
     details: data.details ?? null
+  };
+}
+
+type ConceptExecutionJournalState = {
+  id: string;
+  path: string;
+  redactedPath: string;
+  journal: {
+    id: string;
+    arrangement_id: string;
+    approval_id: string;
+    startedAt: string;
+    updatedAt: string;
+    status: "running" | "completed" | "failed";
+    executableActions: number;
+    totalActions: number;
+    events: Array<Record<string, unknown>>;
+  };
+};
+
+function journalError(error: unknown) {
+  if (error instanceof AbletonMcpError) {
+    return { name: error.name, code: error.code, message: error.message, nextSteps: error.nextSteps };
+  }
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message };
+  }
+  return { message: String(error) };
+}
+
+async function writeConceptExecutionJournal(state: ConceptExecutionJournalState) {
+  state.journal.updatedAt = new Date().toISOString();
+  await fs.writeFile(state.path, `${JSON.stringify(state.journal, null, 2)}\n`);
+}
+
+export async function startConceptExecutionJournal(input: {
+  arrangement_id: string;
+  approval_id: string;
+  executableActions: number;
+  totalActions: number;
+}) {
+  const dir = conceptExecutionDir();
+  await fs.mkdir(dir, { recursive: true });
+  const id = `execution-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const target = path.join(dir, `${id}.json`);
+  const now = new Date().toISOString();
+  const state: ConceptExecutionJournalState = {
+    id,
+    path: target,
+    redactedPath: redactPath(target),
+    journal: {
+      id,
+      arrangement_id: input.arrangement_id,
+      approval_id: input.approval_id,
+      startedAt: now,
+      updatedAt: now,
+      status: "running",
+      executableActions: input.executableActions,
+      totalActions: input.totalActions,
+      events: []
+    }
+  };
+  await fs.writeFile(target, `${JSON.stringify(state.journal, null, 2)}\n`, { flag: "wx" });
+  return state;
+}
+
+export async function recordConceptExecutionJournalEvent(
+  state: ConceptExecutionJournalState,
+  event: Record<string, unknown>,
+  status?: "running" | "completed" | "failed"
+) {
+  if (status) state.journal.status = status;
+  state.journal.events.push(redactExecutionJournalValue({
+    at: new Date().toISOString(),
+    ...event
+  }) as Record<string, unknown>);
+  await writeConceptExecutionJournal(state);
+  return {
+    id: state.id,
+    path: state.redactedPath,
+    status: state.journal.status,
+    events: state.journal.events.length
   };
 }
 
@@ -3082,29 +3178,56 @@ export async function executeConceptPlan(options: ConceptExecutionOptions) {
       ]
     );
   }
-  const preflight = await preflightConceptExecution({ arrangement_id: arrangement.id, check_bridge: true }) as {
-    readyForRealWrite: boolean;
-    bridge?: { resolution?: CreatedTrackResolution | null };
-    nextSteps?: string[];
-  };
-  if (!preflight.readyForRealWrite || !preflight.bridge?.resolution) {
-    throw new AbletonMcpError(
-      "Concept execution preflight is not ready for real writes.",
-      "CONCEPT_EXECUTION_PREFLIGHT_NOT_READY",
-      Array.isArray(preflight.nextSteps) ? preflight.nextSteps.map(String) : ["Load the bridge, rerun preflight, and resolve blockers before real execution."]
-    );
+  const journal = await startConceptExecutionJournal({
+    arrangement_id: arrangement.id,
+    approval_id: approvalId,
+    executableActions: arrangement.actions.filter((action) => action.safeToExecute).length,
+    totalActions: arrangement.actions.length
+  });
+  let resolution: CreatedTrackResolution;
+  try {
+    await recordConceptExecutionJournalEvent(journal, { type: "preflight_started" });
+    const preflight = await preflightConceptExecution({ arrangement_id: arrangement.id, check_bridge: true }) as {
+      readyForRealWrite: boolean;
+      bridge?: { resolution?: CreatedTrackResolution | null };
+      nextSteps?: string[];
+    };
+    if (!preflight.readyForRealWrite || !preflight.bridge?.resolution) {
+      await recordConceptExecutionJournalEvent(journal, { type: "preflight_not_ready", preflight }, "failed");
+      throw new AbletonMcpError(
+        "Concept execution preflight is not ready for real writes.",
+        "CONCEPT_EXECUTION_PREFLIGHT_NOT_READY",
+        Array.isArray(preflight.nextSteps) ? preflight.nextSteps.map(String) : ["Load the bridge, rerun preflight, and resolve blockers before real execution."]
+      );
+    }
+    resolution = preflight.bridge.resolution;
+    await recordConceptExecutionJournalEvent(journal, { type: "preflight_ready", resolution });
+  } catch (error) {
+    if (journal.journal.status !== "failed") {
+      await recordConceptExecutionJournalEvent(journal, { type: "preflight_failed", error: journalError(error) }, "failed");
+    }
+    throw error;
   }
-  const resolution = preflight.bridge.resolution;
   const results = [];
   for (const action of arrangement.actions) {
     if (!action.safeToExecute) {
-      results.push({ action: action.action, skipped: true, reason: action.reason });
+      const skipped = { action: action.action, skipped: true, reason: action.reason };
+      await recordConceptExecutionJournalEvent(journal, { type: "action_skipped", ...skipped });
+      results.push(skipped);
       continue;
     }
     const payload = actionPayloadWithCreatedTrack(action, resolution);
-    const bridge = await bridgeAction(action.action, payload);
+    await recordConceptExecutionJournalEvent(journal, { type: "action_started", action: action.action, payload: redactActionPayload(payload) });
+    let bridge;
+    try {
+      bridge = await bridgeAction(action.action, payload);
+    } catch (error) {
+      await recordConceptExecutionJournalEvent(journal, { type: "action_failed", action: action.action, payload: redactActionPayload(payload), error: journalError(error) }, "failed");
+      throw error;
+    }
     const unsupported = extractUnsupportedBridgeResult(bridge);
     if (unsupported) {
+      await recordConceptExecutionJournalEvent(journal, { type: "action_unsupported", action: action.action, payload: redactActionPayload(payload), unsupported }, "failed");
       throw new AbletonMcpError(
         `Concept execution stopped because ${action.action} is unsupported by the loaded bridge.`,
         "CONCEPT_EXECUTION_UNSUPPORTED_ACTION",
@@ -3116,9 +3239,11 @@ export async function executeConceptPlan(options: ConceptExecutionOptions) {
         ]
       );
     }
+    await recordConceptExecutionJournalEvent(journal, { type: "action_succeeded", action: action.action, payload: redactActionPayload(payload), bridge });
     results.push({ action: action.action, bridge, resolvedPayload: redactActionPayload(payload) });
   }
-  return { dry_run: false, arrangement_id: arrangement.id, resolution, results };
+  const executionJournal = await recordConceptExecutionJournalEvent(journal, { type: "completed", resultCount: results.length }, "completed");
+  return { dry_run: false, arrangement_id: arrangement.id, resolution, executionJournal, results };
 }
 
 export async function renderDeliveryPlan(planId: string) {
