@@ -20,18 +20,24 @@ Fast path:
    - Resume prior planning sessions from the bounded concept-plan store.
    - Return redacted paths and summary metadata only.
 
-3. `ableton_search_concept_samples`
+3. `ableton_render_concept_timeline`
+   - Read-only.
+   - Turns a stored concept plan into a section-by-section timeline with start/end times, active layers, mix targets, device-chain intentions, automation cues, and sample-search cues.
+   - Does not download, write to Ableton, or use UI/mouse control.
+   - Use this when an agent needs to reason about the soundtrack layer by layer before building the arrangement plan.
+
+4. `ableton_search_concept_samples`
    - Searches approved metadata sources without downloading.
    - Sanitizes remote titles, creators, licenses, identifiers, and queries before returning them to the agent.
 
-4. `ableton_stage_concept_samples`
+5. `ableton_stage_concept_samples`
    - Dry-run by default.
    - Real staging requires `dry_run=false` and `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
    - Downloads only from approved sample hosts through the existing sample policy.
    - Builds a provenance record with source URL, destination name, license policy, creator/title/identifier metadata, and checksum/byte count when a real download occurs.
    - Local reference audio can also be converted into approved staging/import paths with `ableton_convert_audio_file` using presets such as `liminal_memory`, `stretched_ambience`, and `reversed_fragment`.
 
-5. `ableton_build_layered_arrangement_plan`
+6. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.
    - Builds tempo, track, scene, scene tempo/signature/color, track/return/clip color, arrangement marker, mix, send, sparse MIDI motif, clip rename, clip gain, transpose, warp, marker, and loop actions.
    - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit ordered load, rename, shape, and loop actions.
@@ -39,16 +45,16 @@ Fast path:
    - Preserves each layer's Ableton-native device chain as a staged `devicePlan` for review.
    - Uses created-track and created-scene placeholders for mix, send, MIDI, and scene setup actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
 
-6. `ableton_list_arrangement_plans` / `ableton_get_arrangement_plan`
+7. `ableton_list_arrangement_plans` / `ableton_get_arrangement_plan`
    - Resume stored arrangement plans before execution.
    - Return redacted action payloads, redacted sample paths, and summary counts.
 
-7. `ableton_export_concept_midi_motif`
+8. `ableton_export_concept_midi_motif`
    - Dry-run by default.
    - Renders the stored plan's sparse motif as a `.mid` file under `samples\staging\midi` only after `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Never overwrites an existing MIDI file and writes an attribution sidecar with checksum, source plan ID, tempo, key, and note count.
 
-8. `ableton_prepare_concept_audio_layers`
+9. `ableton_prepare_concept_audio_layers`
    - Dry-run by default.
    - Uses an approved `reference_path` already stored in the concept plan.
    - Prepares layer-specific audio files under `samples\staging\concepts\<plan_id>` using the same gated conversion path as `ableton_convert_audio_file`.
@@ -56,32 +62,32 @@ Fast path:
    - Real rendering requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`; files are never overwritten.
    - Stores a preparation manifest so follow-up arrangement planning can use the prepared files without exposing raw local paths to the client.
 
-9. `ableton_build_arrangement_from_prepared_audio`
+10. `ableton_build_arrangement_from_prepared_audio`
    - Reads a stored preparation manifest by `preparation_id`.
    - Builds a stored arrangement plan using the prepared layer files internally.
    - Returns redacted paths only.
 
-10. `ableton_preflight_concept_execution`
+11. `ableton_preflight_concept_execution`
    - Read-only.
    - Checks the stored arrangement action counts, bridge reachability, created-track placeholder resolution, staged review items, and likely clip-slot blockers.
    - Reports `readyForRealWrite=false` unless a bridge snapshot is checked successfully and no blockers are found.
 
-11. `ableton_plan_concept_device_automation_readiness`
+12. `ableton_plan_concept_device_automation_readiness`
    - Read-only.
    - Converts staged `devicePlan` and `automationPlan` entries into discovery calls, dry-run templates, target hints, and explicit unsupported/support status.
    - Does not insert devices, write automation, move the mouse, or approve execution.
 
-12. `ableton_create_concept_execution_approval_bundle`
+13. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
    - Packages the redacted concept, redacted arrangement, preflight result, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
-13. `ableton_execute_concept_plan`
+14. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-14. `ableton_render_delivery_plan`
+15. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -149,6 +155,7 @@ Or step-by-step:
 
 ```text
 ableton_search_concept_samples
+ableton_render_concept_timeline
 ableton_build_layered_arrangement_plan
 ableton_export_concept_midi_motif with dry_run=true
 ableton_prepare_concept_audio_layers with dry_run=true

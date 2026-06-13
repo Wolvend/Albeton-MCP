@@ -16,6 +16,7 @@ import {
   planConceptTrack,
   preflightConceptExecution,
   prepareConceptAudioLayers,
+  renderConceptTimeline,
   readArrangementPlan,
   renderDeliveryPlan,
   sanitizeRemoteSampleText,
@@ -81,6 +82,7 @@ describe("concept-to-music planning", () => {
       arrangement_id: arrangement.arrangement.id,
       check_bridge: false
     });
+    const timeline = await renderConceptTimeline(planned.plan.id);
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
@@ -135,6 +137,11 @@ describe("concept-to-music planning", () => {
     expect(readiness.summary.realDeviceInsertionSupported).toBe(false);
     expect(readiness.deviceChains.some((entry) => entry.toolCallTemplates.some((call) => call.name === "ableton_insert_effect"))).toBe(true);
     expect(readiness.automationTargets.some((entry) => entry.parameterHints.includes("Cutoff"))).toBe(true);
+    expect(timeline.sectionCount).toBe(5);
+    expect(timeline.sections.map((section) => section.name)).toContain("Spatial Collapse");
+    expect(timeline.sections.some((section) => section.activeLayers.some((layer) => layer.name === "Sparse Motif" && layer.role === "entrance"))).toBe(true);
+    expect(timeline.sections.some((section) => section.automationCues.some((cue) => cue.cues.join(" ").toLowerCase().includes("filter")))).toBe(true);
+    expect(timeline.sections.every((section) => section.activeLayers.every((layer) => typeof layer.mix.volume === "number"))).toBe(true);
     expect(delivery.export.sampleRate).toBe(48000);
   });
 

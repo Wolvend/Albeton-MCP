@@ -794,6 +794,42 @@ function colorForSection(index: number) {
   return colors[index % colors.length];
 }
 
+function layerIsActiveInSection(layer: ConceptLayer, sectionIndex: number, horror: boolean) {
+  if (!horror) return layer.type === "return" || sectionIndex > 0;
+  const name = layer.name.toLowerCase();
+  if (layer.type === "return") return true;
+  if (name.includes("degraded")) return sectionIndex === 1 || sectionIndex === 2;
+  if (name.includes("stretched") || name.includes("room")) return sectionIndex === 0 || sectionIndex >= 3;
+  if (name.includes("low")) return sectionIndex === 0 || sectionIndex >= 2;
+  if (name.includes("mechanical")) return sectionIndex === 2 || sectionIndex === 3;
+  if (name.includes("reversed")) return sectionIndex >= 3;
+  if (name.includes("sparse") || name.includes("motif")) return sectionIndex === 1 || sectionIndex === 2;
+  return sectionIndex > 0;
+}
+
+function layerSectionRole(layer: ConceptLayer, sectionIndex: number, horror: boolean) {
+  if (!layerIsActiveInSection(layer, sectionIndex, horror)) return "inactive";
+  if (sectionIndex === 0) return layer.type === "return" ? "space" : "establish";
+  const wasActive = sectionIndex > 0 && layerIsActiveInSection(layer, sectionIndex - 1, horror);
+  const name = layer.name.toLowerCase();
+  if (!wasActive && layer.type !== "return") return "entrance";
+  if (name.includes("motif") || name.includes("degraded")) return "featured";
+  if (name.includes("low") || layer.type === "return") return "support";
+  return "texture";
+}
+
+function sectionProductionFocus(section: ConceptSection, sectionIndex: number, horror: boolean) {
+  if (!horror) return section.intent;
+  const focus = [
+    "Establish room tone, low pressure, and long dark space before any clear motif appears.",
+    "Introduce the degraded recognizable memory and sparse motif; keep it fragile and partly buried.",
+    "Loop the memory while bandwidth, pitch, mechanical texture, delay, and reverb start to destabilize.",
+    "Push stretched ambience, reversed fragments, low pressure, and mechanical texture into the foreground.",
+    "Let the arrangement empty out into unresolved room tone, low pressure, reverb, and reversed tail fragments."
+  ];
+  return focus[sectionIndex] ?? section.intent;
+}
+
 function plannedTargetResolution(
   plan: { target: "track" | "return"; track_created_offset?: number; return_created_offset?: number },
   resolution?: CreatedTrackResolution
@@ -2072,6 +2108,65 @@ export async function renderDeliveryPlan(planId: string) {
       "Run ableton_prepare_stems_plan for stem naming.",
       "Use Ableton export manually or the UI driver only after explicit user choice.",
       "Generate attribution before publishing if remote samples were staged."
+    ]
+  };
+}
+
+export async function renderConceptTimeline(planId: string) {
+  const plan = await readConceptPlan(planId);
+  const horror = plan.preset === "liminal_backrooms_horror";
+  const sections = plan.sections.map((section, sectionIndex) => {
+    const activeLayers = plan.layers
+      .filter((layer) => layerIsActiveInSection(layer, sectionIndex, horror))
+      .map((layer) => ({
+        name: layer.name,
+        type: layer.type,
+        role: layerSectionRole(layer, sectionIndex, horror),
+        productionRole: layer.role,
+        sourceStrategy: layer.sourceStrategy,
+        color: colorForLayer(layer),
+        mix: layer.mix,
+        deviceChain: layer.deviceChain,
+        automation: layer.automation,
+        searchQueries: layer.searchQueries.slice(0, 3)
+      }));
+    return {
+      name: section.name,
+      start_seconds: section.start_seconds,
+      end_seconds: section.start_seconds + section.duration_seconds,
+      duration_seconds: section.duration_seconds,
+      intent: section.intent,
+      productionFocus: sectionProductionFocus(section, sectionIndex, horror),
+      color: colorForSection(sectionIndex),
+      activeLayers,
+      automationCues: activeLayers
+        .filter((layer) => layer.automation.length > 0)
+        .map((layer) => ({
+          layer: layer.name,
+          cues: layer.automation
+        })),
+      sampleSearchCues: activeLayers
+        .filter((layer) => layer.type === "audio")
+        .flatMap((layer) => layer.searchQueries.map((query) => ({ layer: layer.name, query })))
+        .slice(0, 8)
+    };
+  });
+
+  return {
+    plan_id: plan.id,
+    preset: plan.preset,
+    concept: sanitizeRemoteSampleText(plan.concept, 500),
+    style: plan.style,
+    tempo: plan.tempo,
+    key: plan.key,
+    duration_seconds: plan.target_duration_seconds,
+    sectionCount: sections.length,
+    layerCount: plan.layers.length,
+    sections,
+    nextSteps: [
+      "Use this timeline to decide which layers need approved local samples before arrangement execution.",
+      "Call ableton_build_layered_arrangement_plan after approving layer/sample choices.",
+      "Keep downloads, Ableton writes, and UI control disabled until their explicit gates are intentionally enabled."
     ]
   };
 }

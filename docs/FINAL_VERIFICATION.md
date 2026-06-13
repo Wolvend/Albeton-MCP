@@ -65,7 +65,7 @@ Result: succeeded. Safe sweep called 99 read-only and dry-run tools with 0 unexp
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 188 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan with approved reference audio -> full concept production plan -> stored arrangement plan with scene tempo/signature/color setup, return-track mixer/color actions, scene and return-track rename dry-runs, and clip rename/loop/gain/transpose/warp/marker/color polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> non-approving approval bundle -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution.
+Result: succeeded. All-tool contract sweep called all 189 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan with approved reference audio -> full concept production plan -> read-only concept timeline -> stored arrangement plan with scene tempo/signature/color setup, return-track mixer/color actions, scene and return-track rename dry-runs, and clip rename/loop/gain/transpose/warp/marker/color polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> non-approving approval bundle -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution.
 
 The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature/color/rename tools, typed track/return/master volume/pan/color tools, typed return-track rename, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, `ableton_set_clip_markers`, and `ableton_set_clip_color` contracts. Concept arrangement plans now include created-track and created-scene placeholders for scene setup, color, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, clip colors, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, and a read-only readiness handoff for device/automation target discovery; real execution resolves executable placeholders from a live snapshot immediately before write-gated bridge calls.
 
@@ -73,7 +73,7 @@ The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `abl
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 188 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 189 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -144,7 +144,7 @@ Docker gateway dry-run:
 docker mcp gateway run --profile hypernimbus --dry-run --block-secrets --block-network
 ```
 
-Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 113 tools.
+Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 114 tools.
 
 OpenClaw docs/config were updated and tested for Streamable HTTP consumer setup:
 
@@ -160,7 +160,7 @@ openclaw mcp doctor ableton-mcp --probe
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL with 188 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL with 189 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ## Live Bridge Smoke
 
