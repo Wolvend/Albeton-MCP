@@ -17,6 +17,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_run_ui_action_sequence");
     expect(registeredToolNames).toContain("ableton_ui_driver_ping");
     expect(registeredToolNames).toContain("ableton_mcp_get_client_connection_profiles");
+    expect(registeredToolNames).toContain("ableton_mcp_get_safe_tool_allowlist");
     expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");
     expect(registeredToolNames).toContain("ableton_set_tempo");
     expect(registeredToolNames).toContain("ableton_fire_scene");
@@ -76,6 +77,7 @@ describe("tool catalog", () => {
   it("uses typed schemas for newer bridge workflow tools", () => {
     expect(registeredToolSchemas.ableton_set_tempo).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_get_bridge_capabilities).toHaveProperty("check_bridge");
+    expect(registeredToolSchemas.ableton_mcp_get_safe_tool_allowlist).toEqual({});
     expect(registeredToolSchemas.ableton_set_tempo).toHaveProperty("tempo");
     expect(registeredToolSchemas.ableton_create_audio_track).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_create_audio_track).toHaveProperty("name");

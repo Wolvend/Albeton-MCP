@@ -79,6 +79,8 @@ openclaw mcp tools ableton-mcp --include "$safeTools"
 openclaw mcp doctor ableton-mcp --probe
 ```
 
+After Ableton MCP is reachable, clients can also call `ableton_mcp_get_safe_tool_allowlist` and use `safeToolAllowlist.csv` instead of importing the local TypeScript module.
+
 OpenClaw should remain a consumer of Ableton MCP. Ableton MCP still owns write/download/UI gates, path allowlisting, sample-source policy, and LiveAPI/UI-driver separation.
 
 ## Security Notes

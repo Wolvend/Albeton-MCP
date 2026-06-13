@@ -247,18 +247,18 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 22 files, 71 tests passed
+Tests: 22 files, 72 tests passed
 Lint: passed
 Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed
 Safe sweep: passed
 Live smoke: structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 193 tools, 3 resources, 2 prompts
-All-tool contract sweep: 193 registered tools, 193 safe calls
+MCP verifier: 194 tools, 3 resources, 2 prompts
+All-tool contract sweep: 194 registered tools, 194 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles
+Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles; safe HyperNimbus/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist
 Audit: 0 vulnerabilities
 ```
 

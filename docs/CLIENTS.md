@@ -123,6 +123,8 @@ openclaw mcp tools ableton-mcp --include "$safeTools"
 openclaw mcp doctor ableton-mcp --probe
 ```
 
+After Ableton MCP is reachable, call `ableton_mcp_get_safe_tool_allowlist` and use `safeToolAllowlist.csv` as the same include list. The Node one-liner above is only for first bootstrap before a client can call MCP tools.
+
 Equivalent JSON config can be applied with `openclaw mcp set` when scripting direct config writes:
 
 ```powershell
@@ -188,4 +190,4 @@ Use Ableton MCP through the app or agent runtime that is actually connecting to 
 | Claude | Use stdio locally; use HTTP only if the client supports Streamable HTTP MCP. |
 | Codex | Use stdio locally or HTTP/Docker routing for remote/private-device workflows. |
 
-The MCP tool `ableton_mcp_get_client_connection_profiles` reports current stdio, local HTTP, private-network candidate URLs, and required auth settings.
+The MCP tool `ableton_mcp_get_client_connection_profiles` reports current stdio, local HTTP, private-network candidate URLs, and required auth settings. `ableton_mcp_get_safe_tool_allowlist` reports the current HyperNimbus/OpenClaw safe tool include list as structured data and CSV.

@@ -18,6 +18,7 @@ import { downloadPluginPackage, planPluginDownload, pluginInstallInstructions, s
 import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
 import { getUiDriverRuntimeState, pingUiDriver, uiDriverAction } from "./ui-driver.js";
 import { assertAllowedSampleUrl } from "./network.js";
+import { HYPERNIMBUS_PROFILE_ID, HYPERNIMBUS_SAFE_TOOL_ALLOWLIST } from "./docker-profile.js";
 import {
   buildLayeredArrangementPlan,
   buildArrangementFromPreparedAudio,
@@ -359,6 +360,56 @@ function clientConnectionProfiles() {
   };
 }
 
+function safeToolAllowlistReport() {
+  const port = Number(process.env.ABLETON_MCP_HTTP_PORT ?? "17366");
+  const endpoint = `http://127.0.0.1:${port}/mcp`;
+  const tools = [...HYPERNIMBUS_SAFE_TOOL_ALLOWLIST];
+  const csv = tools.join(",");
+  return {
+    profile: HYPERNIMBUS_PROFILE_ID,
+    server: "ableton-mcp",
+    endpoint,
+    count: tools.length,
+    tools,
+    csv,
+    dockerToolNames: tools.map((tool) => `ableton-mcp.${tool}`),
+    policy: {
+      purpose: "read, planning, search, status, diagnostics, and dry-run-safe review tools",
+      permissionOwner: "Ableton MCP",
+      localhostOnly: true,
+      writesEnabled: false,
+      downloadsEnabled: false,
+      uiControlEnabled: false,
+      excludedClasses: [
+        "real Ableton writes",
+        "sample downloads/imports",
+        "plugin downloads/installers",
+        "raw UI/mouse actions",
+        "tempo/session mutation"
+      ]
+    },
+    openclaw: {
+      role: "consumer",
+      includeArg: csv,
+      commands: [
+        `openclaw mcp add ableton-mcp --url ${endpoint} --transport streamable-http --timeout 30 --connect-timeout 5`,
+        "openclaw mcp tools ableton-mcp --include \"<csv from safeToolAllowlist.csv>\"",
+        "openclaw mcp doctor ableton-mcp --probe"
+      ]
+    },
+    docker: {
+      planScript: "npm run docker:hypernimbus:plan",
+      applyScript: "npm run docker:hypernimbus:apply",
+      verifyScript: "npm run docker:hypernimbus:verify"
+    },
+    notes: [
+      "This allowlist is a client convenience view, not a permission bypass.",
+      "ABLETON_MCP_ENABLE_WRITE, ABLETON_MCP_ENABLE_DOWNLOADS, and ABLETON_MCP_ENABLE_UI_CONTROL remain off by default.",
+      "Keep HTTP bound to 127.0.0.1 unless explicitly using private-network/Tailscale mode with bearer-token auth."
+    ]
+  };
+}
+
 const toolDefs: ToolDef[] = [
   { name: "ableton_find_installation", description: "Find configured Ableton Live and Max paths for this host platform.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
@@ -413,6 +464,7 @@ const toolDefs: ToolDef[] = [
     return { ok: true, uiDriver: await pingUiDriver() as any };
   } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
+  { name: "ableton_mcp_get_safe_tool_allowlist", description: "Return the HyperNimbus/OpenClaw safe tool allowlist as structured data and CSV without changing client configuration.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, safeToolAllowlist: safeToolAllowlistReport() }) },
   { name: "ableton_get_production_readiness", description: "Summarize Ableton MCP readiness for professional music-production work.", inputSchema: Empty, annotations: ro, handler: async () => {
     const environment = await environmentSnapshot();
     return {
