@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { bridgeAction } from "./bridge.js";
+import { bridgeAction, getBridgeSnapshot } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { requireFlag } from "./errors.js";
 import { downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
@@ -74,6 +74,11 @@ type ArrangementPlan = {
   createdAt: string;
   actions: ArrangementAction[];
   notes: string[];
+};
+
+type CreatedTrackResolution = {
+  baseTrackCount: number;
+  baseReturnTrackCount: number;
 };
 
 function conceptPlanDir() {
@@ -208,6 +213,16 @@ function horrorLayers(concept: string): ConceptLayer[] {
       deviceChain: ["Hybrid Reverb", "EQ Eight", "Compressor"],
       automation: ["return swell at section ends"],
       mix: { volume: 0.7, pan: 0, sends: {} }
+    },
+    {
+      name: "Distant Delay",
+      type: "return",
+      role: "shared unstable echo throws",
+      sourceStrategy: "Return track for sparse, filtered delay repeats.",
+      searchQueries: [],
+      deviceChain: ["Echo", "EQ Eight", "Utility"],
+      automation: ["delay feedback swells", "bandwidth narrowing"],
+      mix: { volume: 0.54, pan: 0, sends: {} }
     }
   ];
 }
@@ -233,8 +248,76 @@ function generalLayers(concept: string): ConceptLayer[] {
       deviceChain: ["Instrument Rack", "EQ Eight", "Echo"],
       automation: ["send throws"],
       mix: { volume: 0.52, pan: -0.1, sends: { reverb: 0.28, delay: 0.22 } }
+    },
+    {
+      name: "Space Return",
+      type: "return",
+      role: "shared reverb return",
+      sourceStrategy: "Return track for shared spatial processing.",
+      searchQueries: [],
+      deviceChain: ["Hybrid Reverb", "EQ Eight"],
+      automation: ["return level shape"],
+      mix: { volume: 0.62, pan: 0, sends: {} }
+    },
+    {
+      name: "Delay Return",
+      type: "return",
+      role: "shared delay return",
+      sourceStrategy: "Return track for tempo-synced echoes.",
+      searchQueries: [],
+      deviceChain: ["Echo", "EQ Eight"],
+      automation: ["feedback throws"],
+      mix: { volume: 0.5, pan: 0, sends: {} }
     }
   ];
+}
+
+function motifNotes(horror: boolean, intensity: number) {
+  const velocityBase = horror ? Math.max(28, 58 - intensity * 2) : 78;
+  if (horror) {
+    return [
+      { pitch: 62, start_time: 0, duration: 2.25, velocity: velocityBase, probability: 0.92 },
+      { pitch: 65, start_time: 3.5, duration: 0.75, velocity: velocityBase - 6, probability: 0.72 },
+      { pitch: 61, start_time: 7.75, duration: 1.5, velocity: velocityBase - 10, probability: 0.68 },
+      { pitch: 57, start_time: 11.5, duration: 2, velocity: velocityBase - 4, probability: 0.82 },
+      { pitch: 58, start_time: 15.5, duration: 0.5, velocity: velocityBase - 14, probability: 0.45 }
+    ];
+  }
+  return [
+    { pitch: 57, start_time: 0, duration: 1, velocity: velocityBase },
+    { pitch: 60, start_time: 2, duration: 1, velocity: velocityBase - 6 },
+    { pitch: 64, start_time: 4, duration: 1.5, velocity: velocityBase - 4 },
+    { pitch: 60, start_time: 7, duration: 1, velocity: velocityBase - 10 }
+  ];
+}
+
+function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: CreatedTrackResolution) {
+  const payload = { ...action.payload };
+  const createdTrackOffset = typeof payload.track_created_offset === "number" ? payload.track_created_offset : null;
+  const createdReturnOffset = typeof payload.return_created_offset === "number" ? payload.return_created_offset : null;
+
+  if (createdTrackOffset !== null) {
+    payload.track_id = resolution.baseTrackCount + createdTrackOffset;
+    payload.track_index = resolution.baseTrackCount + createdTrackOffset;
+    delete payload.track_created_offset;
+  }
+
+  if (createdReturnOffset !== null) {
+    payload.send_index = resolution.baseReturnTrackCount + createdReturnOffset;
+    delete payload.return_created_offset;
+  }
+
+  return payload;
+}
+
+function bridgeSnapshotResolution(snapshot: unknown): CreatedTrackResolution {
+  const response = snapshot as { data?: { state?: { track_count?: unknown; return_track_count?: unknown }; tracks?: unknown[] } };
+  const baseTrackCount = Number(response.data?.state?.track_count ?? response.data?.tracks?.length ?? 0);
+  const baseReturnTrackCount = Number(response.data?.state?.return_track_count ?? 0);
+  return {
+    baseTrackCount: Number.isFinite(baseTrackCount) && baseTrackCount >= 0 ? Math.floor(baseTrackCount) : 0,
+    baseReturnTrackCount: Number.isFinite(baseReturnTrackCount) && baseReturnTrackCount >= 0 ? Math.floor(baseReturnTrackCount) : 0
+  };
 }
 
 async function writeJson(fileName: string, payload: unknown) {
@@ -378,6 +461,23 @@ export async function stageConceptSamples(options: {
 
 export async function buildLayeredArrangementPlan(planId: string) {
   const plan = await readConceptPlan(planId);
+  const horror = plan.preset === "liminal_backrooms_horror";
+  const layerTargets = plan.layers.map((layer) => ({ layer, trackOffset: null as number | null, returnOffset: null as number | null }));
+  const returnOffsetsBySend = new Map<string, number>();
+  let nextTrackOffset = 0;
+  let nextReturnOffset = 0;
+  for (const target of layerTargets) {
+    if (target.layer.type === "return") {
+      target.returnOffset = nextReturnOffset;
+      const returnName = target.layer.name.toLowerCase();
+      if ((returnName.includes("reverb") || returnName.includes("space")) && !returnOffsetsBySend.has("reverb")) returnOffsetsBySend.set("reverb", nextReturnOffset);
+      if (returnName.includes("delay") && !returnOffsetsBySend.has("delay")) returnOffsetsBySend.set("delay", nextReturnOffset);
+      nextReturnOffset += 1;
+    } else {
+      target.trackOffset = nextTrackOffset;
+      nextTrackOffset += 1;
+    }
+  }
   const actions: ArrangementAction[] = [
     {
       action: "ableton_set_tempo",
@@ -403,20 +503,49 @@ export async function buildLayeredArrangementPlan(planId: string) {
       safeToExecute: true,
       reason: "Creates arrangement locators from the stored section map."
     })),
-    ...plan.layers.flatMap((layer, trackIndex) => [
-      {
-        action: "ableton_set_track_volume",
-        payload: { track_id: trackIndex, value: layer.mix.volume },
-        safeToExecute: false,
-        reason: "Needs confirmation of actual track index after creation."
-      },
-      {
-        action: "ableton_set_track_pan",
-        payload: { track_id: trackIndex, value: layer.mix.pan },
-        safeToExecute: false,
-        reason: "Needs confirmation of actual track index after creation."
-      }
-    ])
+    ...layerTargets.flatMap((target) => {
+      if (target.trackOffset === null) return [];
+      return [
+        {
+          action: "ableton_set_track_volume",
+          payload: { track_created_offset: target.trackOffset, value: target.layer.mix.volume },
+          safeToExecute: true,
+          reason: "Track index is resolved from the live snapshot immediately before execution."
+        },
+        {
+          action: "ableton_set_track_pan",
+          payload: { track_created_offset: target.trackOffset, value: target.layer.mix.pan },
+          safeToExecute: true,
+          reason: "Track index is resolved from the live snapshot immediately before execution."
+        },
+        ...Object.entries(target.layer.mix.sends).flatMap(([sendName, value]) => {
+          const returnOffset = returnOffsetsBySend.get(sendName) ?? returnOffsetsBySend.get("reverb");
+          if (value <= 0 || returnOffset === undefined) return [];
+          return [{
+            action: "ableton_set_track_send",
+            payload: { track_created_offset: target.trackOffset, return_created_offset: returnOffset, value, send_name: sendName },
+            safeToExecute: true,
+            reason: "Track and send indexes are resolved from the live snapshot immediately before execution."
+          }];
+        })
+      ];
+    }),
+    ...layerTargets.flatMap((target) => {
+      if (target.layer.type !== "midi" || target.trackOffset === null) return [];
+      return [{
+        action: "ableton_insert_midi_notes",
+        payload: {
+          track_created_offset: target.trackOffset,
+          clip_slot_index: 0,
+          notes: motifNotes(horror, plan.intensity),
+          create_clip_if_missing: true,
+          clip_length: horror ? 16 : 8,
+          name: `${target.layer.name} Motif`
+        },
+        safeToExecute: true,
+        reason: "Creates a short editable MIDI motif from the stored concept plan."
+      }];
+    })
   ];
   const arrangement: ArrangementPlan = {
     id: stableId("arrangement", { planId, actions }),
@@ -424,6 +553,7 @@ export async function buildLayeredArrangementPlan(planId: string) {
     createdAt: new Date().toISOString(),
     actions,
     notes: [
+      "Created-track placeholders are resolved from a live snapshot immediately before real execution, so the plan can append to a non-empty set.",
       "Sample placement and device insertion remain staged until local sample paths and LiveAPI device support are verified.",
       "Automation is represented in the concept plan and should be applied only where bridge support returns success."
     ]
@@ -443,15 +573,17 @@ export async function executeConceptPlan(options: { arrangement_id: string; dry_
     };
   }
   requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Executing concept arrangement plan");
+  const resolution = bridgeSnapshotResolution(await getBridgeSnapshot(false));
   const results = [];
   for (const action of arrangement.actions) {
     if (!action.safeToExecute) {
       results.push({ action: action.action, skipped: true, reason: action.reason });
       continue;
     }
-    results.push({ action: action.action, bridge: await bridgeAction(action.action, action.payload) });
+    const payload = actionPayloadWithCreatedTrack(action, resolution);
+    results.push({ action: action.action, bridge: await bridgeAction(action.action, payload), resolvedPayload: payload });
   }
-  return { dry_run: false, arrangement_id: arrangement.id, results };
+  return { dry_run: false, arrangement_id: arrangement.id, resolution, results };
 }
 
 export async function renderDeliveryPlan(planId: string) {

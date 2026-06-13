@@ -54,6 +54,12 @@ describe("concept-to-music planning", () => {
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_insert_midi_notes")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_track_send")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_track_volume").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.find((action) => action.action === "ableton_insert_midi_notes")?.payload.notes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ pitch: expect.any(Number), start_time: expect.any(Number), duration: expect.any(Number) })
+    ]));
     expect(dryRun.dry_run).toBe(true);
     expect(dryRun.executableActions).toBeGreaterThan(0);
     expect(delivery.export.sampleRate).toBe(48000);
