@@ -51,6 +51,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_load_preset_or_sample).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_load_preset_or_sample).toHaveProperty("path");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
+    expect(registeredToolSchemas.ableton_build_layered_arrangement_plan).toHaveProperty("sample_assignments");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");
   });
 });

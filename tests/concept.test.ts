@@ -1,12 +1,16 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildLayeredArrangementPlan,
   executeConceptPlan,
   planConceptTrack,
+  readArrangementPlan,
   renderDeliveryPlan,
   sanitizeRemoteSampleText,
   stageConceptSamples
 } from "../src/concept.js";
+import { LOCAL_PATHS } from "../src/config.js";
 
 describe("concept-to-music planning", () => {
   it("creates deterministic liminal horror plans with layered backrooms structure", async () => {
@@ -51,7 +55,16 @@ describe("concept-to-music planning", () => {
       intensity: 6,
       sources: ["local_library"]
     });
-    const arrangement = await buildLayeredArrangementPlan(planned.plan.id);
+    await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+    const stagedPath = path.join(LOCAL_PATHS.staging, "concept-assignment-test.wav");
+    await fs.writeFile(stagedPath, "fixture audio placeholder");
+    const arrangement = await buildLayeredArrangementPlan(planned.plan.id, [{
+      layer: "Stretched Room",
+      path: stagedPath,
+      clip_slot_index: 1,
+      name: "Assigned Room Tone"
+    }]);
+    const stored = await readArrangementPlan(arrangement.arrangement.id);
     const dryRun = await executeConceptPlan({ arrangement_id: arrangement.arrangement.id, dry_run: true });
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
@@ -65,6 +78,11 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.actions.find((action) => action.action === "ableton_insert_midi_notes")?.payload.notes).toEqual(expect.arrayContaining([
       expect.objectContaining({ pitch: expect.any(Number), start_time: expect.any(Number), duration: expect.any(Number) })
     ]));
+    const sampleAction = arrangement.arrangement.actions.find((action) => action.action === "ableton_load_preset_or_sample");
+    expect(sampleAction?.payload.path).not.toBe(stagedPath);
+    expect(sampleAction?.payload.name).toBe("Assigned Room Tone");
+    expect(arrangement.arrangement.sampleAssignments[0]?.path).not.toBe(stagedPath);
+    expect(stored.actions.find((action) => action.action === "ableton_load_preset_or_sample")?.payload.path).toBe(stagedPath);
     expect(dryRun.dry_run).toBe(true);
     expect(dryRun.executableActions).toBeGreaterThan(0);
     expect(delivery.export.sampleRate).toBe(48000);

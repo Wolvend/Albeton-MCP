@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { bridgeAction, getBridgeSnapshot } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
-import { requireFlag } from "./errors.js";
+import { AbletonMcpError, requireFlag } from "./errors.js";
 import { buildSampleAttribution, downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
 import { redactPath, resolveSafePath } from "./security.js";
 import { assertAllowedSampleUrl } from "./network.js";
@@ -73,6 +73,13 @@ type ArrangementPlan = {
   conceptPlanId: string;
   createdAt: string;
   actions: ArrangementAction[];
+  sampleAssignments: Array<{
+    layer: string;
+    path: string;
+    redactedPath: string;
+    clip_slot_index: number;
+    name: string | null;
+  }>;
   automationPlan: Array<{
     layer: string;
     automation: string;
@@ -87,6 +94,15 @@ type CreatedTrackResolution = {
   baseTrackCount: number;
   baseReturnTrackCount: number;
 };
+
+export type SampleLayerAssignmentInput = {
+  layer: string;
+  path: string;
+  clip_slot_index?: number;
+  name?: string;
+};
+
+const AudioFileExtensions = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg"]);
 
 function conceptPlanDir() {
   return path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-plans");
@@ -116,6 +132,24 @@ function safeRemoteSampleUrl(value: unknown) {
   } catch {
     return null;
   }
+}
+
+function isPathWithin(candidate: string, root: string) {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+async function resolveApprovedConceptSamplePath(inputPath: string) {
+  const safe = await resolveSafePath(inputPath, { mustExist: true });
+  const extension = path.extname(safe.real).toLowerCase();
+  if (!AudioFileExtensions.has(extension)) {
+    throw new AbletonMcpError("Concept sample assignments must point to common local audio files.", "UNSUPPORTED_SAMPLE_TYPE", ["Use WAV, AIFF, FLAC, MP3, M4A, or OGG files."]);
+  }
+  const approvedRoots = [LOCAL_PATHS.staging, LOCAL_PATHS.imports, LOCAL_PATHS.userLibrary, LOCAL_PATHS.liveRecordings];
+  if (!approvedRoots.some((root) => isPathWithin(safe.real, root))) {
+    throw new AbletonMcpError("Concept sample assignments must come from staging, Codex Imports, the Ableton User Library, or Live Recordings.", "SAMPLE_PATH_NOT_APPROVED", ["Stage downloads first, or choose a sample already under the Ableton User Library."]);
+  }
+  return { real: safe.real, redacted: redactPath(safe.real), extension };
 }
 
 function seconds(value: number) {
@@ -327,6 +361,26 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
   return payload;
 }
 
+function redactActionPayload(payload: Record<string, unknown>) {
+  const redacted = { ...payload };
+  if (typeof redacted.path === "string") redacted.path = redactPath(redacted.path);
+  return redacted;
+}
+
+function arrangementForReport(arrangement: ArrangementPlan): ArrangementPlan {
+  return {
+    ...arrangement,
+    sampleAssignments: (arrangement.sampleAssignments ?? []).map((assignment) => ({
+      ...assignment,
+      path: assignment.redactedPath
+    })),
+    actions: arrangement.actions.map((action) => ({
+      ...action,
+      payload: redactActionPayload(action.payload)
+    }))
+  };
+}
+
 function bridgeSnapshotResolution(snapshot: unknown): CreatedTrackResolution {
   const response = snapshot as { data?: { state?: { track_count?: unknown; return_track_count?: unknown }; tracks?: unknown[] } };
   const baseTrackCount = Number(response.data?.state?.track_count ?? response.data?.tracks?.length ?? 0);
@@ -489,7 +543,7 @@ export async function stageConceptSamples(options: {
   return { dry_run: false, staged };
 }
 
-export async function buildLayeredArrangementPlan(planId: string) {
+export async function buildLayeredArrangementPlan(planId: string, sampleAssignmentsInput: SampleLayerAssignmentInput[] = []) {
   const plan = await readConceptPlan(planId);
   const horror = plan.preset === "liminal_backrooms_horror";
   const layerTargets = plan.layers.map((layer) => ({ layer, trackOffset: null as number | null, returnOffset: null as number | null }));
@@ -507,6 +561,26 @@ export async function buildLayeredArrangementPlan(planId: string) {
       target.trackOffset = nextTrackOffset;
       nextTrackOffset += 1;
     }
+  }
+  const sampleAssignments = [];
+  for (const assignment of sampleAssignmentsInput) {
+    const layerName = assignment.layer.trim();
+    const target = layerTargets.find((candidate) => candidate.layer.name.toLowerCase() === layerName.toLowerCase());
+    if (!target) {
+      throw new AbletonMcpError(`Concept layer not found for sample assignment: ${layerName}`, "CONCEPT_LAYER_NOT_FOUND", ["Use an exact layer name from ableton_plan_concept_track."]);
+    }
+    if (target.layer.type !== "audio" || target.trackOffset === null) {
+      throw new AbletonMcpError(`Sample assignment layer must be an audio layer: ${layerName}`, "CONCEPT_LAYER_NOT_AUDIO", ["Assign samples only to audio layers; MIDI and return layers are generated by the arrangement plan."]);
+    }
+    const sample = await resolveApprovedConceptSamplePath(assignment.path);
+    sampleAssignments.push({
+      layer: target.layer.name,
+      trackOffset: target.trackOffset,
+      path: sample.real,
+      redactedPath: sample.redacted,
+      clip_slot_index: assignment.clip_slot_index ?? 0,
+      name: assignment.name?.trim().slice(0, 128) || target.layer.name
+    });
   }
   const actions: ArrangementAction[] = [
     {
@@ -575,7 +649,19 @@ export async function buildLayeredArrangementPlan(planId: string) {
         safeToExecute: true,
         reason: "Creates a short editable MIDI motif from the stored concept plan."
       }];
-    })
+    }),
+    ...sampleAssignments.map((assignment) => ({
+      action: "ableton_load_preset_or_sample",
+      payload: {
+        track_created_offset: assignment.trackOffset,
+        clip_slot_index: assignment.clip_slot_index,
+        path: assignment.path,
+        mode: "audio_clip",
+        name: assignment.name
+      },
+      safeToExecute: true,
+      reason: "Creates an audio clip from an approved local sample assigned to this stored concept layer."
+    }))
   ];
   const automationPlan: ArrangementPlan["automationPlan"] = plan.layers.flatMap((layer) => layer.automation.map((automation) => ({
       layer: layer.name,
@@ -589,6 +675,13 @@ export async function buildLayeredArrangementPlan(planId: string) {
     conceptPlanId: planId,
     createdAt: new Date().toISOString(),
     actions,
+    sampleAssignments: sampleAssignments.map((assignment) => ({
+      layer: assignment.layer,
+      path: assignment.path,
+      redactedPath: assignment.redactedPath,
+      clip_slot_index: assignment.clip_slot_index,
+      name: assignment.name
+    })),
     automationPlan,
     notes: [
       "Created-track placeholders are resolved from a live snapshot immediately before real execution, so the plan can append to a non-empty set.",
@@ -597,7 +690,7 @@ export async function buildLayeredArrangementPlan(planId: string) {
     ]
   };
   const filePath = await writeJson(`${arrangement.id}.json`, arrangement);
-  return { arrangement, storedPath: redactPath(filePath) };
+  return { arrangement: arrangementForReport(arrangement), storedPath: redactPath(filePath) };
 }
 
 export async function executeConceptPlan(options: { arrangement_id: string; dry_run: boolean }) {
@@ -605,7 +698,7 @@ export async function executeConceptPlan(options: { arrangement_id: string; dry_
   if (options.dry_run !== false) {
     return {
       dry_run: true,
-      arrangement,
+      arrangement: arrangementForReport(arrangement),
       executableActions: arrangement.actions.filter((action) => action.safeToExecute).length,
       nextStep: "Set dry_run=false and ABLETON_MCP_ENABLE_WRITE=1 to create the approved session skeleton in Ableton."
     };
@@ -619,7 +712,7 @@ export async function executeConceptPlan(options: { arrangement_id: string; dry_
       continue;
     }
     const payload = actionPayloadWithCreatedTrack(action, resolution);
-    results.push({ action: action.action, bridge: await bridgeAction(action.action, payload), resolvedPayload: payload });
+    results.push({ action: action.action, bridge: await bridgeAction(action.action, payload), resolvedPayload: redactActionPayload(payload) });
   }
   return { dry_run: false, arrangement_id: arrangement.id, resolution, results };
 }

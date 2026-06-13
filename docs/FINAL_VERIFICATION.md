@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 21 test files and 51 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, and staged automation actions, and sample attribution record checks.
+Result: succeeded. Vitest reported 21 test files and 51 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged automation actions, local sample assignment redaction, and sample attribution record checks.
 
 ```powershell
 npm run lint
@@ -67,7 +67,7 @@ npm run sweep:all
 
 Result: succeeded. All-tool contract sweep called all 158 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> dry-run execution.
 
-The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode. Concept arrangement plans now include created-track placeholders for volume, pan, reverb/delay sends, sparse MIDI motifs, and staged automation metadata; real execution resolves those placeholders from a live snapshot immediately before write-gated bridge calls.
+The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode. Concept arrangement plans now include created-track placeholders for volume, pan, reverb/delay sends, sparse MIDI motifs, approved local sample assignments, and staged automation metadata; real execution resolves those placeholders from a live snapshot immediately before write-gated bridge calls.
 
 ```powershell
 npm run verify:mcp

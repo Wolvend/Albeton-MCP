@@ -50,6 +50,12 @@ const AutomationPoint = {
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
 const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
+const ConceptSampleAssignment = z.object({
+  layer: z.string().min(1).max(128),
+  path: z.string().min(1),
+  clip_slot_index: ClipSlotIndex.default(0),
+  name: z.string().min(1).max(128).optional()
+});
 const MidiNote = z.object({
   pitch: z.number().int().min(0).max(127),
   start_time: z.number().min(0).max(100_000),
@@ -508,7 +514,7 @@ toolDefs.push(
   { name: "ableton_plan_concept_track", description: "Turn a mood, place, or liminal concept into a stored staged Ableton production plan.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), sources: ConceptSources, reference_path: z.string().min(1).optional() }, annotations: ro, handler: async (args) => ({ ok: true, concept: await planConceptTrack(args) as any }) },
   { name: "ableton_search_concept_samples", description: "Search approved sample metadata for a stored concept plan or direct concept without downloading.", inputSchema: { plan_id: ConceptPlanId.optional(), concept: z.string().min(3).max(1000).optional(), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, samples: await searchConceptSamples({ plan_id: args.plan_id, concept: args.concept, page: args.page, pageSize: args.pageSize }) as any }) },
   { name: "ableton_stage_concept_samples", description: "Stage approved concept samples; dry-run by default and download-gated for real staging.", inputSchema: { samples: z.array(z.object({ url: z.string().url(), destinationName: z.string().min(1).max(160), metadata: z.record(z.unknown()).default({}) })).min(1).max(12), ...DryRun }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, staging: await stageConceptSamples({ samples: args.samples, dry_run: args.dry_run }) as any }) },
-  { name: "ableton_build_layered_arrangement_plan", description: "Convert a stored concept plan into a stored Ableton track/scene/action plan.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await buildLayeredArrangementPlan(args.plan_id) as any }) },
+  { name: "ableton_build_layered_arrangement_plan", description: "Convert a stored concept plan into a stored Ableton track/scene/action plan.", inputSchema: { plan_id: ConceptPlanId, sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]) }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await buildLayeredArrangementPlan(args.plan_id, args.sample_assignments) as any }) },
   { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default.", inputSchema: { arrangement_id: ArrangementPlanId, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run }) as any }) },
   { name: "ableton_render_delivery_plan", description: "Plan final master/stem export settings for a stored concept plan without rendering.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, delivery: await renderDeliveryPlan(args.plan_id) as any }) },
 

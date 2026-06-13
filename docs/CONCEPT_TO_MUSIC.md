@@ -21,6 +21,7 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
 4. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.
    - Builds tempo, track, scene, arrangement marker, mix, send, and sparse MIDI motif actions.
+   - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit `ableton_load_preset_or_sample` actions.
    - Uses created-track placeholders for mix, send, and MIDI actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
 
 5. `ableton_execute_concept_plan`
@@ -63,9 +64,10 @@ The arrangement plan includes:
 - Scene names and arrangement locators for isolation, motif, decay, collapse, and unresolved tail sections.
 - Initial volume, pan, and named reverb/delay return-send targets for each created non-return track.
 - A short editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer.
+- Optional approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`.
 - A staged automation plan for reverb, delay, filter, and volume movement. These lanes are review metadata until the live set has verified device/parameter targets.
 
-Sample placement remains staged until local sample paths are approved. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects.
+Sample placement remains staged until local sample paths are approved. Assignment paths must come from sample staging, Codex Imports, the Ableton User Library, or Live Recordings; tool responses redact the local path while stored plans retain the executable path. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects.
 
 ## Example
 
@@ -86,6 +88,18 @@ Then:
 ableton_search_concept_samples
 ableton_build_layered_arrangement_plan
 ableton_execute_concept_plan with dry_run=true
+```
+
+With approved local samples:
+
+```text
+ableton_build_layered_arrangement_plan:
+  plan_id: "concept-..."
+  sample_assignments:
+    - layer: "Stretched Room"
+      path: "C:\\Users\\LIZ\\Desktop\\MCP\\ableton-mcp\\samples\\staging\\room-tone.wav"
+      clip_slot_index: 1
+      name: "Assigned Room Tone"
 ```
 
 Only after review:
