@@ -19,6 +19,7 @@ import {
   planConceptTrack,
   preflightConceptExecution,
   prepareConceptAudioLayers,
+  renderConceptAttributionBundle,
   renderConceptExecutionManifest,
   renderConceptMixPlan,
   renderConceptProductionScorecard,
@@ -110,6 +111,16 @@ describe("concept-to-music planning", () => {
     await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
     const stagedPath = path.join(LOCAL_PATHS.staging, "concept-assignment-test.wav");
     await fs.writeFile(stagedPath, "fixture audio placeholder");
+    await fs.writeFile(`${stagedPath}.attribution.json`, `${JSON.stringify({
+      sourceUrl: "https://archive.org/download/example/concept-assignment-test.wav",
+      destinationName: "concept-assignment-test.wav",
+      title: "Concept Assignment Test",
+      creator: "Ableton MCP Test",
+      identifier: "concept-assignment-test",
+      license: "CC0",
+      checksum: "abc123",
+      bytes: 24
+    }, null, 2)}\n`);
     const arrangement = await buildLayeredArrangementPlan(planned.plan.id, [{
       layer: "Stretched Room",
       path: stagedPath,
@@ -127,6 +138,9 @@ describe("concept-to-music planning", () => {
       check_bridge: false
     });
     const manifest = await renderConceptExecutionManifest({
+      arrangement_id: arrangement.arrangement.id
+    });
+    const attribution = await renderConceptAttributionBundle({
       arrangement_id: arrangement.arrangement.id
     });
     const scorecard = await renderConceptProductionScorecard({
@@ -215,6 +229,17 @@ describe("concept-to-music planning", () => {
       approval_id: approvalRequirement.approval_id,
       approval_confirmed: true
     });
+    expect(attribution.bundleType).toBe("concept_attribution_bundle");
+    expect(attribution.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, broadScan: false, localPathsRedacted: true });
+    expect(attribution.summary).toMatchObject({ sampleAssignments: 1, sidecarsFound: 1, missingSidecars: 0, licenseWarnings: 0, attributionReady: true });
+    expect(attribution.items[0]?.mediaPath).not.toBe(stagedPath);
+    expect(attribution.items[0]?.sidecar).toMatchObject({
+      found: true,
+      sourceUrl: "https://archive.org/download/example/concept-assignment-test.wav",
+      checksum: "abc123",
+      licensePolicy: { allowed: true }
+    });
+    expect(attribution.exactNextToolCalls.globalAttributionReport.name).toBe("ableton_generate_attribution_report");
     expect(manifest.exactToolCalls.routingReadiness.name).toBe("ableton_plan_concept_routing_readiness");
     expect(manifest.stagedReview.routingReadinessToolCall.name).toBe("ableton_plan_concept_routing_readiness");
     expect(scorecard.scorecardType).toBe("concept_production_scorecard");

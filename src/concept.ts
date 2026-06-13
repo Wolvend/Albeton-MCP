@@ -62,6 +62,10 @@ export type ConceptExecutionManifestOptions = {
   arrangement_id: string;
 };
 
+export type ConceptAttributionBundleOptions = {
+  arrangement_id: string;
+};
+
 export type ConceptProductionScorecardOptions = ConceptExecutionPreflightOptions;
 
 export type ConceptExecutionOptions = {
@@ -243,6 +247,7 @@ export type SampleLayerAssignmentInput = {
 };
 
 const AudioFileExtensions = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg"]);
+const MAX_CONCEPT_ATTRIBUTION_BYTES = 128_000;
 
 function conceptPlanDir() {
   return path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-plans");
@@ -2531,6 +2536,148 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
       "Load the Max for Live bridge, then run preflightWithBridge.",
       "Only run realExecutionAfterApproval after reviewing the approval bundle and intentionally enabling ABLETON_MCP_ENABLE_WRITE=1."
     ]
+  };
+}
+
+function attributionText(value: unknown, maxLength = 240) {
+  const text = sanitizeRemoteSampleText(value, maxLength);
+  return text.length > 0 ? text : null;
+}
+
+async function readConceptAttributionSidecar(samplePath: string) {
+  const sidecarPath = `${samplePath}.attribution.json`;
+  let safe;
+  try {
+    safe = await resolveSafePath(sidecarPath, { mustExist: false });
+  } catch (error) {
+    return {
+      found: false,
+      sidecarPath: redactPath(sidecarPath),
+      issue: error instanceof Error ? error.message : String(error)
+    };
+  }
+
+  try {
+    const stat = await fs.stat(safe.real);
+    if (stat.size > MAX_CONCEPT_ATTRIBUTION_BYTES) {
+      return {
+        found: false,
+        sidecarPath: redactPath(safe.real),
+        issue: "Attribution sidecar exceeds size limit."
+      };
+    }
+    const record = JSON.parse(await fs.readFile(safe.real, "utf8")) as Record<string, unknown>;
+    const licenseText = String(record.license ?? (record.licensePolicy && typeof record.licensePolicy === "object" ? (record.licensePolicy as { license?: unknown }).license : "") ?? "");
+    return {
+      found: true,
+      sidecarPath: redactPath(safe.real),
+      sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : null,
+      destinationName: attributionText(record.destinationName, 180),
+      title: attributionText(record.title, 240),
+      creator: attributionText(record.creator, 180),
+      identifier: attributionText(record.identifier, 180),
+      license: attributionText(licenseText, 220) ?? "unknown",
+      licensePolicy: normalizeLicense(licenseText),
+      checksum: typeof record.checksum === "string" ? record.checksum : null,
+      bytes: typeof record.bytes === "number" ? record.bytes : null,
+      stagedAt: typeof record.stagedAt === "string" ? record.stagedAt : null,
+      importedAt: typeof record.importedAt === "string" ? record.importedAt : null
+    };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return {
+      found: false,
+      sidecarPath: redactPath(safe.real),
+      issue: code === "ENOENT" ? "Attribution sidecar not found." : error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+export async function renderConceptAttributionBundle(options: ConceptAttributionBundleOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const assignments = arrangement.sampleAssignments ?? [];
+  const items = [];
+  for (const assignment of assignments) {
+    const sidecar = await readConceptAttributionSidecar(assignment.path);
+    items.push({
+      layer: assignment.layer,
+      source: assignment.source,
+      treatment: assignment.treatment ?? null,
+      clip_slot_index: assignment.clip_slot_index,
+      name: attributionText(assignment.name ?? assignment.layer, 180),
+      mediaPath: redactPath(assignment.path),
+      sidecar,
+      attributionReady: sidecar.found === true
+        && "licensePolicy" in sidecar
+        && Boolean(sidecar.licensePolicy.allowed)
+        && typeof sidecar.sourceUrl === "string"
+    });
+  }
+  const missingSidecars = items.filter((item) => item.sidecar.found !== true).map((item) => ({
+    layer: item.layer,
+    mediaPath: item.mediaPath,
+    issue: "issue" in item.sidecar ? item.sidecar.issue : "Attribution sidecar missing."
+  }));
+  const licenseWarnings = items.filter((item) =>
+    item.sidecar.found === true
+    && "licensePolicy" in item.sidecar
+    && item.sidecar.licensePolicy.allowed !== true
+  ).map((item) => ({
+    layer: item.layer,
+    license: "license" in item.sidecar ? item.sidecar.license : "unknown",
+    policy: "licensePolicy" in item.sidecar ? item.sidecar.licensePolicy.policy : "Review license before publishing."
+  }));
+  const sourceUrlMissing = items.filter((item) =>
+    item.sidecar.found === true
+    && "sourceUrl" in item.sidecar
+    && typeof item.sidecar.sourceUrl !== "string"
+  ).map((item) => item.layer);
+
+  return {
+    bundleType: "concept_attribution_bundle",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      title: sanitizeRemoteSampleText(concept.concept, 500),
+      style: concept.style
+    },
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      broadScan: false,
+      localPathsRedacted: true,
+      sidecarByteLimit: MAX_CONCEPT_ATTRIBUTION_BYTES
+    },
+    summary: {
+      sampleAssignments: assignments.length,
+      sidecarsFound: items.filter((item) => item.sidecar.found === true).length,
+      missingSidecars: missingSidecars.length,
+      licenseWarnings: licenseWarnings.length,
+      sourceUrlMissing: sourceUrlMissing.length,
+      attributionReady: assignments.length > 0 && missingSidecars.length === 0 && licenseWarnings.length === 0 && sourceUrlMissing.length === 0
+    },
+    items,
+    missingSidecars,
+    licenseWarnings,
+    sourceUrlMissing,
+    exactNextToolCalls: {
+      globalAttributionReport: { name: "ableton_generate_attribution_report", arguments: { page: 1, pageSize: 25 } },
+      deliveryPlan: { name: "ableton_render_delivery_plan", arguments: { plan_id: concept.id } },
+      productionScorecard: { name: "ableton_render_concept_production_scorecard", arguments: { arrangement_id: arrangement.id, check_bridge: false } }
+    },
+    nextSteps: missingSidecars.length === 0 && licenseWarnings.length === 0
+      ? [
+        "Review source URLs, licenses, checksums, and creator/title fields before publishing.",
+        "Run the global attribution report before delivery if staged or imported samples were used."
+      ]
+      : [
+        "Add or regenerate missing .attribution.json sidecars before publishing.",
+        "For user-provided local reference audio, manually confirm rights and store attribution metadata beside the prepared file.",
+        "Do not publish with license warnings unresolved."
+      ]
   };
 }
 
