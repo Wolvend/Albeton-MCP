@@ -85,6 +85,8 @@ describe("concept-to-music planning", () => {
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_insert_midi_notes")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_rename_clip")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_clip_loop")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_track_send")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_return_track_volume")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_return_track_pan")).toBe(true);
@@ -95,6 +97,8 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.devicePlan.some((entry) => entry.layer === "Stretched Room" && entry.devices.includes("Hybrid Reverb"))).toBe(true);
     expect(arrangement.arrangement.devicePlan.every((entry) => entry.execution === "staged")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_track_volume").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_rename_clip").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_clip_loop").every((action) => typeof action.payload.loop_end === "number")).toBe(true);
     expect(arrangement.arrangement.actions.find((action) => action.action === "ableton_insert_midi_notes")?.payload.notes).toEqual(expect.arrayContaining([
       expect.objectContaining({ pitch: expect.any(Number), start_time: expect.any(Number), duration: expect.any(Number) })
     ]));

@@ -1148,32 +1148,85 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
     }),
     ...layerTargets.flatMap((target) => {
       if (target.layer.type !== "midi" || target.trackOffset === null) return [];
-      return [{
-        action: "ableton_insert_midi_notes",
-        payload: {
-          track_created_offset: target.trackOffset,
-          clip_slot_index: 0,
-          notes: motifNotes(horror, plan.intensity),
-          create_clip_if_missing: true,
-          clip_length: horror ? 16 : 8,
-          name: `${target.layer.name} Motif`
+      const clipName = `${target.layer.name} Motif`;
+      const clipLength = horror ? 16 : 8;
+      return [
+        {
+          action: "ableton_insert_midi_notes",
+          payload: {
+            track_created_offset: target.trackOffset,
+            clip_slot_index: 0,
+            notes: motifNotes(horror, plan.intensity),
+            create_clip_if_missing: true,
+            clip_length: clipLength,
+            name: clipName
+          },
+          safeToExecute: true,
+          reason: "Creates a short editable MIDI motif from the stored concept plan."
         },
-        safeToExecute: true,
-        reason: "Creates a short editable MIDI motif from the stored concept plan."
-      }];
+        {
+          action: "ableton_rename_clip",
+          payload: {
+            track_created_offset: target.trackOffset,
+            clip_slot_index: 0,
+            name: clipName
+          },
+          safeToExecute: true,
+          reason: "Names the newly created concept MIDI clip so the generated set remains navigable."
+        },
+        {
+          action: "ableton_set_clip_loop",
+          payload: {
+            track_created_offset: target.trackOffset,
+            clip_slot_index: 0,
+            looping: true,
+            loop_start: 0,
+            loop_end: clipLength
+          },
+          safeToExecute: true,
+          reason: "Loops the newly created concept MIDI clip over the generated motif length."
+        }
+      ];
     }),
-    ...sampleAssignments.map((assignment) => ({
-      action: "ableton_load_preset_or_sample",
-      payload: {
-        track_created_offset: assignment.trackOffset,
-        clip_slot_index: assignment.clip_slot_index,
-        path: assignment.path,
-        mode: "audio_clip",
-        name: assignment.name
-      },
-      safeToExecute: true,
-      reason: "Creates an audio clip from an approved local sample assigned to this stored concept layer."
-    }))
+    ...sampleAssignments.flatMap((assignment) => {
+      const clipLength = horror ? 16 : 8;
+      return [
+        {
+          action: "ableton_load_preset_or_sample",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            path: assignment.path,
+            mode: "audio_clip",
+            name: assignment.name
+          },
+          safeToExecute: true,
+          reason: "Creates an audio clip from an approved local sample assigned to this stored concept layer."
+        },
+        {
+          action: "ableton_rename_clip",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            name: assignment.name
+          },
+          safeToExecute: true,
+          reason: "Names the newly created approved sample clip so the generated set remains navigable."
+        },
+        {
+          action: "ableton_set_clip_loop",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            looping: true,
+            loop_start: 0,
+            loop_end: clipLength
+          },
+          safeToExecute: true,
+          reason: "Loops the newly created approved sample clip for immediate arrangement sketching."
+        }
+      ];
+    })
   ];
   const devicePlan: ArrangementPlan["devicePlan"] = layerTargets
     .filter((target) => target.layer.deviceChain.length > 0)
