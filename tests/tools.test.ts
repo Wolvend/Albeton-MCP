@@ -27,10 +27,14 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_transpose_clip");
     expect(registeredToolNames).toContain("ableton_set_clip_warp");
     expect(registeredToolNames).toContain("ableton_set_clip_markers");
+    expect(registeredToolNames).toContain("ableton_set_clip_color");
     expect(registeredToolNames).toContain("ableton_set_track_send");
     expect(registeredToolNames).toContain("ableton_get_return_track_mixer");
+    expect(registeredToolNames).toContain("ableton_set_track_color");
+    expect(registeredToolNames).toContain("ableton_set_return_track_color");
     expect(registeredToolNames).toContain("ableton_set_return_track_volume");
     expect(registeredToolNames).toContain("ableton_set_return_track_pan");
+    expect(registeredToolNames).toContain("ableton_set_scene_color");
     expect(registeredToolNames).toContain("ableton_set_master_volume");
     expect(registeredToolNames).toContain("ableton_set_master_pan");
     expect(registeredToolNames).toContain("ableton_search_freesound");
@@ -72,9 +76,12 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_fire_scene).toHaveProperty("force_legato");
     expect(registeredToolSchemas.ableton_set_scene_tempo).toHaveProperty("tempo");
     expect(registeredToolSchemas.ableton_set_scene_time_signature).toHaveProperty("denominator");
+    expect(registeredToolSchemas.ableton_set_scene_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_set_track_volume).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_set_track_volume).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_set_track_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_get_return_track_mixer).toHaveProperty("return_track_index");
+    expect(registeredToolSchemas.ableton_set_return_track_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_set_return_track_volume).toHaveProperty("return_track_index");
     expect(registeredToolSchemas.ableton_set_return_track_volume).toHaveProperty("value");
     expect(registeredToolSchemas.ableton_set_return_track_pan).toHaveProperty("return_track_index");
@@ -101,6 +108,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_transpose_clip).toHaveProperty("semitones");
     expect(registeredToolSchemas.ableton_set_clip_warp).toHaveProperty("warp_mode");
     expect(registeredToolSchemas.ableton_set_clip_markers).toHaveProperty("start_marker");
+    expect(registeredToolSchemas.ableton_set_clip_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_convert_audio_file).toHaveProperty("preset");
     expect(registeredToolSchemas.ableton_list_internet_archive_audio_files).toHaveProperty("identifier");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");

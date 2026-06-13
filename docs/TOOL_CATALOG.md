@@ -1,6 +1,6 @@
 # MCP Tool Catalog
 
-The server currently registers 182 MCP tools.
+The server currently registers 186 MCP tools.
 
 Use this command to inspect the live catalog:
 
@@ -8,7 +8,7 @@ Use this command to inspect the live catalog:
 npm run inspect
 ```
 
-Core Live control tools expose field-level schemas for agent planning and validation. For example, tempo uses `tempo`, track/scene creation uses `name` and optional indexes, scene launch and scene tempo/signature tools use explicit scene indexes, clip tools use `track_index` and `clip_slot_index`, track/return/master mixer tools use bounded `value`, and device parameter writes use explicit track/device/parameter indexes. Real writes still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1`.
+Core Live control tools expose field-level schemas for agent planning and validation. For example, tempo uses `tempo`, track/scene creation uses `name` and optional indexes, scene launch and scene tempo/signature tools use explicit scene indexes, clip tools use `track_index` and `clip_slot_index`, track/return/master mixer tools use bounded `value`, color tools use bounded RGB integer values, and device parameter writes use explicit track/device/parameter indexes. Real writes still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1`.
 
 Some LiveAPI write requests are intentionally capability-limited until the running Ableton bridge proves a reliable path. Device insertion, macro mapping, groove application, automation writes, clip quantization, and MIDI humanization return structured `unsupported: true` dry-run plans with next-step hints instead of fake success.
 
@@ -23,7 +23,7 @@ Some LiveAPI write requests are intentionally capability-limited until the runni
 | Library and cache | `ableton_scan_library`, `ableton_search_library`, `ableton_get_scan_status` |
 | Ableton set analysis | `ableton_analyze_set`, `ableton_get_set_summary`, `ableton_compare_sets` |
 | Live bridge reads | `ableton_get_live_state`, `ableton_list_tracks`, `ableton_get_return_track_mixer`, `ableton_get_transport` |
-| Write-gated Live control | `ableton_set_tempo`, `ableton_fire_scene`, `ableton_set_scene_tempo`, `ableton_create_clip`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_master_volume`, `ableton_set_device_parameter` |
+| Write-gated Live control | `ableton_set_tempo`, `ableton_fire_scene`, `ableton_set_scene_tempo`, `ableton_set_track_color`, `ableton_set_clip_color`, `ableton_create_clip`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_master_volume`, `ableton_set_device_parameter` |
 | Automation and arrangement | `ableton_create_automation_envelope`, `ableton_set_automation_point`, `ableton_create_arrangement_marker`, `ableton_quantize_clip` |
 | Bridge discovery | `ableton_list_arrangement_markers`, `ableton_get_clip_notes`, `ableton_get_clip_envelopes`, `ableton_get_device_parameter_map` |
 | UI driver fallback | `ableton_ui_driver_ping`, `ableton_window_status`, `ableton_focus_window`, `ableton_click_coordinates` |

@@ -444,6 +444,45 @@ function setTrackBoolean(payload, propertyName) {
   return { track_index: trackIndex, property: propertyName, value: value ? 1 : 0 };
 }
 
+function parseColor(payload) {
+  var color = Math.floor(Number(payload && payload.color));
+  if (!isFinite(color) || color < 0 || color > 16777215) throw new Error("color must be an RGB integer from 0 to 16777215.");
+  return color;
+}
+
+function setTrackColor(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var color = parseColor(payload);
+  var track = liveObject("live_set tracks " + trackIndex);
+  track.set("color", color);
+  return { track_index: trackIndex, color: safeGet(track, "color", null) };
+}
+
+function setReturnTrackColor(payload) {
+  var returnTrackIndex = parseRequiredIndex(payload, "return_track_index");
+  var color = parseColor(payload);
+  var track = liveObject("live_set return_tracks " + returnTrackIndex);
+  track.set("color", color);
+  return { return_track_index: returnTrackIndex, color: safeGet(track, "color", null) };
+}
+
+function setSceneColor(payload) {
+  var sceneIndex = parseRequiredIndex(payload, "scene_index");
+  var color = parseColor(payload);
+  var scene = liveObject("live_set scenes " + sceneIndex);
+  scene.set("color", color);
+  return { scene_index: sceneIndex, color: safeGet(scene, "color", null) };
+}
+
+function setClipColor(payload) {
+  var target = clipSlotFromPayload(payload);
+  if (!clipExists(target.track_index, target.slot_index)) throw new Error("Clip slot does not contain a clip.");
+  var color = parseColor(payload);
+  var clip = liveObject(target.clip_path);
+  clip.set("color", color);
+  return { track_index: target.track_index, clip_slot_index: target.slot_index, color: safeGet(clip, "color", null) };
+}
+
 function renameTrack(payload) {
   var trackIndex = parseIndex(payload, "track_id");
   if (trackIndex === null) trackIndex = selectedTrackIndex();
@@ -1044,9 +1083,11 @@ function dispatch(action, payload) {
   if (action === "ableton_arm_track") return setTrackBoolean(payload, "arm");
   if (action === "ableton_mute_track") return setTrackBoolean(payload, "mute");
   if (action === "ableton_solo_track") return setTrackBoolean(payload, "solo");
+  if (action === "ableton_set_track_color") return setTrackColor(payload);
   if (action === "ableton_set_track_volume") return setMixerParameter(payload, "volume", 0, 1);
   if (action === "ableton_set_track_pan") return setMixerParameter(payload, "panning", -1, 1);
   if (action === "ableton_set_track_send") return setTrackSend(payload);
+  if (action === "ableton_set_return_track_color") return setReturnTrackColor(payload);
   if (action === "ableton_set_return_track_volume") return setReturnMixerParameter(payload, "volume", 0, 1);
   if (action === "ableton_set_return_track_pan") return setReturnMixerParameter(payload, "panning", -1, 1);
   if (action === "ableton_set_master_volume") return setMasterMixerParameter(payload, "volume", 0, 1);
@@ -1055,6 +1096,7 @@ function dispatch(action, payload) {
   if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);
   if (action === "ableton_rename_clip") return renameClip(payload);
+  if (action === "ableton_set_clip_color") return setClipColor(payload);
   if (action === "ableton_create_automation_envelope") return createAutomationEnvelope(payload);
   if (action === "ableton_set_automation_point") return setAutomationPoint(payload);
   if (action === "ableton_simplify_automation") return simplifyAutomation(payload);
@@ -1062,6 +1104,7 @@ function dispatch(action, payload) {
   if (action === "ableton_fire_scene") return fireScene(payload);
   if (action === "ableton_set_scene_tempo") return setSceneTempo(payload);
   if (action === "ableton_set_scene_time_signature") return setSceneTimeSignature(payload);
+  if (action === "ableton_set_scene_color") return setSceneColor(payload);
   if (action === "ableton_duplicate_scene") return duplicateScene(payload);
   if (action === "ableton_duplicate_clip") return duplicateClip(payload);
   if (action === "ableton_move_clip") return moveClip(payload);

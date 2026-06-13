@@ -59,21 +59,21 @@ Result: succeeded. Release check found no missing required files or scripts. It 
 npm run sweep:safe
 ```
 
-Result: succeeded. Safe sweep called 93 read-only and dry-run tools with 0 unexpected failures, including `ableton_get_return_track_mixer`, `ableton_set_return_track_volume` dry-run, master mixer dry-runs, scene launch/tempo/signature dry-runs, audio clip shaping dry-runs, `ableton_list_internet_archive_audio_files`, `ableton_list_concept_plans`, and `ableton_list_arrangement_plans`.
+Result: succeeded. Safe sweep called 97 read-only and dry-run tools with 0 unexpected failures, including `ableton_get_return_track_mixer`, return/track color dry-runs, `ableton_set_return_track_volume` dry-run, master mixer dry-runs, scene launch/tempo/signature/color dry-runs, audio clip shaping/color dry-runs, `ableton_list_internet_archive_audio_files`, `ableton_list_concept_plans`, and `ableton_list_arrangement_plans`.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 182 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan with approved reference audio -> full concept production plan -> stored arrangement plan with scene tempo/signature setup, return-track mixer actions, and clip rename/loop/gain/transpose/warp/marker polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> non-approving approval bundle -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution.
+Result: succeeded. All-tool contract sweep called all 186 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan with approved reference audio -> full concept production plan -> stored arrangement plan with scene tempo/signature/color setup, return-track mixer/color actions, and clip rename/loop/gain/transpose/warp/marker/color polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> non-approving approval bundle -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution.
 
-The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature tools, typed master volume/pan tools, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, and `ableton_set_clip_markers` contracts. Concept arrangement plans now include created-track and created-scene placeholders for scene setup, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, and a read-only readiness handoff for device/automation target discovery; real execution resolves executable placeholders from a live snapshot immediately before write-gated bridge calls.
+The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature/color tools, typed track/return/master volume/pan/color tools, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, `ableton_set_clip_markers`, and `ableton_set_clip_color` contracts. Concept arrangement plans now include created-track and created-scene placeholders for scene setup, color, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, clip colors, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, and a read-only readiness handoff for device/automation target discovery; real execution resolves executable placeholders from a live snapshot immediately before write-gated bridge calls.
 
 ```powershell
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 182 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 186 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -160,7 +160,7 @@ openclaw mcp doctor ableton-mcp --probe
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL with 182 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL with 186 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ## Live Bridge Smoke
 
@@ -181,7 +181,7 @@ Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` du
 ## Security Notes
 
 - HTTP remains localhost-only by default.
-- HyperNimbus uses the safe tool allowlist.
+- HyperNimbus uses the safe tool allowlist. The new color write tools stay out of that allowlist and still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1` for real execution.
 - Downloads, writes, and UI/mouse control remain disabled by default.
 - Remote sample metadata and concept sample preview URLs are sanitized or validated against the approved sample URL policy before being returned.
 - Concept reference audio now becomes executable only when it is already under approved sample roots; MCP responses redact the local path while stored plans retain the path for later gated execution.

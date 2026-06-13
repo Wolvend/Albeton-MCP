@@ -594,7 +594,7 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
 
   if (createdReturnOffset !== null) {
     const returnTrackIndex = resolution.baseReturnTrackCount + createdReturnOffset;
-    if (action.action === "ableton_set_return_track_volume" || action.action === "ableton_set_return_track_pan") {
+    if (action.action === "ableton_set_return_track_volume" || action.action === "ableton_set_return_track_pan" || action.action === "ableton_set_return_track_color") {
       payload.return_track_index = returnTrackIndex;
     } else {
       payload.send_index = returnTrackIndex;
@@ -775,6 +775,23 @@ function sampleClipShapeForLayer(layerName: string, horror: boolean) {
         ? "complex"
         : "re-pitch";
   return { clipLength, gain, semitones, cents, warpMode };
+}
+
+function colorForLayer(layer: ConceptLayer) {
+  const text = layer.name.toLowerCase();
+  if (layer.type === "return") return text.includes("delay") ? 0xB48EAD : 0x5E81AC;
+  if (layer.type === "midi") return 0xA3BE8C;
+  if (text.includes("degraded")) return 0xD08770;
+  if (text.includes("stretched") || text.includes("room")) return 0x88C0D0;
+  if (text.includes("low")) return 0x4C566A;
+  if (text.includes("mechanical")) return 0xEBCB8B;
+  if (text.includes("reversed")) return 0xBF616A;
+  return 0x81A1C1;
+}
+
+function colorForSection(index: number) {
+  const colors = [0x3B4252, 0xA3BE8C, 0xD08770, 0xBF616A, 0x5E81AC];
+  return colors[index % colors.length];
 }
 
 function plannedTargetResolution(
@@ -1101,6 +1118,7 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       redactedPath: sample.redacted,
       clip_slot_index: assignment.clip_slot_index ?? 0,
       name: assignment.name?.trim().slice(0, 128) || target.layer.name,
+      color: colorForLayer(target.layer),
       source: assignment.source ?? "manual_assignment",
       treatment: assignment.treatment,
       followUp: assignment.followUp ?? []
@@ -1113,19 +1131,45 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       safeToExecute: true,
       reason: "Tempo is bounded and plan-derived."
     },
-    ...plan.layers.map((layer) => ({
+    ...plan.layers.map<ArrangementAction>((layer) => ({
       action: layer.type === "midi" ? "ableton_create_midi_track" : layer.type === "return" ? "ableton_create_return_track" : "ableton_create_audio_track",
       payload: { name: layer.name },
       safeToExecute: true,
       reason: "Creates a named track from the stored concept plan."
     })),
-    ...plan.sections.map((section) => ({
+    ...layerTargets.flatMap<ArrangementAction>((target) => {
+      const color = colorForLayer(target.layer);
+      if (target.trackOffset !== null) {
+        return [{
+          action: "ableton_set_track_color",
+          payload: { track_created_offset: target.trackOffset, color },
+          safeToExecute: true,
+          reason: "Color-codes the generated concept track for easier navigation."
+        }];
+      }
+      if (target.returnOffset !== null) {
+        return [{
+          action: "ableton_set_return_track_color",
+          payload: { return_created_offset: target.returnOffset, color },
+          safeToExecute: true,
+          reason: "Color-codes the generated concept return track for easier navigation."
+        }];
+      }
+      return [];
+    }),
+    ...plan.sections.map<ArrangementAction>((section) => ({
       action: "ableton_create_scene",
       payload: { name: section.name },
       safeToExecute: true,
       reason: "Creates named scene markers from the stored section map."
     })),
-    ...plan.sections.flatMap((section, index) => [
+    ...plan.sections.map<ArrangementAction>((section, index) => ({
+      action: "ableton_set_scene_color",
+      payload: { scene_created_offset: index, color: colorForSection(index) },
+      safeToExecute: true,
+      reason: `Color-codes the generated scene ${section.name} for easier session navigation.`
+    })),
+    ...plan.sections.flatMap<ArrangementAction>((section, index) => [
       {
         action: "ableton_set_scene_tempo",
         payload: { scene_created_offset: index, tempo: plan.tempo, enabled: true },
@@ -1139,13 +1183,13 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
         reason: `Sets the generated scene time signature for ${section.name} without assuming an empty Live set.`
       }
     ]),
-    ...plan.sections.map((section) => ({
+    ...plan.sections.map<ArrangementAction>((section) => ({
       action: "ableton_create_arrangement_marker",
       payload: { time: Math.round((section.start_seconds / 60) * plan.tempo), name: section.name },
       safeToExecute: true,
       reason: "Creates arrangement locators from the stored section map."
     })),
-    ...layerTargets.flatMap((target) => {
+    ...layerTargets.flatMap<ArrangementAction>((target) => {
       if (target.trackOffset === null) return [];
       return [
         {
@@ -1172,7 +1216,7 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
         })
       ];
     }),
-    ...layerTargets.flatMap((target) => {
+    ...layerTargets.flatMap<ArrangementAction>((target) => {
       if (target.returnOffset === null) return [];
       return [
         {
@@ -1189,7 +1233,7 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
         }
       ];
     }),
-    ...layerTargets.flatMap((target) => {
+    ...layerTargets.flatMap<ArrangementAction>((target) => {
       if (target.layer.type !== "midi" || target.trackOffset === null) return [];
       const clipName = `${target.layer.name} Motif`;
       const clipLength = horror ? 16 : 8;
@@ -1218,6 +1262,16 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
           reason: "Names the newly created concept MIDI clip so the generated set remains navigable."
         },
         {
+          action: "ableton_set_clip_color",
+          payload: {
+            track_created_offset: target.trackOffset,
+            clip_slot_index: 0,
+            color: colorForLayer(target.layer)
+          },
+          safeToExecute: true,
+          reason: "Color-codes the newly created concept MIDI clip for easier navigation."
+        },
+        {
           action: "ableton_set_clip_loop",
           payload: {
             track_created_offset: target.trackOffset,
@@ -1231,7 +1285,7 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
         }
       ];
     }),
-    ...sampleAssignments.flatMap((assignment) => {
+    ...sampleAssignments.flatMap<ArrangementAction>((assignment) => {
       const shape = sampleClipShapeForLayer(assignment.layer, horror);
       return [
         {
@@ -1255,6 +1309,16 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
           },
           safeToExecute: true,
           reason: "Names the newly created approved sample clip so the generated set remains navigable."
+        },
+        {
+          action: "ableton_set_clip_color",
+          payload: {
+            track_created_offset: assignment.trackOffset,
+            clip_slot_index: assignment.clip_slot_index,
+            color: assignment.color
+          },
+          safeToExecute: true,
+          reason: "Color-codes the newly created approved sample clip for easier navigation."
         },
         {
           action: "ableton_set_clip_gain",

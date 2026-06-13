@@ -60,7 +60,7 @@ The bridge currently covers broad read visibility plus common write-gated operat
 
 - Transport, tempo, play/stop/record state, and full/diff snapshots.
 - Track, return, master, scene, clip slot, clip, device, parameter, arrangement locator, and selected-object summaries.
-- Track and return-track creation, scene creation, scene launch, scene tempo/signature setup, clip creation, clip launch/stop, loop changes, clip gain, audio clip transpose/detune, audio clip warp settings, start/end marker changes, renaming, track arm/mute/solo, track mixer volume/pan/send changes, return-track mixer volume/pan changes, master volume/pan changes, and scene/clip duplication or movement.
+- Track and return-track creation, scene creation, scene launch, scene tempo/signature setup, track/return/scene/clip color coding, clip creation, clip launch/stop, loop changes, clip gain, audio clip transpose/detune, audio clip warp settings, start/end marker changes, renaming, track arm/mute/solo, track mixer volume/pan/send changes, return-track mixer volume/pan changes, master volume/pan changes, and scene/clip duplication or movement.
 - Audio clip creation from an approved local sample path with `ableton_load_preset_or_sample` in `audio_clip` mode.
 - MIDI note insertion with `ableton_insert_midi_notes` when the loaded Ableton/Max LiveAPI context supports the modern note API.
 

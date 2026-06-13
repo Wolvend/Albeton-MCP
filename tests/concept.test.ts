@@ -84,6 +84,9 @@ describe("concept-to-music planning", () => {
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_track_color")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_return_track_color")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_scene_color")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_scene_tempo")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_scene_time_signature")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_insert_midi_notes")).toBe(true);
@@ -93,23 +96,28 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_transpose_clip")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_clip_warp")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_clip_markers")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_clip_color")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_track_send")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_return_track_volume")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_return_track_pan")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_return_track_volume").every((action) => typeof action.payload.return_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_return_track_color").every((action) => typeof action.payload.return_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_scene_tempo").every((action) => typeof action.payload.scene_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_scene_time_signature").every((action) => typeof action.payload.scene_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_scene_color").every((action) => typeof action.payload.scene_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "filter")).toBe(true);
     expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "delay")).toBe(true);
     expect(arrangement.arrangement.automationPlan.every((entry) => entry.execution === "staged")).toBe(true);
     expect(arrangement.arrangement.devicePlan.some((entry) => entry.layer === "Stretched Room" && entry.devices.includes("Hybrid Reverb"))).toBe(true);
     expect(arrangement.arrangement.devicePlan.every((entry) => entry.execution === "staged")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_track_volume").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_track_color").every((action) => typeof action.payload.color === "number")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_rename_clip").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_clip_gain").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_transpose_clip").every((action) => typeof action.payload.semitones === "number")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_clip_warp").every((action) => typeof action.payload.warp_mode === "string")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_clip_markers").every((action) => typeof action.payload.end_marker === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_clip_color").every((action) => typeof action.payload.color === "number")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_clip_loop").every((action) => typeof action.payload.loop_end === "number")).toBe(true);
     expect(arrangement.arrangement.actions.find((action) => action.action === "ableton_insert_midi_notes")?.payload.notes).toEqual(expect.arrayContaining([
       expect.objectContaining({ pitch: expect.any(Number), start_time: expect.any(Number), duration: expect.any(Number) })
