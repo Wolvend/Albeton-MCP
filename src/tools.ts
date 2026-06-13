@@ -26,8 +26,10 @@ import {
   executeConceptPlan,
   exportConceptMidiMotif,
   getArrangementPlanForReport,
+  getConceptExecutionJournalForReport,
   getConceptPlanForReport,
   listArrangementPlans,
+  listConceptExecutionJournals,
   listConceptPlans,
   listConceptPresets,
   planConceptDeviceAutomationReadiness,
@@ -75,6 +77,7 @@ const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "fre
 const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
 const PreparedAudioId = z.string().regex(/^prepared-audio-[a-f0-9]{16}$/);
+const ConceptExecutionJournalId = z.string().regex(/^execution-\d+-[a-f0-9]{8}$/);
 const ConceptSampleAssignment = z.object({
   layer: z.string().min(1).max(128),
   path: z.string().min(1),
@@ -823,6 +826,8 @@ toolDefs.push(
   { name: "ableton_get_concept_plan", description: "Read one stored concept plan by id with local paths redacted.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, concept: await getConceptPlanForReport(args.plan_id) as any }) },
   { name: "ableton_list_arrangement_plans", description: "List stored arrangement plans from the bounded diagnostics plan store.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, arrangements: paginate(await listArrangementPlans(), args.page, args.pageSize) }) },
   { name: "ableton_get_arrangement_plan", description: "Read one stored arrangement plan by id with local paths redacted.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await getArrangementPlanForReport(args.arrangement_id) as any }) },
+  { name: "ableton_list_concept_execution_journals", description: "List redacted concept execution journals from the bounded diagnostics journal store.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, journals: paginate(await listConceptExecutionJournals(), args.page, args.pageSize) }) },
+  { name: "ableton_get_concept_execution_journal", description: "Read one redacted concept execution journal by generated execution id.", inputSchema: { execution_id: ConceptExecutionJournalId }, annotations: ro, handler: async (args) => ({ ok: true, executionJournal: await getConceptExecutionJournalForReport(args.execution_id) as any }) },
   { name: "ableton_search_concept_samples", description: "Search approved sample metadata for a stored concept plan or direct concept without downloading.", inputSchema: { plan_id: ConceptPlanId.optional(), concept: z.string().min(3).max(1000).optional(), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, samples: await searchConceptSamples({ plan_id: args.plan_id, concept: args.concept, page: args.page, pageSize: args.pageSize }) as any }) },
   { name: "ableton_plan_full_concept_production", description: "Create a full safe concept-to-music plan: concept, sample metadata search, arrangement, production scorecard, dry-run execution preview, and delivery plan.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), sources: ConceptSources, reference_path: z.string().min(1).optional(), sample_assignments: z.array(ConceptSampleAssignment).max(12).default([]), include_sample_search: z.boolean().default(true), sample_page_size: z.number().int().min(1).max(12).default(6) }, annotations: webro, handler: async (args) => ({ ok: true, production: await planConceptProduction(args) as any }) },
   { name: "ableton_stage_concept_samples", description: "Stage approved concept samples; dry-run by default and download-gated for real staging.", inputSchema: { samples: z.array(z.object({ url: z.string().url(), destinationName: z.string().min(1).max(160), metadata: z.record(z.unknown()).default({}) })).min(1).max(12), ...DryRun }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, staging: await stageConceptSamples({ samples: args.samples, dry_run: args.dry_run }) as any }) },

@@ -52,6 +52,8 @@ describe("HyperNimbus Docker MCP profile plan", () => {
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_concept_plan");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_list_arrangement_plans");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_arrangement_plan");
+    expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_list_concept_execution_journals");
+    expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_concept_execution_journal");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_search_concept_samples");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_plan_full_concept_production");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_preflight_concept_execution");

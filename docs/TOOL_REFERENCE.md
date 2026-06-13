@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-200 tools
+202 tools
 3 resources
 2 prompts
 ```
@@ -55,6 +55,7 @@ Control-mode tools:
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
 - `ableton_render_concept_attribution_bundle`: reports attribution sidecars for one stored concept arrangement without broad scans or path exposure.
 - `ableton_render_concept_production_scorecard`: scores a stored concept arrangement for layer coverage, sample readiness, routing, staged device/automation readiness, execution safety, and delivery readiness.
+- `ableton_list_concept_execution_journals` and `ableton_get_concept_execution_journal`: inspect redacted real-execution diagnostics after write-gated concept runs.
 - `ableton_ui_driver_status`: reports the ChromeDriver-style Ableton UI driver endpoint and queue state.
 - `ableton_ui_driver_ping`: pings the UI driver when UI control is enabled.
 - `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.

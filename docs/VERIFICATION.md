@@ -75,12 +75,12 @@ Expected current results:
 
 ```text
 Tests: 22 files, 79 tests passed
-MCP verifier: 200 tools, 3 resources, 2 prompts
-All-tool contract sweep: 200 registered tools, 200 safe calls
+MCP verifier: 202 tools, 3 resources, 2 prompts
+All-tool contract sweep: 202 registered tools, 202 safe calls
 Audit: 0 vulnerabilities
 ```
 
-`npm run docker:hypernimbus:verify` should also report `expectedAllowedTools: 125`, `observedAllowedTools: 125`, and empty `missingSafeTools`, `unexpectedAbletonTools`, and `unexpectedRiskyTools` arrays.
+`npm run docker:hypernimbus:verify` should also report `expectedAllowedTools: 127`, `observedAllowedTools: 127`, and empty `missingSafeTools`, `unexpectedAbletonTools`, and `unexpectedRiskyTools` arrays.
 
 ## Check the Max for Live bridge
 

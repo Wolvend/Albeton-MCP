@@ -296,6 +296,8 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_build_arrangement_from_prepared_audio", arguments: { preparation_id: fixtures.preparedAudioId } },
     { name: "ableton_list_arrangement_plans", arguments: { page: 1, pageSize: 5 } },
     { name: "ableton_get_arrangement_plan", arguments: { arrangement_id: "arrangement-0000000000000000" } },
+    { name: "ableton_list_concept_execution_journals", arguments: { page: 1, pageSize: 5 } },
+    { name: "ableton_get_concept_execution_journal", arguments: { execution_id: "execution-0000000000000-00000000" }, expected: "any" },
     { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_create_concept_execution_approval_bundle", arguments: { arrangement_id: "arrangement-0000000000000000", check_bridge: false } },
     { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: "arrangement-0000000000000000" } },

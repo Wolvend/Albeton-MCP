@@ -77,6 +77,8 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_get_concept_plan");
     expect(registeredToolNames).toContain("ableton_list_arrangement_plans");
     expect(registeredToolNames).toContain("ableton_get_arrangement_plan");
+    expect(registeredToolNames).toContain("ableton_list_concept_execution_journals");
+    expect(registeredToolNames).toContain("ableton_get_concept_execution_journal");
     expect(registeredToolNames).toContain("ableton_plan_full_concept_production");
   });
 
@@ -138,6 +140,8 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_get_concept_plan).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_get_arrangement_plan).toHaveProperty("arrangement_id");
+    expect(registeredToolSchemas.ableton_list_concept_execution_journals).toHaveProperty("page");
+    expect(registeredToolSchemas.ableton_get_concept_execution_journal).toHaveProperty("execution_id");
     expect(registeredToolSchemas.ableton_plan_full_concept_production).toHaveProperty("include_sample_search");
     expect(registeredToolSchemas.ableton_plan_full_concept_production).toHaveProperty("sample_assignments");
     expect(registeredToolSchemas.ableton_build_layered_arrangement_plan).toHaveProperty("sample_assignments");

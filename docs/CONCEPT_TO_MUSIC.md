@@ -139,7 +139,17 @@ Fast path:
    - Writes a redacted execution journal under `diagnostics\runtime\concept-executions` before live preflight and after each action outcome.
    - Stops immediately with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` if the loaded bridge returns `unsupported: true` for any approved action, so clients do not mistake a bridge limitation for successful execution.
 
-22. `ableton_render_delivery_plan`
+22. `ableton_list_concept_execution_journals`
+   - Read-only.
+   - Lists recent redacted execution journals with status, event counts, failure counts, and exact follow-up calls.
+   - Does not accept file paths, scan broadly, or expose raw local sample paths.
+
+23. `ableton_get_concept_execution_journal`
+   - Read-only.
+   - Reads one generated execution journal id and returns the redacted event timeline for post-run forensics.
+   - Use this after a failed or stopped real execution to see which action ran last.
+
+24. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 

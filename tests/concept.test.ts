@@ -10,8 +10,10 @@ import {
   extractUnsupportedBridgeResult,
   exportConceptMidiMotif,
   getArrangementPlanForReport,
+  getConceptExecutionJournalForReport,
   getConceptPlanForReport,
   listArrangementPlans,
+  listConceptExecutionJournals,
   listConceptPlans,
   listConceptPresets,
   planConceptDeviceAutomationReadiness,
@@ -85,6 +87,19 @@ describe("concept-to-music planning", () => {
       "action_started",
       "action_failed"
     ]);
+
+    const journals = await listConceptExecutionJournals();
+    expect(journals.some((entry) => entry.id === journal.id && entry.status === "failed")).toBe(true);
+
+    const report = await getConceptExecutionJournalForReport(journal.id);
+    expect(report.summary).toMatchObject({
+      id: journal.id,
+      status: "failed",
+      eventCount: 2,
+      failedEventCount: 1,
+      latestEventType: "action_failed"
+    });
+    expect(JSON.stringify(report)).not.toContain(samplePath);
   });
 
   it("lists read-only concept production presets with safe next calls", () => {

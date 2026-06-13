@@ -236,6 +236,18 @@ type CreatedTrackResolution = {
   baseSceneCount: number;
 };
 
+type ConceptExecutionJournal = {
+  id: string;
+  arrangement_id: string;
+  approval_id: string;
+  startedAt: string;
+  updatedAt: string;
+  status: "running" | "completed" | "failed";
+  executableActions: number;
+  totalActions: number;
+  events: Array<Record<string, unknown>>;
+};
+
 export type SampleLayerAssignmentInput = {
   layer: string;
   path: string;
@@ -914,17 +926,7 @@ type ConceptExecutionJournalState = {
   id: string;
   path: string;
   redactedPath: string;
-  journal: {
-    id: string;
-    arrangement_id: string;
-    approval_id: string;
-    startedAt: string;
-    updatedAt: string;
-    status: "running" | "completed" | "failed";
-    executableActions: number;
-    totalActions: number;
-    events: Array<Record<string, unknown>>;
-  };
+  journal: ConceptExecutionJournal;
 };
 
 function journalError(error: unknown) {
@@ -1245,6 +1247,11 @@ export async function readPreparedAudioManifest(preparationId: string): Promise<
   return JSON.parse(await fs.readFile(filePath, "utf8")) as PreparedAudioManifest;
 }
 
+function validateConceptExecutionJournalId(executionId: string) {
+  if (!/^execution-\d+-[a-f0-9]{8}$/.test(executionId)) throw new Error("Invalid concept execution journal id.");
+  return executionId;
+}
+
 async function listStoredPlanFiles(prefix: "concept" | "arrangement") {
   const dir = conceptPlanDir();
   try {
@@ -1259,12 +1266,88 @@ async function listStoredPlanFiles(prefix: "concept" | "arrangement") {
   }
 }
 
+async function listStoredExecutionJournalFiles() {
+  const dir = conceptExecutionDir();
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && /^execution-\d+-[a-f0-9]{8}\.json$/.test(entry.name))
+      .slice(0, 500)
+      .map((entry) => path.join(dir, entry.name));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+function safeJournalStatus(value: unknown): "running" | "completed" | "failed" | "unknown" {
+  return value === "running" || value === "completed" || value === "failed" ? value : "unknown";
+}
+
+function journalEventType(event: unknown) {
+  return event && typeof event === "object" && typeof (event as Record<string, unknown>).type === "string"
+    ? String((event as Record<string, unknown>).type)
+    : null;
+}
+
+function summarizeConceptExecutionJournal(journal: Partial<ConceptExecutionJournal>, filePath: string, modifiedAt: string) {
+  const events = Array.isArray(journal.events) ? journal.events : [];
+  const latestEventType = events.length > 0 ? journalEventType(events[events.length - 1]) : null;
+  const failedEventCount = events.filter((event) => {
+    const type = journalEventType(event);
+    return type === "preflight_not_ready" || type === "preflight_failed" || type === "action_failed" || type === "action_unsupported";
+  }).length;
+  const unsupportedActionCount = events.filter((event) => journalEventType(event) === "action_unsupported").length;
+  const id = typeof journal.id === "string" ? journal.id : path.basename(filePath, ".json");
+  const arrangementId = typeof journal.arrangement_id === "string" ? journal.arrangement_id : "";
+
+  return {
+    id,
+    type: "concept_execution",
+    path: redactPath(filePath),
+    arrangement_id: arrangementId,
+    approval_id: typeof journal.approval_id === "string" ? journal.approval_id : "",
+    startedAt: typeof journal.startedAt === "string" ? journal.startedAt : null,
+    updatedAt: typeof journal.updatedAt === "string" ? journal.updatedAt : null,
+    modifiedAt,
+    status: safeJournalStatus(journal.status),
+    executableActions: typeof journal.executableActions === "number" ? journal.executableActions : null,
+    totalActions: typeof journal.totalActions === "number" ? journal.totalActions : null,
+    eventCount: events.length,
+    latestEventType,
+    failedEventCount,
+    unsupportedActionCount,
+    exactNextToolCalls: {
+      inspectJournal: { name: "ableton_get_concept_execution_journal", arguments: { execution_id: id } },
+      inspectArrangement: /^arrangement-[a-f0-9]{16}$/.test(arrangementId)
+        ? { name: "ableton_get_arrangement_plan", arguments: { arrangement_id: arrangementId } }
+        : null
+    }
+  };
+}
+
 export async function getConceptPlanForReport(planId: string) {
   return conceptForReport(await readConceptPlan(planId));
 }
 
 export async function getArrangementPlanForReport(arrangementId: string) {
   return arrangementForReport(await readArrangementPlan(arrangementId));
+}
+
+export async function readConceptExecutionJournal(executionId: string) {
+  const id = validateConceptExecutionJournalId(executionId);
+  const filePath = path.join(conceptExecutionDir(), `${id}.json`);
+  const stat = await fs.stat(filePath);
+  const journal = JSON.parse(await fs.readFile(filePath, "utf8")) as ConceptExecutionJournal;
+  const redactedJournal = redactExecutionJournalValue(journal) as ConceptExecutionJournal;
+  return {
+    summary: summarizeConceptExecutionJournal(redactedJournal, filePath, stat.mtime.toISOString()),
+    journal: redactedJournal
+  };
+}
+
+export async function getConceptExecutionJournalForReport(executionId: string) {
+  return readConceptExecutionJournal(executionId);
 }
 
 export async function listConceptPlans() {
@@ -1292,6 +1375,18 @@ export async function listConceptPlans() {
     };
   }));
   return summaries.sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+}
+
+export async function listConceptExecutionJournals() {
+  const files = await listStoredExecutionJournalFiles();
+  const summaries = await Promise.all(files.map(async (filePath) => {
+    const stat = await fs.stat(filePath);
+    const journal = redactExecutionJournalValue(JSON.parse(await fs.readFile(filePath, "utf8"))) as Partial<ConceptExecutionJournal>;
+    return summarizeConceptExecutionJournal(journal, filePath, stat.mtime.toISOString());
+  }));
+  return summaries.sort((left, right) =>
+    String(right.updatedAt ?? right.modifiedAt).localeCompare(String(left.updatedAt ?? left.modifiedAt))
+  );
 }
 
 export async function listArrangementPlans() {
