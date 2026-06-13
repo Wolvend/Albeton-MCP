@@ -8,6 +8,13 @@ import { LOCAL_PATHS } from "../src/config.js";
 const execFileAsync = promisify(execFile);
 
 describe("Max for Live bridge source", () => {
+  function functionSource(source: string, name: string) {
+    const start = source.indexOf(`function ${name}`);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const next = source.indexOf("\nfunction ", start + 1);
+    return source.slice(start, next === -1 ? undefined : next);
+  }
+
   it("keeps the patch wired between node.script and LiveAPI js", async () => {
     const patchPath = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-bridge.maxpat");
     const patch = JSON.parse(await fs.readFile(patchPath, "utf8"));
@@ -96,6 +103,15 @@ describe("Max for Live bridge source", () => {
       "ableton_humanize_midi_clip"
     ]) {
       expect(source).toContain(action);
+    }
+  });
+
+  it("uses typed track indexes for targeted read/write bridge actions", async () => {
+    const liveApiScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-liveapi.js");
+    const source = await fs.readFile(liveApiScript, "utf8");
+
+    for (const name of ["listDevices", "listClipSlots", "getTrackMixer", "setTrackBoolean", "renameTrack"]) {
+      expect(functionSource(source, name)).toContain("parseTrackIndex(payload)");
     }
   });
 });

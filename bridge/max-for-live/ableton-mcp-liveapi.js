@@ -405,8 +405,7 @@ function selectedTrackIndex() {
 }
 
 function listDevices(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var trackApi = liveObject("live_set tracks " + trackIndex);
   var count = childCount(trackApi, "devices");
   var devices = [];
@@ -554,8 +553,7 @@ function automationSummary(payload) {
 }
 
 function listClipSlots(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var trackApi = liveObject("live_set tracks " + trackIndex);
   var count = childCount(trackApi, "clip_slots");
   var slots = [];
@@ -566,8 +564,7 @@ function listClipSlots(payload) {
 }
 
 function getTrackMixer(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   return { track_index: trackIndex, mixer: mixerSummary("live_set tracks " + trackIndex) };
 }
 
@@ -616,8 +613,7 @@ function transportControl(payload) {
 }
 
 function setTrackBoolean(payload, propertyName) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var value = payload && (payload.value !== undefined ? payload.value : payload.enabled);
   liveObject("live_set tracks " + trackIndex).set(propertyName, value ? 1 : 0);
   return { track_index: trackIndex, property: propertyName, value: value ? 1 : 0 };
@@ -663,8 +659,7 @@ function setClipColor(payload) {
 }
 
 function renameTrack(payload) {
-  var trackIndex = parseIndex(payload, "track_id");
-  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var trackIndex = parseTrackIndex(payload);
   var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
   if (!name) throw new Error("Track name is required.");
   liveObject("live_set tracks " + trackIndex).set("name", name);

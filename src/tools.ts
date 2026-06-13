@@ -72,6 +72,8 @@ const TimeSignatureDenominator = z.union([z.literal(2), z.literal(4), z.literal(
 const RgbColor = z.number().int().min(0).max(0xFFFFFF);
 const TrackClipRef = { track_index: TrackIndex, clip_slot_index: ClipSlotIndex };
 const OptionalTrackClipRef = { track_index: TrackIndex.default(0), clip_slot_index: ClipSlotIndex.default(0) };
+const TrackSelector = { track_id: z.string().max(128).optional(), track_index: TrackIndex.optional() };
+const DeviceSelector = { ...TrackSelector, device_id: z.string().max(128).optional(), device_index: DeviceIndex.optional() };
 const WarpMode = z.enum(["beats", "tones", "texture", "re-pitch", "complex", "rex", "complex_pro"]);
 const AutomationPoint = {
   track_index: TrackIndex,
@@ -143,6 +145,19 @@ async function librarySearch(args: any, kind?: string) {
 
 async function bridgeRead(action: string, payload: Record<string, unknown> = {}) {
   return { ok: true, bridge: await bridgeAction(action, payload) as Record<string, unknown> };
+}
+
+function trackSelectorPayload(args: { track_id?: string; track_index?: number }) {
+  return args.track_index !== undefined
+    ? { track_index: args.track_index }
+    : { track_id: args.track_id ?? "selected" };
+}
+
+function deviceSelectorPayload(args: { track_id?: string; track_index?: number; device_id?: string; device_index?: number }) {
+  return {
+    ...trackSelectorPayload(args),
+    ...(args.device_index !== undefined ? { device_index: args.device_index } : { device_id: args.device_id ?? "selected" })
+  };
 }
 
 async function listTrackSends(args: { track_index?: number }) {
@@ -940,15 +955,15 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_list_tracks", description: "List live tracks via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_tracks") },
   { name: "ableton_list_return_tracks", description: "List live return tracks via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_return_tracks") },
   { name: "ableton_get_master_track", description: "Get the master track summary and mixer state via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("master_track") },
-  { name: "ableton_get_track_mixer", description: "Get selected or indexed track mixer volume and pan parameters via bridge.", inputSchema: { track_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => bridgeRead("track_mixer", { track_id: args.track_id ?? "selected" }) },
+  { name: "ableton_get_track_mixer", description: "Get selected or indexed track mixer volume and pan parameters via bridge.", inputSchema: TrackSelector, annotations: ro, handler: async (args) => bridgeRead("track_mixer", trackSelectorPayload(args)) },
   { name: "ableton_list_track_sends", description: "List selected or indexed track send parameters and matching return names via bridge.", inputSchema: { track_index: TrackIndex.optional() }, annotations: ro, handler: async (args) => listTrackSends(args) },
   { name: "ableton_get_routing_overview", description: "Read live track, return, master, and send-matrix routing state for layered production decisions.", inputSchema: { include_devices: z.boolean().default(false) }, annotations: ro, handler: async (args) => bridgeRead("routing_overview", { include_devices: args.include_devices }) },
   { name: "ableton_get_return_track_mixer", description: "Get indexed return-track mixer volume and pan parameters via bridge.", inputSchema: { return_track_index: ReturnTrackIndex.default(0) }, annotations: ro, handler: async (args) => bridgeRead("return_track_mixer", args) },
   { name: "ableton_list_scenes", description: "List live scenes via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_scenes") },
   { name: "ableton_list_clips", description: "List live clips via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_clips") },
-  { name: "ableton_list_clip_slots", description: "List clip slots on selected or indexed track via bridge.", inputSchema: { track_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => bridgeRead("list_clip_slots", { track_id: args.track_id ?? "selected" }) },
-  { name: "ableton_list_devices", description: "List live devices via bridge.", inputSchema: { track_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => bridgeRead("list_devices", { track_id: args.track_id ?? "selected" }) },
-  { name: "ableton_list_device_parameters", description: "List automatable device parameters via bridge.", inputSchema: { device_id: z.string().max(128).optional() }, annotations: ro, handler: async (args) => bridgeRead("list_device_parameters", { device_id: args.device_id ?? "selected" }) },
+  { name: "ableton_list_clip_slots", description: "List clip slots on selected or indexed track via bridge.", inputSchema: { ...TrackSelector, ...Page }, annotations: ro, handler: async (args) => bridgeRead("list_clip_slots", trackSelectorPayload(args)) },
+  { name: "ableton_list_devices", description: "List live devices via bridge.", inputSchema: { ...TrackSelector, ...Page }, annotations: ro, handler: async (args) => bridgeRead("list_devices", trackSelectorPayload(args)) },
+  { name: "ableton_list_device_parameters", description: "List automatable device parameters via bridge.", inputSchema: DeviceSelector, annotations: ro, handler: async (args) => bridgeRead("list_device_parameters", deviceSelectorPayload(args)) },
   { name: "ableton_get_selected_track", description: "Get selected track via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_track") },
   { name: "ableton_get_selected_device", description: "Get selected device via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_device") },
   { name: "ableton_get_tempo", description: "Get tempo via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("tempo") },

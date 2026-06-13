@@ -110,7 +110,15 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_set_scene_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_set_track_volume).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_set_track_volume).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_get_track_mixer).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_get_track_mixer).toHaveProperty("track_id");
     expect(registeredToolSchemas.ableton_list_track_sends).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_list_clip_slots).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_list_clip_slots).toHaveProperty("page");
+    expect(registeredToolSchemas.ableton_list_devices).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_list_devices).toHaveProperty("page");
+    expect(registeredToolSchemas.ableton_list_device_parameters).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_list_device_parameters).toHaveProperty("device_index");
     expect(registeredToolSchemas.ableton_get_routing_overview).toHaveProperty("include_devices");
     expect(registeredToolSchemas.ableton_set_track_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_get_return_track_mixer).toHaveProperty("return_track_index");
