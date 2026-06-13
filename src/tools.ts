@@ -33,6 +33,7 @@ import {
   planConceptTrack,
   preflightConceptExecution,
   prepareConceptAudioLayers,
+  renderConceptMixPlan,
   renderConceptTimeline,
   renderDeliveryPlan,
   searchConceptSamples,
@@ -602,6 +603,7 @@ toolDefs.push(
   { name: "ableton_plan_concept_device_automation_readiness", description: "Create a read-only readiness plan for staged concept device chains and automation targets with discovery and dry-run call templates.", inputSchema: { arrangement_id: ArrangementPlanId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, readiness: await planConceptDeviceAutomationReadiness(args) as any }) },
   { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default.", inputSchema: { arrangement_id: ArrangementPlanId, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run }) as any }) },
   { name: "ableton_render_concept_timeline", description: "Render a stored concept plan as a section-by-section layer timeline without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, timeline: await renderConceptTimeline(args.plan_id) as any }) },
+  { name: "ableton_render_concept_mix_plan", description: "Render a stored concept plan into layer-by-layer mix, routing, automation, and gain-staging guidance without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, mixPlan: await renderConceptMixPlan(args.plan_id) as any }) },
   { name: "ableton_render_delivery_plan", description: "Plan final master/stem export settings for a stored concept plan without rendering.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, delivery: await renderDeliveryPlan(args.plan_id) as any }) },
 
   { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1).max(2000) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },

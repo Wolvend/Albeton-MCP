@@ -2112,6 +2112,100 @@ export async function renderDeliveryPlan(planId: string) {
   };
 }
 
+export async function renderConceptMixPlan(planId: string) {
+  const plan = await readConceptPlan(planId);
+  const horror = plan.preset === "liminal_backrooms_horror";
+  const musicalLayers = plan.layers.filter((layer) => layer.type !== "return");
+  const returnLayers = plan.layers.filter((layer) => layer.type === "return");
+  const layerPlans = plan.layers.map((layer) => ({
+    name: layer.name,
+    type: layer.type,
+    role: layer.role,
+    color: colorForLayer(layer),
+    busRole: layerBusRole(layer, horror),
+    priority: layerMixPriority(layer, horror),
+    mix: {
+      fader: layer.mix.volume,
+      approximateLevelDb: normalizedLevelToDb(layer.mix.volume),
+      pan: layer.mix.pan,
+      sends: layer.mix.sends
+    },
+    frequencyFocus: layerFrequencyFocus(layer, horror),
+    spatialTreatment: layerSpatialTreatment(layer),
+    deviceChain: layer.deviceChain,
+    automationCues: layer.automation.map((cue) => ({
+      cue,
+      target: automationTarget(cue),
+      execution: "staged",
+      discoveryRequired: true
+    }))
+  }));
+
+  return {
+    plan_id: plan.id,
+    preset: plan.preset,
+    concept: sanitizeRemoteSampleText(plan.concept, 500),
+    style: plan.style,
+    tempo: plan.tempo,
+    key: plan.key,
+    duration_seconds: plan.target_duration_seconds,
+    mixStrategy: horror
+      ? "Keep the source memory narrow and damaged, let room tone and reverb define scale, and reserve low pressure/mechanical texture for section changes."
+      : "Keep the core texture stable, use the motif as the musical anchor, and let return effects create continuity between sections.",
+    layerCount: plan.layers.length,
+    audioLayerCount: musicalLayers.filter((layer) => layer.type === "audio").length,
+    midiLayerCount: musicalLayers.filter((layer) => layer.type === "midi").length,
+    returnLayerCount: returnLayers.length,
+    layers: layerPlans,
+    returns: returnLayers.map((layer) => ({
+      name: layer.name,
+      role: layer.role,
+      color: colorForLayer(layer),
+      fader: layer.mix.volume,
+      approximateLevelDb: normalizedLevelToDb(layer.mix.volume),
+      deviceChain: layer.deviceChain,
+      useCases: returnUseCases(layer)
+    })),
+    sectionMixCues: plan.sections.map((section, index) => ({
+      name: section.name,
+      start_seconds: section.start_seconds,
+      end_seconds: section.start_seconds + section.duration_seconds,
+      focus: sectionProductionFocus(section, index, horror),
+      activeLayers: plan.layers
+        .filter((layer) => layerIsActiveInSection(layer, index, horror))
+        .map((layer) => layer.name),
+      automationFocus: plan.layers
+        .filter((layer) => layerIsActiveInSection(layer, index, horror) && layer.automation.length > 0)
+        .map((layer) => ({ layer: layer.name, cues: layer.automation }))
+    })),
+    gainStaging: {
+      masterHeadroomDb: -6,
+      normalize: false,
+      lowEndPolicy: horror ? "Keep Low Pressure felt more than heard; avoid stacking rumble under room tone." : "High-pass non-bass ambience before shared reverb.",
+      clippingPolicy: "Leave conservative master headroom before any video loudness pass."
+    },
+    masterBus: {
+      sampleRate: 48000,
+      bitDepth: "24",
+      normalize: false,
+      targetPeakDb: -6,
+      postProductionNote: "Do final loudness after picture lock; preserve negative space and long tails."
+    },
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      automationWriteStatus: "plan_only"
+    },
+    nextSteps: [
+      "Use ableton_render_concept_timeline to confirm section-by-section layer entrances.",
+      "Use ableton_search_concept_samples or approved local samples for the audio layers.",
+      "Use ableton_build_layered_arrangement_plan after sample and layer choices are reviewed.",
+      "Keep automation and device changes staged until bridge discovery proves the exact targets."
+    ]
+  };
+}
+
 export async function renderConceptTimeline(planId: string) {
   const plan = await readConceptPlan(planId);
   const horror = plan.preset === "liminal_backrooms_horror";
@@ -2169,4 +2263,74 @@ export async function renderConceptTimeline(planId: string) {
       "Keep downloads, Ableton writes, and UI control disabled until their explicit gates are intentionally enabled."
     ]
   };
+}
+
+function normalizedLevelToDb(value: number) {
+  return Number((20 * Math.log10(Math.max(0.001, value))).toFixed(1));
+}
+
+function layerBusRole(layer: ConceptLayer, horror: boolean) {
+  const name = layer.name.toLowerCase();
+  if (layer.type === "return") return name.includes("delay") ? "delay_return" : "reverb_return";
+  if (name.includes("low pressure")) return "controlled_low_end";
+  if (name.includes("mechanical") || name.includes("reverse") || name.includes("fragment")) return "threat_fx";
+  if (name.includes("motif") || name.includes("memory")) return horror ? "damaged_music_memory" : "musical_anchor";
+  if (name.includes("room") || name.includes("texture")) return "ambience_bed";
+  return "supporting_layer";
+}
+
+function layerMixPriority(layer: ConceptLayer, horror: boolean) {
+  const name = layer.name.toLowerCase();
+  if (horror && name.includes("degraded memory")) return 1;
+  if (name.includes("room") || name.includes("core texture")) return 2;
+  if (name.includes("motif")) return horror ? 3 : 1;
+  if (name.includes("low pressure")) return 4;
+  if (layer.type === "return") return 5;
+  return 3;
+}
+
+function layerFrequencyFocus(layer: ConceptLayer, horror: boolean) {
+  const name = layer.name.toLowerCase();
+  if (name.includes("low pressure")) return ["sub restraint", "low-mid cleanup", "mono compatibility"];
+  if (name.includes("degraded") || name.includes("memory")) return horror ? ["band-limited mids", "rolled-off top", "controlled low cut"] : ["midrange identity", "soft top"];
+  if (name.includes("room") || name.includes("texture")) return ["low-mid resonance control", "wide ambience", "high-pass before reverb"];
+  if (name.includes("mechanical")) return ["harshness control", "transient containment", "narrow resonances"];
+  if (name.includes("reverse") || name.includes("fragment")) return ["filtered highs", "transition tails", "delay bandwidth"];
+  if (name.includes("motif")) return ["clear note center", "soft attack", "avoid masking memory layer"];
+  if (layer.type === "return") return ["dark tail shaping", "mud removal", "controlled feedback"];
+  return ["gain staging", "masking check"];
+}
+
+function layerSpatialTreatment(layer: ConceptLayer) {
+  const name = layer.name.toLowerCase();
+  if (layer.type === "return") {
+    return { position: "shared_space", width: "wide", motion: "slow return-level changes" };
+  }
+  if (name.includes("low pressure")) {
+    return { position: "center", width: "mono_or_near_mono", motion: "subtle swell only" };
+  }
+  if (name.includes("mechanical") || name.includes("reverse")) {
+    return { position: layer.mix.pan > 0 ? "right_detail" : "left_detail", width: "medium", motion: "short throws around section changes" };
+  }
+  if (name.includes("room") || name.includes("texture")) {
+    return { position: "wide_bed", width: "wide", motion: "slow filter and reverb bloom" };
+  }
+  return { position: layer.mix.pan < 0 ? "left_of_center" : layer.mix.pan > 0 ? "right_of_center" : "center", width: "controlled", motion: "automation only where it serves the section" };
+}
+
+function automationTarget(cue: string) {
+  const text = cue.toLowerCase();
+  if (text.includes("filter") || text.includes("low-pass") || text.includes("bandwidth")) return "filter";
+  if (text.includes("reverb")) return "reverb";
+  if (text.includes("delay") || text.includes("feedback")) return "delay";
+  if (text.includes("volume") || text.includes("fade") || text.includes("swell")) return "volume";
+  if (text.includes("velocity")) return "midi_velocity";
+  return "review";
+}
+
+function returnUseCases(layer: ConceptLayer) {
+  const name = layer.name.toLowerCase();
+  if (name.includes("delay")) return ["short memory repeats", "section-end throws", "bandwidth narrowing before silence"];
+  if (name.includes("reverb")) return ["shared impossible-space tail", "transition blooms", "distance for source-memory layers"];
+  return ["shared space", "glue between sections"];
 }

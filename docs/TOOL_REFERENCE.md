@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-189 tools
+190 tools
 3 resources
 2 prompts
 ```
@@ -36,7 +36,7 @@ Primary groups:
 - Screenshot and UI tools
 - Legal sample discovery/import
 - Plugin/package discovery, validation, and download staging
-- Concept-to-music planning, sample staging, arrangement execution, and delivery planning
+- Concept-to-music planning, mix planning, sample staging, arrangement execution, and delivery planning
 - Export and stem planning
 - Composition helpers
 - Developer/evaluation tools

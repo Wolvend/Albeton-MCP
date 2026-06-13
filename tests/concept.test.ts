@@ -16,6 +16,7 @@ import {
   planConceptTrack,
   preflightConceptExecution,
   prepareConceptAudioLayers,
+  renderConceptMixPlan,
   renderConceptTimeline,
   readArrangementPlan,
   renderDeliveryPlan,
@@ -83,6 +84,7 @@ describe("concept-to-music planning", () => {
       check_bridge: false
     });
     const timeline = await renderConceptTimeline(planned.plan.id);
+    const mixPlan = await renderConceptMixPlan(planned.plan.id);
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
@@ -142,6 +144,12 @@ describe("concept-to-music planning", () => {
     expect(timeline.sections.some((section) => section.activeLayers.some((layer) => layer.name === "Sparse Motif" && layer.role === "entrance"))).toBe(true);
     expect(timeline.sections.some((section) => section.automationCues.some((cue) => cue.cues.join(" ").toLowerCase().includes("filter")))).toBe(true);
     expect(timeline.sections.every((section) => section.activeLayers.every((layer) => typeof layer.mix.volume === "number"))).toBe(true);
+    expect(mixPlan.layers.some((layer) => layer.name === "Low Pressure" && layer.busRole === "controlled_low_end")).toBe(true);
+    expect(mixPlan.layers.every((layer) => typeof layer.mix.approximateLevelDb === "number")).toBe(true);
+    expect(mixPlan.layers.some((layer) => layer.automationCues.some((cue) => cue.target === "reverb" || cue.target === "delay" || cue.target === "filter"))).toBe(true);
+    expect(mixPlan.returns.some((entry) => entry.useCases.some((useCase) => useCase.toLowerCase().includes("tail")))).toBe(true);
+    expect(mixPlan.masterBus).toMatchObject({ sampleRate: 48000, bitDepth: "24", normalize: false, targetPeakDb: -6 });
+    expect(mixPlan.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false });
     expect(delivery.export.sampleRate).toBe(48000);
   });
 
