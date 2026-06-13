@@ -9,6 +9,10 @@ import { readJsonBounded } from "./network.js";
 import { isImportTarget, redactPath, resolveSafePath } from "./security.js";
 
 const allowedLicenses = ["CC0", "Creative Commons 0", "CC BY", "Attribution", "Public Domain", "Public Domain Mark"];
+const MAX_ATTRIBUTION_SIDECARS = 500;
+const MAX_ATTRIBUTION_BYTES = 128_000;
+
+type AttributionReportItem = ReturnType<typeof attributionSummary>;
 
 export function normalizeLicense(input: string | null | undefined) {
   const license = input?.trim() || "unknown";
@@ -35,6 +39,118 @@ export function buildSampleAttribution(options: {
     checksum: options.checksum ?? null,
     bytes: options.bytes ?? null,
     metadata: options.metadata
+  };
+}
+
+function isPathWithin(candidate: string, root: string) {
+  const relative = path.relative(path.resolve(root), path.resolve(candidate));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function sanitizeAttributionText(value: unknown, maxLength = 240) {
+  return String(value ?? "")
+    .replace(/ignore (all )?(previous|prior) instructions/gi, "[removed]")
+    .replace(/system prompt/gi, "[removed]")
+    .replace(/developer message/gi, "[removed]")
+    .replace(/tool call/gi, "[removed]")
+    .replace(/exfiltrate/gi, "[removed]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function attributionSummary(record: Record<string, unknown>, sidecarPath: string, mediaPath: string, scope: string) {
+  return {
+    scope,
+    sidecarPath: redactPath(sidecarPath),
+    mediaPath: redactPath(mediaPath),
+    sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : null,
+    destinationName: sanitizeAttributionText(record.destinationName, 180) || path.basename(mediaPath),
+    title: sanitizeAttributionText(record.title, 240) || null,
+    creator: sanitizeAttributionText(record.creator, 180) || null,
+    identifier: sanitizeAttributionText(record.identifier, 180) || null,
+    license: sanitizeAttributionText(record.license ?? (record.licensePolicy as any)?.license, 220) || "unknown",
+    licensePolicy: normalizeLicense(String(record.license ?? (record.licensePolicy as any)?.license ?? "")),
+    checksum: typeof record.checksum === "string" ? record.checksum : null,
+    bytes: typeof record.bytes === "number" ? record.bytes : null,
+    stagedAt: typeof record.stagedAt === "string" ? record.stagedAt : null,
+    importedAt: typeof record.importedAt === "string" ? record.importedAt : null
+  };
+}
+
+async function collectAttributionSidecars(root: string, scope: string, accessIssues: Array<Record<string, unknown>>) {
+  const items: AttributionReportItem[] = [];
+  const resolvedRoot = path.resolve(root);
+
+  async function walk(dir: string, depth: number) {
+    if (items.length >= MAX_ATTRIBUTION_SIDECARS || depth > 5) return;
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch (error) {
+      if (depth === 0) accessIssues.push({ scope, path: redactPath(dir), error: error instanceof Error ? error.message : String(error) });
+      return;
+    }
+
+    for (const entry of entries) {
+      if (items.length >= MAX_ATTRIBUTION_SIDECARS) return;
+      const candidate = path.join(dir, entry.name);
+      let safe;
+      try {
+        safe = await resolveSafePath(candidate, { mustExist: true });
+      } catch (error) {
+        accessIssues.push({ scope, path: redactPath(candidate), error: error instanceof Error ? error.message : String(error) });
+        continue;
+      }
+      if (!isPathWithin(safe.real, resolvedRoot)) {
+        accessIssues.push({ scope, path: redactPath(candidate), error: "Resolved path escapes attribution root." });
+        continue;
+      }
+      if (entry.isDirectory()) {
+        await walk(safe.real, depth + 1);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".attribution.json")) continue;
+      try {
+        const stat = await fs.stat(safe.real);
+        if (stat.size > MAX_ATTRIBUTION_BYTES) {
+          accessIssues.push({ scope, path: redactPath(safe.real), error: "Attribution sidecar exceeds size limit." });
+          continue;
+        }
+        const parsed = JSON.parse(await fs.readFile(safe.real, "utf8")) as Record<string, unknown>;
+        const mediaPath = safe.real.slice(0, -".attribution.json".length);
+        items.push(attributionSummary(parsed, safe.real, mediaPath, scope));
+      } catch (error) {
+        accessIssues.push({ scope, path: redactPath(safe.real), error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  }
+
+  await walk(resolvedRoot, 0);
+  return items;
+}
+
+export async function generateAttributionReport(page = 1, pageSize = 25) {
+  const accessIssues: Array<Record<string, unknown>> = [];
+  const roots = [
+    { scope: "staging", path: LOCAL_PATHS.staging },
+    { scope: "imports", path: LOCAL_PATHS.imports }
+  ];
+  const items = (await Promise.all(roots.map((root) => collectAttributionSidecars(root.path, root.scope, accessIssues))))
+    .flat()
+    .sort((left, right) => `${left.scope}:${left.destinationName}`.localeCompare(`${right.scope}:${right.destinationName}`));
+  const safePage = Math.max(1, Math.trunc(page || 1));
+  const safeSize = Math.max(1, Math.min(100, Math.trunc(pageSize || 25)));
+  const offset = (safePage - 1) * safeSize;
+  return {
+    roots: roots.map((root) => ({ scope: root.scope, path: redactPath(root.path) })),
+    limits: { maxSidecars: MAX_ATTRIBUTION_SIDECARS, maxSidecarBytes: MAX_ATTRIBUTION_BYTES },
+    items: items.slice(offset, offset + safeSize),
+    page: safePage,
+    pageSize: safeSize,
+    total: items.length,
+    hasMore: offset + safeSize < items.length,
+    accessIssues
   };
 }
 

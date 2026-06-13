@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 21 test files and 51 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged automation actions, local sample assignment redaction, and sample attribution record checks.
+Result: succeeded. Vitest reported 21 test files and 52 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged automation actions, local sample assignment redaction, sample attribution record checks, and bounded attribution-report sidecar scanning.
 
 ```powershell
 npm run lint
@@ -174,4 +174,5 @@ Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` du
 - Downloads, writes, and UI/mouse control remain disabled by default.
 - Remote sample metadata and concept sample preview URLs are sanitized or validated against the approved sample URL policy before being returned.
 - Real staged sample downloads now persist sidecar attribution with source URL, destination name, license policy, creator/title/identifier metadata, checksum, byte count, and staging time.
+- `ableton_generate_attribution_report` now reads only bounded `.attribution.json` sidecars from sample staging and Codex Imports, redacts local paths, and sanitizes remote title/creator text for display.
 - Docker/OpenClaw/client docs now treat Ableton MCP as the permission owner for write/download/UI gates.

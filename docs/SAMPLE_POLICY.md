@@ -23,5 +23,11 @@ Every imported sample should have:
 - ffprobe metadata
 - Checksum
 
-Do not import unclear copyrighted, commercial, bootleg, or license-ambiguous audio.
+`ableton_generate_attribution_report` reads `.attribution.json` sidecars only from:
 
+- `samples\staging`
+- `Documents\Ableton\User Library\Samples\Codex Imports`
+
+The report redacts local paths, sanitizes remote title/creator text for display, and keeps source URLs, licenses, checksums, byte counts, and staging/import timestamps available for review.
+
+Do not import unclear copyrighted, commercial, bootleg, or license-ambiguous audio.
