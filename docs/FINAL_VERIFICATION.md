@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 22 test files and 74 tests passed, including bridge capability matrix checks, typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only concept execution manifest checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, OpenClaw client config documentation checks, safe HyperNimbus/OpenClaw allowlist reporting checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 22 test files and 76 tests passed, including bridge capability matrix checks, typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only concept execution manifest checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, OpenClaw client config documentation checks, safe HyperNimbus/OpenClaw allowlist reporting checks, Docker MCP profile allowlist parsing checks, risky-tool drift rejection checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -87,7 +87,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 npm run docker:hypernimbus:verify
 ```
 
-Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server with the 119-tool safe allowlist.
+Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server. The verifier parsed Docker's enabled tool list and reported `expectedAllowedTools: 119`, `observedAllowedTools: 119`, `missingSafeTools: []`, `unexpectedAbletonTools: []`, and `unexpectedRiskyTools: []`.
 
 The profile now includes:
 
@@ -101,7 +101,9 @@ Risky tools checked as absent from the enabled list:
 ableton_execute_concept_plan
 ableton_stage_concept_samples
 ableton_download_sample
+ableton_import_sample_to_library
 ableton_click_coordinates
+ableton_type_text
 ableton_set_tempo
 ableton_fire_scene
 ableton_set_scene_tempo
@@ -161,6 +163,12 @@ wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE
 ```
 
 Result: succeeded under WSL with 194 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+
+```powershell
+wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh live-smoke'
+```
+
+Result: completed with the same structured setup failure as the Windows live-smoke check because the Max for Live bridge was not loaded/listening.
 
 ## Live Bridge Smoke
 

@@ -44,6 +44,8 @@ npm run docker:hypernimbus:verify
 
 The apply command backs up the existing profile before adding Ableton MCP and enables only the safe default tool allowlist. See [HyperNimbus Docker MCP](HYPERNIMBUS_DOCKER_MCP.md).
 
+The verify command parses `docker mcp profile show hypernimbus` and fails if any safe tool is missing or if unexpected Ableton write, download, import, or UI/mouse tools are enabled.
+
 ## Control model
 
 Docker MCP and regular MCP expose the same tool surface. The difference is only transport:

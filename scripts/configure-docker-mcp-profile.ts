@@ -3,9 +3,15 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { buildHypernimbusDockerProfilePlan, HYPERNIMBUS_PROFILE_ID } from "../src/docker-profile.js";
+import {
+  buildHypernimbusDockerProfilePlan,
+  type DockerProfileToolVerification,
+  HYPERNIMBUS_PROFILE_ID,
+  verifyDockerProfileToolAllowlist
+} from "../src/docker-profile.js";
 
 const execFileAsync = promisify(execFile);
+const MAX_REPORTED_OUTPUT_CHARS = 4_000;
 
 type CommandResult = {
   ok: boolean;
@@ -23,11 +29,38 @@ function displayCommand(command: string, args: string[]) {
   return [command, ...args.map((arg) => arg.includes(" ") ? `"${arg}"` : arg)].join(" ");
 }
 
+function boundedOutput(output: string) {
+  if (output.length <= MAX_REPORTED_OUTPUT_CHARS) return output;
+  return `${output.slice(0, MAX_REPORTED_OUTPUT_CHARS)}\n... <truncated ${output.length - MAX_REPORTED_OUTPUT_CHARS} chars>`;
+}
+
+function isProfileShowCommand(args: string[]) {
+  return args[0] === "mcp" && args[1] === "profile" && args[2] === "show";
+}
+
+function reportStdout(args: string[], stdout: string) {
+  if (isProfileShowCommand(args)) return `<profile output parsed internally; ${stdout.length} chars captured>`;
+  return boundedOutput(stdout);
+}
+
+function compactToolVerification(verification: DockerProfileToolVerification | undefined) {
+  if (!verification) return undefined;
+  return {
+    ok: verification.ok,
+    serverName: verification.serverName,
+    expectedAllowedTools: verification.expectedAllowedTools,
+    observedAllowedTools: verification.observedAllowedTools,
+    missingSafeTools: verification.missingSafeTools,
+    unexpectedAbletonTools: verification.unexpectedAbletonTools,
+    unexpectedRiskyTools: verification.unexpectedRiskyTools
+  };
+}
+
 async function runCommand(command: string, args: string[]): Promise<CommandResult> {
   try {
     const { stdout, stderr } = await execFileAsync(command, args, {
       windowsHide: true,
-      maxBuffer: 2 * 1024 * 1024
+      maxBuffer: 10 * 1024 * 1024
     });
     return { ok: true, stdout: stdout.trim(), stderr: stderr.trim() };
   } catch (error) {
@@ -76,14 +109,20 @@ async function main() {
 
   await fs.mkdir(path.dirname(plan.commands[0]!.args.at(-1)!), { recursive: true });
   const results = [];
+  let profileShowOutput = "";
   for (const command of commands) {
     const result = await runCommand(command.command, command.args);
+    if (isProfileShowCommand(command.args)) {
+      profileShowOutput = result.stdout;
+    }
     results.push({
       description: command.description,
       command: displayCommand(command.command, command.args),
       ok: result.ok,
-      stdout: result.stdout,
-      stderr: result.stderr,
+      stdout: reportStdout(command.args, result.stdout),
+      stderr: boundedOutput(result.stderr),
+      stdoutBytes: result.stdout.length,
+      stderrBytes: result.stderr.length,
       code: result.code
     });
     if (!result.ok) {
@@ -102,6 +141,22 @@ async function main() {
     }
   }
 
+  const toolVerification = verifyOnly ? verifyDockerProfileToolAllowlist(profileShowOutput) : undefined;
+  if (toolVerification && !toolVerification.ok) {
+    console.log(JSON.stringify({
+      ok: false,
+      applied: false,
+      verified: false,
+      profile: plan.profile,
+      endpoint: plan.endpoint,
+      allowedTools: plan.allowlist.length,
+      toolVerification: compactToolVerification(toolVerification),
+      results
+    }, null, 2));
+    process.exitCode = 1;
+    return;
+  }
+
   console.log(JSON.stringify({
     ok: true,
     applied: apply && !verifyOnly,
@@ -109,6 +164,7 @@ async function main() {
     profile: plan.profile,
     endpoint: plan.endpoint,
     allowedTools: plan.allowlist.length,
+    toolVerification: compactToolVerification(toolVerification),
     results
   }, null, 2));
 }

@@ -1,10 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
   buildHypernimbusDockerProfilePlan,
+  HYPERNIMBUS_RISKY_TOOL_DENYLIST,
   HYPERNIMBUS_SAFE_TOOL_ALLOWLIST,
+  parseDockerProfileEnabledTools,
   toFileUri,
-  validateDockerProfileId
+  validateDockerProfileId,
+  verifyDockerProfileToolAllowlist
 } from "../src/docker-profile.js";
+
+function exportedProfileFor(tools: readonly string[]) {
+  return [
+    "servers:",
+    "    - type: remote",
+    "      secrets: default",
+    "      tools:",
+    ...tools.map((tool) => `        - ${tool}`),
+    "      endpoint: http://127.0.0.1:17366/mcp",
+    "      snapshot:",
+    "        server:",
+    "            name: ableton-mcp",
+    "            type: remote",
+    "            tools:",
+    "                - name: ableton_execute_concept_plan",
+    "                  description: Snapshot docs should not count as enabled tools."
+  ].join("\n");
+}
 
 describe("HyperNimbus Docker MCP profile plan", () => {
   it("builds a localhost-only Ableton MCP activation plan", () => {
@@ -65,11 +86,50 @@ describe("HyperNimbus Docker MCP profile plan", () => {
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_clip_warp");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_clip_markers");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_clip_color");
+    expect(HYPERNIMBUS_RISKY_TOOL_DENYLIST).toContain("ableton_execute_concept_plan");
+    expect(HYPERNIMBUS_RISKY_TOOL_DENYLIST).toContain("ableton_stage_concept_samples");
+    expect(HYPERNIMBUS_RISKY_TOOL_DENYLIST).toContain("ableton_click_coordinates");
   });
 
   it("validates profile ids and file uri generation", () => {
     expect(validateDockerProfileId("hypernimbus")).toBe("hypernimbus");
     expect(() => validateDockerProfileId("../hypernimbus")).toThrow(/profile names/);
     expect(toFileUri("C:/tmp/catalog.yaml")).toBe("file://C:/tmp/catalog.yaml");
+  });
+
+  it("parses only the enabled tool block for Ableton MCP profile exports", () => {
+    const profile = exportedProfileFor([
+      "ableton_find_installation",
+      "ableton_mcp_get_safe_tool_allowlist"
+    ]);
+
+    expect(parseDockerProfileEnabledTools(profile)).toEqual([
+      "ableton_find_installation",
+      "ableton_mcp_get_safe_tool_allowlist"
+    ]);
+  });
+
+  it("verifies the exact safe allowlist and rejects risky drift", () => {
+    const validProfile = exportedProfileFor(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST);
+    expect(verifyDockerProfileToolAllowlist(validProfile)).toMatchObject({
+      ok: true,
+      expectedAllowedTools: HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.length,
+      observedAllowedTools: HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.length,
+      missingSafeTools: [],
+      unexpectedAbletonTools: [],
+      unexpectedRiskyTools: []
+    });
+
+    const missingTool = HYPERNIMBUS_SAFE_TOOL_ALLOWLIST[0]!;
+    const unsafeProfile = exportedProfileFor([
+      ...HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.filter((tool) => tool !== missingTool),
+      "ableton_execute_concept_plan"
+    ]);
+    const verification = verifyDockerProfileToolAllowlist(unsafeProfile);
+
+    expect(verification.ok).toBe(false);
+    expect(verification.missingSafeTools).toContain(missingTool);
+    expect(verification.unexpectedAbletonTools).toContain("ableton_execute_concept_plan");
+    expect(verification.unexpectedRiskyTools).toContain("ableton_execute_concept_plan");
   });
 });

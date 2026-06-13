@@ -74,11 +74,13 @@ Native WSL Node can verify the MCP server, but it may not reach the Windows-only
 Expected current results:
 
 ```text
-Tests: 22 files, 74 tests passed
+Tests: 22 files, 76 tests passed
 MCP verifier: 194 tools, 3 resources, 2 prompts
 All-tool contract sweep: 194 registered tools, 194 safe calls
 Audit: 0 vulnerabilities
 ```
+
+`npm run docker:hypernimbus:verify` should also report `expectedAllowedTools: 119`, `observedAllowedTools: 119`, and empty `missingSafeTools`, `unexpectedAbletonTools`, and `unexpectedRiskyTools` arrays.
 
 ## Check the Max for Live bridge
 

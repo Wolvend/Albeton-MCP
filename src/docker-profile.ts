@@ -126,6 +126,51 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_mcp_run_eval_suite"
 ] as const;
 
+export const HYPERNIMBUS_RISKY_TOOL_DENYLIST = [
+  "ableton_execute_concept_plan",
+  "ableton_stage_concept_samples",
+  "ableton_download_sample",
+  "ableton_import_sample_to_library",
+  "ableton_launch_live",
+  "ableton_ui_click",
+  "ableton_click_coordinates",
+  "ableton_type_text",
+  "ableton_set_tempo",
+  "ableton_set_track_volume",
+  "ableton_set_track_pan",
+  "ableton_set_track_mute",
+  "ableton_set_track_solo",
+  "ableton_set_track_arm",
+  "ableton_set_track_color",
+  "ableton_set_return_track_volume",
+  "ableton_set_return_track_pan",
+  "ableton_set_return_track_mute",
+  "ableton_set_return_track_solo",
+  "ableton_set_return_track_color",
+  "ableton_set_master_volume",
+  "ableton_set_master_pan",
+  "ableton_rename_track",
+  "ableton_rename_return_track",
+  "ableton_rename_scene",
+  "ableton_fire_scene",
+  "ableton_set_scene_tempo",
+  "ableton_set_scene_time_signature",
+  "ableton_set_scene_color",
+  "ableton_set_clip_gain",
+  "ableton_set_clip_color",
+  "ableton_transpose_clip",
+  "ableton_set_clip_warp",
+  "ableton_set_clip_markers",
+  "ableton_create_automation_envelope",
+  "ableton_set_automation_point",
+  "ableton_create_arrangement_marker",
+  "ableton_duplicate_scene",
+  "ableton_duplicate_clip",
+  "ableton_move_clip",
+  "ableton_quantize_clip",
+  "ableton_humanize_midi_clip"
+] as const;
+
 export type DockerCommandPlan = {
   description: string;
   command: string;
@@ -139,6 +184,17 @@ export type DockerProfilePlan = {
   endpoint: string;
   allowlist: readonly string[];
   commands: DockerCommandPlan[];
+};
+
+export type DockerProfileToolVerification = {
+  ok: boolean;
+  serverName: string;
+  expectedAllowedTools: number;
+  observedAllowedTools: number;
+  missingSafeTools: string[];
+  unexpectedAbletonTools: string[];
+  unexpectedRiskyTools: string[];
+  observedTools: string[];
 };
 
 export function validateDockerProfileId(profile: string) {
@@ -155,6 +211,88 @@ export function toFileUri(filePath: string) {
     : path.resolve(filePath).replaceAll("\\", "/");
   if (/^[A-Za-z]:\//.test(absolute)) return `file://${absolute}`;
   return `file://${absolute}`;
+}
+
+function getIndent(line: string) {
+  return line.match(/^ */)?.[0].length ?? 0;
+}
+
+function splitDockerProfileServerBlocks(profileOutput: string) {
+  const blocks: string[] = [];
+  let current: string[] = [];
+
+  for (const line of profileOutput.split(/\r?\n/)) {
+    if (/^ {4}- type: \S+/.test(line)) {
+      if (current.length > 0) blocks.push(current.join("\n"));
+      current = [line];
+      continue;
+    }
+
+    if (current.length > 0) current.push(line);
+  }
+
+  if (current.length > 0) blocks.push(current.join("\n"));
+  return blocks;
+}
+
+export function parseDockerProfileEnabledTools(profileOutput: string, serverName = "ableton-mcp") {
+  const block = splitDockerProfileServerBlocks(profileOutput).find((candidate) =>
+    candidate.includes(`name: ${serverName}`) || candidate.includes(`name: "${serverName}"`)
+  );
+  if (!block) return [];
+
+  const tools: string[] = [];
+  const lines = block.split(/\r?\n/);
+  let toolsIndent: number | undefined;
+
+  for (const line of lines) {
+    if (toolsIndent === undefined) {
+      if (/^\s*tools:\s*$/.test(line)) toolsIndent = getIndent(line);
+      continue;
+    }
+
+    if (line.trim() === "") continue;
+    if (getIndent(line) <= toolsIndent) break;
+
+    const listItem = line.match(/^\s*-\s+([A-Za-z0-9_:-]+)\s*$/);
+    if (listItem) tools.push(listItem[1]!);
+  }
+
+  return tools;
+}
+
+export function verifyDockerProfileToolAllowlist(
+  profileOutput: string,
+  options: {
+    serverName?: string;
+    expectedAllowlist?: readonly string[];
+    riskyDenylist?: readonly string[];
+  } = {}
+): DockerProfileToolVerification {
+  const serverName = options.serverName ?? "ableton-mcp";
+  const expectedAllowlist = options.expectedAllowlist ?? HYPERNIMBUS_SAFE_TOOL_ALLOWLIST;
+  const riskyDenylist = options.riskyDenylist ?? HYPERNIMBUS_RISKY_TOOL_DENYLIST;
+  const expected = new Set(expectedAllowlist);
+  const risky = new Set(riskyDenylist);
+  const observedTools = parseDockerProfileEnabledTools(profileOutput, serverName);
+  const observed = new Set(observedTools);
+  const missingSafeTools = expectedAllowlist.filter((tool) => !observed.has(tool));
+  const unexpectedAbletonTools = observedTools.filter((tool) => tool.startsWith("ableton_") && !expected.has(tool));
+  const unexpectedRiskyTools = observedTools.filter((tool) => risky.has(tool));
+
+  return {
+    ok: observedTools.length > 0
+      && missingSafeTools.length === 0
+      && unexpectedAbletonTools.length === 0
+      && unexpectedRiskyTools.length === 0,
+    serverName,
+    expectedAllowedTools: expectedAllowlist.length,
+    observedAllowedTools: observedTools.length,
+    missingSafeTools,
+    unexpectedAbletonTools,
+    unexpectedRiskyTools,
+    observedTools
+  };
 }
 
 export function buildHypernimbusDockerProfilePlan(options: {
@@ -199,6 +337,11 @@ export function buildHypernimbusDockerProfilePlan(options: {
         description: "List servers in the profile for verification.",
         command: "docker",
         args: ["mcp", "profile", "server", "ls", "--filter", `profile=${profile}`]
+      },
+      {
+        description: "Show enabled tools in the profile for verification.",
+        command: "docker",
+        args: ["mcp", "profile", "show", profile]
       }
     ]
   };
