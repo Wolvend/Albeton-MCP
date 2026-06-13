@@ -1,6 +1,6 @@
-# HyperNimbus Docker MCP Profile
+# Docker MCP Profile
 
-This profile keeps Ableton MCP local to the Windows host while making it available to Docker MCP clients through Streamable HTTP.
+This profile keeps Ableton MCP local to the host while making it available to Docker MCP clients through Streamable HTTP.
 
 ## Defaults
 
@@ -12,6 +12,8 @@ Downloads: disabled
 UI/mouse control: disabled
 Remote HTTP: disabled
 ```
+
+The profile name above is the current local Docker MCP profile target. Ableton MCP itself remains a standalone MCP server and is not branded for that profile.
 
 The Docker profile allowlist enables read, planning, search, diagnostics, and concept-planning tools. It does not enable write execution, sample staging/downloads, raw UI clicks, or tempo/session mutation by default.
 
@@ -33,22 +35,22 @@ Invoke-RestMethod http://127.0.0.1:17366/health
 Dry-run the profile change:
 
 ```powershell
-npm run docker:hypernimbus:plan
+npm run docker:profile:plan
 ```
 
 Apply the profile change:
 
 ```powershell
-npm run docker:hypernimbus:apply
+npm run docker:profile:apply
 ```
 
 Verify the profile:
 
 ```powershell
-npm run docker:hypernimbus:verify
+npm run docker:profile:verify
 ```
 
-The apply command backs up the current Docker MCP profile before adding Ableton MCP and applying the safe tool filter. The verify command now checks both that `ableton-mcp` is present and that Docker's enabled tool list exactly matches the 140-tool safe allowlist with no unexpected Ableton or risky write/download/UI tools enabled.
+The apply command backs up the current Docker MCP profile before adding Ableton MCP and applying the safe tool filter. The verify command checks both that `ableton-mcp` is present and that Docker's enabled tool list exactly matches the safe allowlist with no unexpected Ableton or risky write/download/UI tools enabled.
 
 ## Rollback
 
@@ -62,7 +64,7 @@ Restore it with Docker MCP profile import/export tooling if a profile change nee
 
 ## OpenClaw
 
-OpenClaw can consume Ableton MCP as an outbound MCP server through its [MCP registry](https://docs.openclaw.ai/cli/mcp). The local HTTP template is:
+OpenClaw can consume Ableton MCP as an outbound MCP server through its MCP registry. The local HTTP template is:
 
 ```text
 config\openclaw-http.json
@@ -73,7 +75,7 @@ Recommended flow:
 ```powershell
 .\launch.ps1 docker -SkipSetup
 openclaw mcp status --verbose
-$safeTools = node -e "import('./dist/src/docker-profile.js').then(m=>console.log(m.HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.join(',')))"
+$safeTools = node -e "import('./dist/src/docker-profile.js').then(m=>console.log(m.DOCKER_MCP_SAFE_TOOL_ALLOWLIST.join(',')))"
 openclaw mcp add ableton-mcp --url http://127.0.0.1:17366/mcp --transport streamable-http --timeout 30 --connect-timeout 5
 openclaw mcp tools ableton-mcp --include "$safeTools"
 openclaw mcp doctor ableton-mcp --probe

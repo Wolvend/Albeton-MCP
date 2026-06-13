@@ -7,7 +7,7 @@ describe("OpenClaw MCP client configuration", () => {
   it("documents OpenClaw as a localhost Streamable HTTP MCP consumer with safe tool filtering", async () => {
     const configPath = path.join(LOCAL_PATHS.projectRoot, "config", "openclaw-http.json");
     const clientDocs = await fs.readFile(path.join(LOCAL_PATHS.projectRoot, "docs", "CLIENTS.md"), "utf8");
-    const dockerDocs = await fs.readFile(path.join(LOCAL_PATHS.projectRoot, "docs", "HYPERNIMBUS_DOCKER_MCP.md"), "utf8");
+    const dockerDocs = await fs.readFile(path.join(LOCAL_PATHS.projectRoot, "docs", "DOCKER_MCP_PROFILE.md"), "utf8");
     const config = JSON.parse(await fs.readFile(configPath, "utf8"));
 
     expect(config.mcp.servers["ableton-mcp"].url).toBe("http://127.0.0.1:17366/mcp");

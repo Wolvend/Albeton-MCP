@@ -4,9 +4,9 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
-  buildHypernimbusDockerProfilePlan,
+  buildDockerMcpProfilePlan,
   type DockerProfileToolVerification,
-  HYPERNIMBUS_PROFILE_ID,
+  DEFAULT_DOCKER_MCP_PROFILE_ID,
   verifyDockerProfileToolAllowlist
 } from "../src/docker-profile.js";
 
@@ -78,13 +78,13 @@ async function main() {
   const args = process.argv.slice(2);
   const apply = args.includes("--apply");
   const verifyOnly = args.includes("--verify");
-  const profile = argValue(args, "--profile") ?? HYPERNIMBUS_PROFILE_ID;
+  const profile = argValue(args, "--profile") ?? DEFAULT_DOCKER_MCP_PROFILE_ID;
   const catalogPath = argValue(args, "--catalog");
   const backupPath = argValue(args, "--backup");
   const planOptions: { profile: string; catalogPath?: string; backupPath?: string } = { profile };
   if (catalogPath) planOptions.catalogPath = catalogPath;
   if (backupPath) planOptions.backupPath = backupPath;
-  const plan = buildHypernimbusDockerProfilePlan(planOptions);
+  const plan = buildDockerMcpProfilePlan(planOptions);
 
   if (!apply && !verifyOnly) {
     console.log(JSON.stringify({

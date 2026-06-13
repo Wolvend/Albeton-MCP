@@ -10,7 +10,7 @@ This report records the latest verification pass for the Ableton MCP production 
 Tools: 216
 Resources: 3
 Prompts: 2
-HyperNimbus Docker MCP enabled tools: 140
+Docker MCP profile enabled tools: 140
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 24 test files and 103 tests passed, including bridge setup status hashing, objective-readiness reporting, launch-readiness audit checks with LiveAPI control coverage, bridge capability matrix checks, bridge send-summary source checks, conservative MIDI note replacement bridge source checks, seeded MIDI humanization bridge source checks, bounded clip-note read argument-order checks, typed read selector schema checks, typed MIDI/sample tool schema checks, deterministic standalone MIDI motif generation checks, structured composition helper planning checks for sessions, drum racks, instrument chains, effect chains, arrangements, mix actions, and production-plan validation, return-track placeholder resolution checks for generated return bus rename/mixer/send actions, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only reference-audio intake classification checks, read-only source-audio transformation planning checks for approved and unapproved paths, read-only concept sample curation checks, read-only concept execution action matrix checks, read-only concept execution manifest checks, read-only concept execution runbook checks, read-only concept attribution bundle checks, read-only concept device-chain spec checks, read-only concept device catalog matching checks, read-only concept UI placement plan checks, agent music dry-run launcher and safe sequence checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, concept execution unsupported-bridge response detection, redacted concept execution journal writing and inspection, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, production-readiness and agent music-session workflow reporting across gates, clients, bridge state, concept workflow, and safety posture, track-send discovery schema checks, OpenClaw client config documentation checks, safe HyperNimbus/OpenClaw allowlist reporting checks, Docker MCP profile allowlist parsing checks, risky-tool drift rejection checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 24 test files and 103 tests passed, including bridge setup status hashing, objective-readiness reporting, launch-readiness audit checks with LiveAPI control coverage, bridge capability matrix checks, bridge send-summary source checks, conservative MIDI note replacement bridge source checks, seeded MIDI humanization bridge source checks, bounded clip-note read argument-order checks, typed read selector schema checks, typed MIDI/sample tool schema checks, deterministic standalone MIDI motif generation checks, structured composition helper planning checks for sessions, drum racks, instrument chains, effect chains, arrangements, mix actions, and production-plan validation, return-track placeholder resolution checks for generated return bus rename/mixer/send actions, write-gated local audio conversion into approved staging/import roots, read-only concept preset catalog checks, read-only reference-audio intake classification checks, read-only source-audio transformation planning checks for approved and unapproved paths, read-only concept sample curation checks, read-only concept execution action matrix checks, read-only concept execution manifest checks, read-only concept execution runbook checks, read-only concept attribution bundle checks, read-only concept device-chain spec checks, read-only concept device catalog matching checks, read-only concept UI placement plan checks, agent music dry-run launcher and safe sequence checks, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, read-only concept mix planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, deterministic concept execution approval-id checks, concept execution unsupported-bridge response detection, redacted concept execution journal writing and inspection, write-enabled missing-approval rejection before bridge access, prompt argument sanitization checks, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, production-readiness and agent music-session workflow reporting across gates, clients, bridge state, concept workflow, and safety posture, track-send discovery schema checks, OpenClaw client config documentation checks, safe Docker/OpenClaw allowlist reporting checks, Docker MCP profile allowlist parsing checks, risky-tool drift rejection checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -86,15 +86,15 @@ Result: succeeded. npm reported 0 vulnerabilities.
 ## Docker MCP
 
 ```powershell
-npm run docker:hypernimbus:verify
+npm run docker:profile:verify
 ```
 
-Result: succeeded. HyperNimbus still has `ableton-mcp` active as a remote MCP server. The verifier parsed Docker's enabled tool list and reported `expectedAllowedTools: 140`, `observedAllowedTools: 140`, `missingSafeTools: []`, `unexpectedAbletonTools: []`, and `unexpectedRiskyTools: []`.
+Result: succeeded. The selected Docker MCP profile has `ableton-mcp` active as a remote MCP server. The verifier parsed Docker's enabled tool list and reported `expectedAllowedTools: 140`, `observedAllowedTools: 140`, `missingSafeTools: []`, `unexpectedAbletonTools: []`, and `unexpectedRiskyTools: []`.
 
 The profile was reapplied after adding the safe launch-readiness audit:
 
 ```powershell
-npm run docker:hypernimbus:apply
+npm run docker:profile:apply
 ```
 
 Result: succeeded. The command exported a backup to `diagnostics/runtime/docker-mcp/hypernimbus.before.yaml`, replaced the local `ableton-mcp` catalog entry, disabled all Ableton MCP tools, and enabled the 140-tool safe allowlist. Docker reported an OAuth discovery 404 for the local endpoint, which is expected because this server does not expose OAuth metadata.
@@ -156,7 +156,7 @@ Docker gateway dry-run:
 docker mcp gateway run --profile hypernimbus --dry-run --block-secrets
 ```
 
-Result: succeeded after restarting the local HTTP listener on `127.0.0.1:17366`. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 140 enabled safe tools.
+Result: succeeded after restarting the local HTTP listener on `127.0.0.1:17366`. Docker loaded the selected profile and listed `ableton-mcp` with 140 enabled safe tools.
 
 Direct Streamable HTTP probe against `http://127.0.0.1:17366/mcp` reported `toolCount: 216`, `hasObjectiveReadiness: true`, `hasLaunchAudit: true`, `objectiveStatus: "ready_for_default_clients_pending_live_bridge"`, `auditMode: "ready_for_offline_planning"`, `okForDefaultClientUse: true`, `bridgeReachable: false`, and `safeToolCount: 140`.
 
@@ -242,7 +242,7 @@ Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` du
 ## Security Notes
 
 - HTTP remains localhost-only by default.
-- HyperNimbus uses the safe tool allowlist. The objective-readiness report, bridge capability, safe allowlist, concept preset, reference-audio intake, source-audio transformation, concept execution manifest, concept execution runbook, concept execution journal, concept attribution bundle, concept production scorecard, concept device-chain spec, concept device catalog match, concept device UI placement plan, and concept mix-plan tools are read-only and included; color/write tools stay out of that allowlist and still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1` for real execution.
+- The Docker MCP profile uses the safe tool allowlist. The objective-readiness report, bridge capability, safe allowlist, concept preset, reference-audio intake, source-audio transformation, concept execution manifest, concept execution runbook, concept execution journal, concept attribution bundle, concept production scorecard, concept device-chain spec, concept device catalog match, concept device UI placement plan, and concept mix-plan tools are read-only and included; color/write tools stay out of that allowlist and still require `dry_run=false` plus `ABLETON_MCP_ENABLE_WRITE=1` for real execution.
 - Downloads, writes, and UI/mouse control remain disabled by default.
 - Remote sample metadata and concept sample preview URLs are sanitized or validated against the approved sample URL policy before being returned.
 - Concept reference audio now becomes executable only when it is already under approved sample roots; MCP responses redact the local path while stored plans retain the path for later gated execution. `ableton_plan_source_audio_transformation` maps source songs into reviewable layer treatments and dry-run conversion templates without reading unapproved paths, copying files, downloading samples, writing Ableton state, or using UI/mouse control.
@@ -250,4 +250,4 @@ Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` du
 - Real staged sample downloads now persist sidecar attribution with source URL, destination name, license policy, creator/title/identifier metadata, checksum, byte count, and staging time.
 - `ableton_generate_attribution_report` now reads only bounded `.attribution.json` sidecars from sample staging and Codex Imports, redacts local paths, and sanitizes remote title/creator text for display.
 - `ableton_render_concept_attribution_bundle` reads only exact `.attribution.json` sidecars for one stored concept arrangement's sample assignments, redacts local paths, reports missing sidecars and license warnings, and avoids broad scans.
-- Docker/OpenClaw/client docs now treat Ableton MCP as the permission owner for write/download/UI gates.
+- Docker MCP/OpenClaw/client docs now treat Ableton MCP as the permission owner for write/download/UI gates.

@@ -27,7 +27,7 @@ const required = [
   "bridge/max-for-live/Ableton MCP Bridge.amxd",
   "docs/CLIENTS.md",
   "docs/CONCEPT_TO_MUSIC.md",
-  "docs/HYPERNIMBUS_DOCKER_MCP.md",
+  "docs/DOCKER_MCP_PROFILE.md",
   "docs/PORTABILITY.md"
 ];
 
@@ -55,7 +55,7 @@ const packageJson = JSON.parse(await fs.readFile(path.join(PROJECT_ROOT, "packag
   engines?: Record<string, string>;
 };
 
-const scriptChecks = ["build", "test", "lint", "verify:mcp", "doctor", "configure:clients", "docker:hypernimbus:plan", "docker:hypernimbus:apply", "docker:hypernimbus:verify", "sweep:safe", "sweep:all", "live-smoke", "demo:concept"];
+const scriptChecks = ["build", "test", "lint", "verify:mcp", "doctor", "configure:clients", "docker:profile:plan", "docker:profile:apply", "docker:profile:verify", "sweep:safe", "sweep:all", "live-smoke", "demo:concept"];
 const missingScripts = scriptChecks.filter((script) => !packageJson.scripts?.[script]);
 
 const ok = missing.length === 0 && missingScripts.length === 0;

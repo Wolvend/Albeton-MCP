@@ -13,7 +13,7 @@ export type AgentMusicDryRunOptions = {
   target_duration_seconds: number;
   intensity: number;
   style: string;
-  client: "codex" | "hypernimbus" | "openclaw" | "claude" | "openrouter" | "gemini" | "llama.cpp" | "antigravity";
+  client: "codex" | "docker_mcp" | "openclaw" | "claude" | "openrouter" | "gemini" | "llama.cpp" | "antigravity";
   sources: Array<"local_library" | "internet_archive" | "freesound">;
   search_samples: boolean;
   reference_path?: string;
@@ -200,7 +200,7 @@ function parseSources(value: string | undefined): AgentMusicDryRunOptions["sourc
 function parseClient(value: string | undefined): AgentMusicDryRunOptions["client"] {
   const allowed = new Set<AgentMusicDryRunOptions["client"]>([
     "codex",
-    "hypernimbus",
+    "docker_mcp",
     "openclaw",
     "claude",
     "openrouter",

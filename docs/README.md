@@ -11,7 +11,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Ableton UI driver](ABLETON_UI_DRIVER.md) | Running the ChromeDriver-style foreground UI driver. |
 | [Platform compatibility](PORTABILITY.md) | Running stdio/HTTP MCP on Windows, WSL, macOS, and Linux. |
 | [Client compatibility](CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |
-| [HyperNimbus Docker MCP](HYPERNIMBUS_DOCKER_MCP.md) | Activating the safe local-only Docker MCP profile and OpenClaw registry path. |
+| [Docker MCP profile](DOCKER_MCP_PROFILE.md) | Activating a safe local-only Docker MCP profile and OpenClaw registry path. |
 | [Verification](VERIFICATION.md) | Running build, test, lint, MCP, bridge, and UI-driver checks. |
 | [Final verification report](FINAL_VERIFICATION.md) | Reviewing the latest full local verification results. |
 

@@ -34,15 +34,15 @@ docker/ableton-mcp.catalog.yaml
 
 The catalog points at the local host HTTP transport. Keep the launcher running while Docker MCP is connected.
 
-For the HyperNimbus Docker MCP profile, use the checked-in profile automation:
+For the selected Docker MCP profile, use the checked-in profile automation:
 
 ```powershell
-npm run docker:hypernimbus:plan
-npm run docker:hypernimbus:apply
-npm run docker:hypernimbus:verify
+npm run docker:profile:plan
+npm run docker:profile:apply
+npm run docker:profile:verify
 ```
 
-The apply command backs up the existing profile before adding Ableton MCP and enables only the safe default tool allowlist. See [HyperNimbus Docker MCP](HYPERNIMBUS_DOCKER_MCP.md).
+The apply command backs up the existing profile before adding Ableton MCP and enables only the safe default tool allowlist. See [Docker MCP profile](DOCKER_MCP_PROFILE.md).
 
 The verify command parses `docker mcp profile show hypernimbus` and fails if any safe tool is missing or if unexpected Ableton write, download, import, or UI/mouse tools are enabled.
 

@@ -33,7 +33,7 @@ describe("MCP tool behavior", () => {
         downloadsEnabled: false,
         uiControlEnabled: false
       });
-      expect(readiness.clients.hypernimbus).toMatchObject({
+      expect(readiness.clients.dockerMcp).toMatchObject({
         profile: "hypernimbus",
         endpoint: "http://127.0.0.1:17366/mcp",
         safeToolCount: expect.any(Number)
@@ -131,20 +131,20 @@ describe("MCP tool behavior", () => {
       expect(report.blockingProof.join("\n")).toContain("Max for Live bridge");
       expect(requirements.map((requirement) => requirement.id)).toEqual(expect.arrayContaining([
         "secure_default_runtime",
-        "hypernimbus_openclaw_safe_profile",
+        "docker_openclaw_safe_profile",
         "concept_to_music_workflow",
         "background_liveapi_bridge",
         "real_execution_gate",
         "optional_ui_mouse_control"
       ]));
-      expect(requirements.find((requirement) => requirement.id === "hypernimbus_openclaw_safe_profile")).toMatchObject({
+      expect(requirements.find((requirement) => requirement.id === "docker_openclaw_safe_profile")).toMatchObject({
         status: "pass",
         evidence: {
           includesObjectiveReport: true,
           excludesRealExecution: true,
           excludesUiSession: true
         },
-        verificationCommand: "npm run docker:hypernimbus:verify"
+        verificationCommand: "npm run docker:profile:verify"
       });
       expect(requirements.find((requirement) => requirement.id === "background_liveapi_bridge")).toMatchObject({
         status: "pending_runtime",
@@ -165,7 +165,7 @@ describe("MCP tool behavior", () => {
     });
   }, INTEGRATION_TIMEOUT_MS);
 
-  it("reports the safe HyperNimbus/OpenClaw tool allowlist without enabling risky tools", async () => {
+  it("reports the safe Docker/OpenClaw tool allowlist without enabling risky tools", async () => {
     await withClient(async (client) => {
       const structured = await callStructured(client, "ableton_mcp_get_safe_tool_allowlist", {});
       const safeToolAllowlist = structured.safeToolAllowlist as Record<string, unknown>;

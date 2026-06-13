@@ -1,10 +1,10 @@
 import path from "node:path";
 import { LOCAL_PATHS } from "./config.js";
 
-export const HYPERNIMBUS_PROFILE_ID = "hypernimbus";
+export const DEFAULT_DOCKER_MCP_PROFILE_ID = "hypernimbus";
 export const ABLETON_DOCKER_CATALOG = path.join(LOCAL_PATHS.projectRoot, "docker", "ableton-mcp.catalog.yaml");
 
-export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
+export const DOCKER_MCP_SAFE_TOOL_ALLOWLIST = [
   "ableton_find_installation",
   "ableton_get_environment",
   "ableton_validate_config",
@@ -147,7 +147,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_mcp_run_eval_suite"
 ] as const;
 
-export const HYPERNIMBUS_RISKY_TOOL_DENYLIST = [
+export const DOCKER_MCP_RISKY_TOOL_DENYLIST = [
   "ableton_execute_concept_plan",
   "ableton_begin_concept_device_ui_session",
   "ableton_stage_concept_samples",
@@ -297,8 +297,8 @@ export function verifyDockerProfileToolAllowlist(
   } = {}
 ): DockerProfileToolVerification {
   const serverName = options.serverName ?? "ableton-mcp";
-  const expectedAllowlist = options.expectedAllowlist ?? HYPERNIMBUS_SAFE_TOOL_ALLOWLIST;
-  const riskyDenylist = options.riskyDenylist ?? HYPERNIMBUS_RISKY_TOOL_DENYLIST;
+  const expectedAllowlist = options.expectedAllowlist ?? DOCKER_MCP_SAFE_TOOL_ALLOWLIST;
+  const riskyDenylist = options.riskyDenylist ?? DOCKER_MCP_RISKY_TOOL_DENYLIST;
   const expected = new Set(expectedAllowlist);
   const risky = new Set(riskyDenylist);
   const observedTools = parseDockerProfileEnabledTools(profileOutput, serverName);
@@ -322,23 +322,23 @@ export function verifyDockerProfileToolAllowlist(
   };
 }
 
-export function buildHypernimbusDockerProfilePlan(options: {
+export function buildDockerMcpProfilePlan(options: {
   profile?: string;
   catalogPath?: string;
   backupPath?: string;
 } = {}): DockerProfilePlan {
-  const profile = validateDockerProfileId(options.profile ?? HYPERNIMBUS_PROFILE_ID);
+  const profile = validateDockerProfileId(options.profile ?? DEFAULT_DOCKER_MCP_PROFILE_ID);
   const catalogPath = resolvePathPreservingWindowsAbsolute(options.catalogPath ?? ABLETON_DOCKER_CATALOG);
   const backupPath = resolvePathPreservingWindowsAbsolute(options.backupPath ?? path.join(LOCAL_PATHS.diagnostics, "runtime", "docker-mcp", `${profile}.before.yaml`));
   const catalogRef = toFileUri(catalogPath);
-  const enableArgs = HYPERNIMBUS_SAFE_TOOL_ALLOWLIST.flatMap((tool) => ["--enable", `ableton-mcp.${tool}`]);
+  const enableArgs = DOCKER_MCP_SAFE_TOOL_ALLOWLIST.flatMap((tool) => ["--enable", `ableton-mcp.${tool}`]);
 
   return {
     profile,
     catalogPath,
     catalogRef,
     endpoint: "http://127.0.0.1:17366/mcp",
-    allowlist: HYPERNIMBUS_SAFE_TOOL_ALLOWLIST,
+    allowlist: DOCKER_MCP_SAFE_TOOL_ALLOWLIST,
     commands: [
       {
         description: "Back up the Docker MCP profile before changing it.",
@@ -346,7 +346,7 @@ export function buildHypernimbusDockerProfilePlan(options: {
         args: ["mcp", "profile", "export", profile, backupPath]
       },
       {
-        description: "Add or update Ableton MCP in the HyperNimbus Docker MCP profile.",
+        description: "Add or update Ableton MCP in the selected Docker MCP profile.",
         command: "docker",
         args: ["mcp", "profile", "server", "add", profile, "--server", catalogRef]
       },
@@ -356,7 +356,7 @@ export function buildHypernimbusDockerProfilePlan(options: {
         args: ["mcp", "profile", "tools", profile, "--disable-all", "ableton-mcp"]
       },
       {
-        description: "Enable only read, planning, search, status, and diagnostics tools for HyperNimbus.",
+        description: "Enable only read, planning, search, status, and diagnostics tools for this Docker MCP profile.",
         command: "docker",
         args: ["mcp", "profile", "tools", profile, ...enableArgs]
       },

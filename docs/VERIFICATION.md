@@ -50,11 +50,11 @@ Run the exhaustive safe contract sweep for every registered tool:
 npm run sweep:all
 ```
 
-Check the HyperNimbus Docker MCP profile plan:
+Check the selected Docker MCP profile plan:
 
 ```powershell
-npm run docker:hypernimbus:plan
-npm run docker:hypernimbus:verify
+npm run docker:profile:plan
+npm run docker:profile:verify
 ```
 
 Run the safe Ableton live bridge smoke after Ableton is open and the bridge device is loaded:
@@ -80,7 +80,7 @@ All-tool contract sweep: 216 registered tools, 216 contract calls
 Audit: 0 vulnerabilities
 ```
 
-`npm run docker:hypernimbus:verify` should also report `expectedAllowedTools: 140`, `observedAllowedTools: 140`, and empty `missingSafeTools`, `unexpectedAbletonTools`, and `unexpectedRiskyTools` arrays.
+`npm run docker:profile:verify` should also report matching `expectedAllowedTools` and `observedAllowedTools`, plus empty `missingSafeTools`, `unexpectedAbletonTools`, and `unexpectedRiskyTools` arrays.
 
 ## Check the Max for Live bridge
 
