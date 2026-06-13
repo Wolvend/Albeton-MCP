@@ -12,6 +12,8 @@ describe("live smoke workflow", () => {
     };
     const launchPs1 = fs.readFileSync(path.join(projectRoot, "launch.ps1"), "utf8");
     const launchSh = fs.readFileSync(path.join(projectRoot, "launch.sh"), "utf8");
+    const liveReady = fs.readFileSync(path.join(projectRoot, "scripts", "live-ready.ts"), "utf8");
+    const bridgeSetup = fs.readFileSync(path.join(projectRoot, "src", "bridge-setup.ts"), "utf8");
 
     expect(packageJson.scripts["live-ready"]).toBe("node dist/scripts/live-ready.js");
     expect(packageJson.scripts["live-smoke"]).toBe("node dist/scripts/live-smoke.js");
@@ -30,6 +32,10 @@ describe("live smoke workflow", () => {
     expect(launchSh).toContain("npm run live-smoke");
     expect(launchSh).toContain("bridge-status)");
     expect(launchSh).toContain("npm run bridge:status");
+    expect(liveReady).toContain("bridgeDevice");
+    expect(liveReady).toContain("bridgeListener");
+    expect(liveReady).toContain("safeNextCommands");
+    expect(bridgeSetup).toContain("User Library > Presets > MIDI Effects > Max MIDI Effect > Ableton MCP Bridge");
   });
 
   it("keeps the write probe dry-run only", () => {

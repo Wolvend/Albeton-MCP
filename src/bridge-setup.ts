@@ -37,6 +37,7 @@ export async function getBridgeSetupStatus(checkBridge = false) {
   }
 
   const liveRunning = Boolean(environment.liveRunning);
+  const bridgeDevice = install.files.find((file) => file.fileName === "Ableton MCP Bridge.amxd");
   const status = !install.ready
     ? "bridge_files_need_install"
     : !liveRunning
@@ -52,6 +53,14 @@ export async function getBridgeSetupStatus(checkBridge = false) {
     status,
     readyForLiveSmoke: install.ready && liveRunning && bridge.reachable === true,
     install,
+    bridgeDevice: bridgeDevice
+      ? {
+        fileName: bridgeDevice.fileName,
+        targetPath: bridgeDevice.target.path,
+        installed: bridgeDevice.target.exists && bridgeDevice.sourceMatchesTarget,
+        loadFromBrowser: "User Library > Presets > MIDI Effects > Max MIDI Effect > Ableton MCP Bridge"
+      }
+      : null,
     live: {
       running: liveRunning,
       processes: environment.abletonProcesses.map(briefProcess)
@@ -62,7 +71,15 @@ export async function getBridgeSetupStatus(checkBridge = false) {
       : status === "bridge_files_need_install"
         ? install.nextSteps
         : status === "ableton_not_running"
-          ? ["Open Ableton Live.", "Load the Ableton MCP Bridge Max for Live device.", "Run ableton_bridge_setup_status with check_bridge=true."]
-          : ["Load Ableton MCP Bridge from User Library > Presets > MIDI Effects > Max MIDI Effect.", "Confirm Max Console says the bridge is listening on 127.0.0.1:17364.", "Run .\\launch.ps1 live-smoke -SkipSetup."]
+          ? [
+            "Open Ableton Live or run .\\launch.ps1 live-ready -StartLive -SkipSetup.",
+            "Load Ableton MCP Bridge from User Library > Presets > MIDI Effects > Max MIDI Effect.",
+            "Run ableton_bridge_setup_status with check_bridge=true."
+          ]
+          : [
+            "In Ableton, load User Library > Presets > MIDI Effects > Max MIDI Effect > Ableton MCP Bridge onto a MIDI track.",
+            "Confirm Max Console says the bridge is listening on 127.0.0.1:17364.",
+            "Run .\\launch.ps1 live-smoke -SkipSetup."
+          ]
   };
 }

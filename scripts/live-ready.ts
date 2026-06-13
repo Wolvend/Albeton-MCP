@@ -107,6 +107,18 @@ export async function buildLiveReadyReport(options: LiveReadyOptions) {
     platform: PLATFORM,
     executable: LOCAL_PATHS.liveExecutable || null,
     launch,
+    bridgeDevice: final.bridgeDevice,
+    bridgeListener: {
+      host: "127.0.0.1",
+      port: 17364,
+      remoteExposure: false
+    },
+    safeNextCommands: final.status === "ready"
+      ? [".\\launch.ps1 live-smoke -SkipSetup"]
+      : [
+        ".\\launch.ps1 bridge-status -SkipSetup",
+        ".\\launch.ps1 live-smoke -SkipSetup"
+      ],
     initial: {
       status: initial.status,
       liveRunning: initial.live.running,
