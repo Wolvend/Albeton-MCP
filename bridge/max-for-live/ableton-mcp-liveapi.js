@@ -237,7 +237,13 @@ function summarizeScene(sceneIndex) {
     index: sceneIndex,
     name: safeGet(sceneApi, "name", ""),
     color: safeGet(sceneApi, "color", null),
-    tempo: safeGet(sceneApi, "tempo", null)
+    tempo: safeGet(sceneApi, "tempo", null),
+    tempo_enabled: safeGet(sceneApi, "tempo_enabled", null),
+    time_signature_numerator: safeGet(sceneApi, "time_signature_numerator", null),
+    time_signature_denominator: safeGet(sceneApi, "time_signature_denominator", null),
+    time_signature_enabled: safeGet(sceneApi, "time_signature_enabled", null),
+    is_empty: safeGet(sceneApi, "is_empty", null),
+    is_triggered: safeGet(sceneApi, "is_triggered", null)
   };
 }
 
@@ -779,6 +785,16 @@ function setReturnMixerParameter(payload, parameterName, minValue, maxValue) {
   return { return_track_index: returnTrackIndex, parameter: parameterName, value: safeGet(parameter, "value", null) };
 }
 
+function setMasterMixerParameter(payload, parameterName, minValue, maxValue) {
+  var value = Number(payload && payload.value);
+  if (!isFinite(value) || value < minValue || value > maxValue) {
+    throw new Error(parameterName + " value must be between " + minValue + " and " + maxValue + ".");
+  }
+  var parameter = liveObject("live_set master_track mixer_device " + parameterName);
+  parameter.set("value", value);
+  return { track: "master", parameter: parameterName, value: safeGet(parameter, "value", null) };
+}
+
 function setDeviceParameter(payload) {
   var trackIndex = parseTrackIndex(payload);
   var deviceIndex = parseIndex(payload, "device_id");
@@ -839,6 +855,48 @@ function duplicateScene(payload) {
   var result = safeCall(liveObject("live_set"), "duplicate_scene", [sceneIndex]);
   if (!callSucceeded(result)) return unsupported("ableton_duplicate_scene", "duplicate_scene is unavailable from this LiveAPI context.", { scene_index: sceneIndex, result: result });
   return { scene_index: sceneIndex, duplicated: true, result: result };
+}
+
+function fireScene(payload) {
+  var sceneIndex = parseRequiredIndex(payload, "scene_index");
+  var forceLegato = payload && payload.force_legato ? 1 : 0;
+  var canSelectScene = payload && payload.select_scene === false ? 0 : 1;
+  var scene = liveObject("live_set scenes " + sceneIndex);
+  var result = safeCall(scene, "fire", [forceLegato, canSelectScene]);
+  if (!callSucceeded(result)) return unsupported("ableton_fire_scene", "Scene.fire is unavailable from this LiveAPI context.", { scene_index: sceneIndex, result: result });
+  return { scene_index: sceneIndex, fired: true, force_legato: Boolean(forceLegato), select_scene: Boolean(canSelectScene), scene: summarizeScene(sceneIndex), result: result };
+}
+
+function setSceneTempo(payload) {
+  var sceneIndex = parseRequiredIndex(payload, "scene_index");
+  var tempo = Number(payload && payload.tempo);
+  var enabled = !(payload && payload.enabled === false);
+  if (!isFinite(tempo) || tempo < 20 || tempo > 999) throw new Error("tempo must be between 20 and 999 BPM.");
+  var scene = liveObject("live_set scenes " + sceneIndex);
+  scene.set("tempo_enabled", enabled ? 1 : 0);
+  if (enabled) scene.set("tempo", tempo);
+  return { scene_index: sceneIndex, tempo: safeGet(scene, "tempo", null), tempo_enabled: safeGet(scene, "tempo_enabled", null) };
+}
+
+function setSceneTimeSignature(payload) {
+  var sceneIndex = parseRequiredIndex(payload, "scene_index");
+  var numerator = Math.floor(Number(payload && payload.numerator));
+  var denominator = Math.floor(Number(payload && payload.denominator));
+  var enabled = !(payload && payload.enabled === false);
+  if (!isFinite(numerator) || numerator < 1 || numerator > 32) throw new Error("numerator must be 1..32.");
+  if ([2, 4, 8, 16].indexOf(denominator) === -1) throw new Error("denominator must be 2, 4, 8, or 16.");
+  var scene = liveObject("live_set scenes " + sceneIndex);
+  scene.set("time_signature_enabled", enabled ? 1 : 0);
+  if (enabled) {
+    scene.set("time_signature_numerator", numerator);
+    scene.set("time_signature_denominator", denominator);
+  }
+  return {
+    scene_index: sceneIndex,
+    time_signature_numerator: safeGet(scene, "time_signature_numerator", null),
+    time_signature_denominator: safeGet(scene, "time_signature_denominator", null),
+    time_signature_enabled: safeGet(scene, "time_signature_enabled", null)
+  };
 }
 
 function duplicateClip(payload) {
@@ -991,6 +1049,8 @@ function dispatch(action, payload) {
   if (action === "ableton_set_track_send") return setTrackSend(payload);
   if (action === "ableton_set_return_track_volume") return setReturnMixerParameter(payload, "volume", 0, 1);
   if (action === "ableton_set_return_track_pan") return setReturnMixerParameter(payload, "panning", -1, 1);
+  if (action === "ableton_set_master_volume") return setMasterMixerParameter(payload, "volume", 0, 1);
+  if (action === "ableton_set_master_pan") return setMasterMixerParameter(payload, "panning", -1, 1);
   if (action === "ableton_insert_instrument" || action === "ableton_insert_effect") return unsupportedDeviceInsertion(action, payload);
   if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);
@@ -999,6 +1059,9 @@ function dispatch(action, payload) {
   if (action === "ableton_set_automation_point") return setAutomationPoint(payload);
   if (action === "ableton_simplify_automation") return simplifyAutomation(payload);
   if (action === "ableton_create_arrangement_marker") return createArrangementMarker(payload);
+  if (action === "ableton_fire_scene") return fireScene(payload);
+  if (action === "ableton_set_scene_tempo") return setSceneTempo(payload);
+  if (action === "ableton_set_scene_time_signature") return setSceneTimeSignature(payload);
   if (action === "ableton_duplicate_scene") return duplicateScene(payload);
   if (action === "ableton_duplicate_clip") return duplicateClip(payload);
   if (action === "ableton_move_clip") return moveClip(payload);

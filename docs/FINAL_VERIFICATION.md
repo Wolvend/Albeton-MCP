@@ -7,7 +7,7 @@ This report records the latest verification pass for the Ableton MCP production 
 ## Current Surface
 
 ```text
-Tools: 177
+Tools: 182
 Resources: 3
 Prompts: 2
 HyperNimbus Docker MCP enabled tools: 113
@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 22 test files and 69 tests passed, including typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 22 test files and 69 tests passed, including typed MIDI/sample tool schema checks, write-gated local audio conversion into approved staging/import roots, write-gated concept MIDI motif export planning, write-gated concept reference-audio layer preparation planning, prepared-audio manifest handoff into arrangement planning, full concept production planning without downloads or Ableton writes, concept execution preflight without bridge side effects, non-approving concept execution approval bundle checks, read-only concept device/automation readiness checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, scene tempo/signature placeholders, clip rename/loop/gain/transpose/warp/marker polish, mix, send, staged device-chain and automation actions, approved reference-audio treatment assignment, unapproved reference-audio execution blocking, stored plan list/get redaction, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior for device/automation/quantize controls, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -59,21 +59,21 @@ Result: succeeded. Release check found no missing required files or scripts. It 
 npm run sweep:safe
 ```
 
-Result: succeeded. Safe sweep called 88 read-only and dry-run tools with 0 unexpected failures, including `ableton_get_return_track_mixer`, `ableton_set_return_track_volume` dry-run, audio clip shaping dry-runs, `ableton_list_internet_archive_audio_files`, `ableton_list_concept_plans`, and `ableton_list_arrangement_plans`.
+Result: succeeded. Safe sweep called 93 read-only and dry-run tools with 0 unexpected failures, including `ableton_get_return_track_mixer`, `ableton_set_return_track_volume` dry-run, master mixer dry-runs, scene launch/tempo/signature dry-runs, audio clip shaping dry-runs, `ableton_list_internet_archive_audio_files`, `ableton_list_concept_plans`, and `ableton_list_arrangement_plans`.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 177 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan with approved reference audio -> full concept production plan -> stored arrangement plan with return-track mixer actions and clip rename/loop/gain/transpose/warp/marker polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> non-approving approval bundle -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution.
+Result: succeeded. All-tool contract sweep called all 182 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan with approved reference audio -> full concept production plan -> stored arrangement plan with scene tempo/signature setup, return-track mixer actions, and clip rename/loop/gain/transpose/warp/marker polish -> prepared-audio manifest arrangement build -> stored plan retrieval -> read-only execution preflight -> non-approving approval bundle -> read-only device/automation readiness -> dry-run MIDI motif export -> dry-run audio-layer preparation -> dry-run execution.
 
-The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, and `ableton_set_clip_markers` contracts. Concept arrangement plans now include created-track placeholders for volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, and a read-only readiness handoff for device/automation target discovery; real execution resolves executable placeholders from a live snapshot immediately before write-gated bridge calls.
+The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature tools, typed master volume/pan tools, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, and `ableton_set_clip_markers` contracts. Concept arrangement plans now include created-track and created-scene placeholders for scene setup, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, and a read-only readiness handoff for device/automation target discovery; real execution resolves executable placeholders from a live snapshot immediately before write-gated bridge calls.
 
 ```powershell
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 177 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 182 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -103,6 +103,11 @@ ableton_stage_concept_samples
 ableton_download_sample
 ableton_click_coordinates
 ableton_set_tempo
+ableton_fire_scene
+ableton_set_scene_tempo
+ableton_set_scene_time_signature
+ableton_set_master_volume
+ableton_set_master_pan
 ableton_set_clip_gain
 ableton_transpose_clip
 ableton_set_clip_warp
@@ -115,7 +120,7 @@ The host HTTP service was started with:
 .\launch.ps1 docker -SkipSetup
 ```
 
-The host HTTP service was restarted after the latest build so Docker could query the rebuilt 177-tool server.
+The host HTTP service was restarted after the latest build so Docker could query the rebuilt 182-tool server.
 
 Health result:
 
@@ -155,7 +160,7 @@ openclaw mcp doctor ableton-mcp --probe
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
 ```
 
-Result: succeeded under WSL with 177 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL with 182 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
 
 ## Live Bridge Smoke
 

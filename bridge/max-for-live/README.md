@@ -77,6 +77,9 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `ableton_create_midi_track`
 - `ableton_create_return_track`
 - `ableton_create_scene`
+- `ableton_fire_scene`
+- `ableton_set_scene_tempo`
+- `ableton_set_scene_time_signature`
 - `ableton_create_clip`
 - `ableton_create_midi_clip`
 - `ableton_insert_midi_notes`
@@ -94,6 +97,8 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `ableton_set_track_volume`
 - `ableton_set_track_pan`
 - `ableton_set_track_send`
+- `ableton_set_master_volume`
+- `ableton_set_master_pan`
 - `ableton_set_device_parameter`
 - `ableton_rename_track`
 - `ableton_rename_clip`

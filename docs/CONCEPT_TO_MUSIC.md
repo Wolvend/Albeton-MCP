@@ -33,11 +33,11 @@ Fast path:
 
 5. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.
-   - Builds tempo, track, scene, arrangement marker, mix, send, sparse MIDI motif, clip rename, clip gain, transpose, warp, marker, and loop actions.
+   - Builds tempo, track, scene, scene tempo/signature, arrangement marker, mix, send, sparse MIDI motif, clip rename, clip gain, transpose, warp, marker, and loop actions.
    - Optionally accepts `sample_assignments` that map approved local audio files to named audio layers and emit ordered load, rename, shape, and loop actions.
    - Automatically maps approved reference audio to the most relevant concept layers unless those layers already have explicit sample assignments.
    - Preserves each layer's Ableton-native device chain as a staged `devicePlan` for review.
-   - Uses created-track placeholders for mix, send, and MIDI actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
+   - Uses created-track and created-scene placeholders for mix, send, MIDI, and scene setup actions; real execution resolves them from a live snapshot immediately before writing, so the plan can append to a non-empty set.
 
 6. `ableton_list_arrangement_plans` / `ableton_get_arrangement_plan`
    - Resume stored arrangement plans before execution.
@@ -113,7 +113,7 @@ The preset is intended for slow, degraded, uneasy soundtrack work: tape-like mel
 The arrangement plan includes:
 
 - Named audio, MIDI, and return tracks.
-- Scene names and arrangement locators for isolation, motif, decay, collapse, and unresolved tail sections.
+- Scene names, scene tempo/signature setup, and arrangement locators for isolation, motif, decay, collapse, and unresolved tail sections.
 - Initial volume, pan, and named reverb/delay return-send targets for each created non-return track.
 - Initial return-track volume and pan actions for the generated reverb and delay returns.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.

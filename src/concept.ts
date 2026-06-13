@@ -190,6 +190,7 @@ type PreparedAudioManifest = {
 type CreatedTrackResolution = {
   baseTrackCount: number;
   baseReturnTrackCount: number;
+  baseSceneCount: number;
 };
 
 export type SampleLayerAssignmentInput = {
@@ -583,6 +584,7 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
   const payload = { ...action.payload };
   const createdTrackOffset = typeof payload.track_created_offset === "number" ? payload.track_created_offset : null;
   const createdReturnOffset = typeof payload.return_created_offset === "number" ? payload.return_created_offset : null;
+  const createdSceneOffset = typeof payload.scene_created_offset === "number" ? payload.scene_created_offset : null;
 
   if (createdTrackOffset !== null) {
     payload.track_id = resolution.baseTrackCount + createdTrackOffset;
@@ -598,6 +600,11 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
       payload.send_index = returnTrackIndex;
     }
     delete payload.return_created_offset;
+  }
+
+  if (createdSceneOffset !== null) {
+    payload.scene_index = resolution.baseSceneCount + createdSceneOffset;
+    delete payload.scene_created_offset;
   }
 
   return payload;
@@ -708,9 +715,11 @@ function bridgeSnapshotResolution(snapshot: unknown): CreatedTrackResolution {
   const response = snapshot as { data?: { state?: { track_count?: unknown; return_track_count?: unknown }; tracks?: unknown[] } };
   const baseTrackCount = Number(response.data?.state?.track_count ?? response.data?.tracks?.length ?? 0);
   const baseReturnTrackCount = Number(response.data?.state?.return_track_count ?? 0);
+  const baseSceneCount = Number((response.data?.state as { scene_count?: unknown } | undefined)?.scene_count ?? (response.data as { scenes?: unknown[] } | undefined)?.scenes?.length ?? 0);
   return {
     baseTrackCount: Number.isFinite(baseTrackCount) && baseTrackCount >= 0 ? Math.floor(baseTrackCount) : 0,
-    baseReturnTrackCount: Number.isFinite(baseReturnTrackCount) && baseReturnTrackCount >= 0 ? Math.floor(baseReturnTrackCount) : 0
+    baseReturnTrackCount: Number.isFinite(baseReturnTrackCount) && baseReturnTrackCount >= 0 ? Math.floor(baseReturnTrackCount) : 0,
+    baseSceneCount: Number.isFinite(baseSceneCount) && baseSceneCount >= 0 ? Math.floor(baseSceneCount) : 0
   };
 }
 
@@ -1116,6 +1125,20 @@ export async function buildLayeredArrangementPlan(planId: string, sampleAssignme
       safeToExecute: true,
       reason: "Creates named scene markers from the stored section map."
     })),
+    ...plan.sections.flatMap((section, index) => [
+      {
+        action: "ableton_set_scene_tempo",
+        payload: { scene_created_offset: index, tempo: plan.tempo, enabled: true },
+        safeToExecute: true,
+        reason: `Sets the generated scene tempo for ${section.name} without assuming an empty Live set.`
+      },
+      {
+        action: "ableton_set_scene_time_signature",
+        payload: { scene_created_offset: index, numerator: 4, denominator: 4, enabled: true },
+        safeToExecute: true,
+        reason: `Sets the generated scene time signature for ${section.name} without assuming an empty Live set.`
+      }
+    ]),
     ...plan.sections.map((section) => ({
       action: "ableton_create_arrangement_marker",
       payload: { time: Math.round((section.start_seconds / 60) * plan.tempo), name: section.name },

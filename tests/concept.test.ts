@@ -84,6 +84,8 @@ describe("concept-to-music planning", () => {
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_scene_tempo")).toBe(true);
+    expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_scene_time_signature")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_insert_midi_notes")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_rename_clip")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_clip_loop")).toBe(true);
@@ -95,6 +97,8 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_return_track_volume")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_return_track_pan")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_return_track_volume").every((action) => typeof action.payload.return_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_scene_tempo").every((action) => typeof action.payload.scene_created_offset === "number")).toBe(true);
+    expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_scene_time_signature").every((action) => typeof action.payload.scene_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "filter")).toBe(true);
     expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "delay")).toBe(true);
     expect(arrangement.arrangement.automationPlan.every((entry) => entry.execution === "staged")).toBe(true);
