@@ -105,6 +105,8 @@ For the persistent local preset, the `.amxd` and companion files are stored unde
 - `ableton_set_master_pan`
 - `ableton_set_device_parameter`
 - `ableton_rename_track`
+- `ableton_rename_return_track`
+- `ableton_rename_scene`
 - `ableton_rename_clip`
 - `ableton_create_arrangement_marker`
 - `ableton_duplicate_scene`

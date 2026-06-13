@@ -67,6 +67,8 @@ describe("Max for Live bridge source", () => {
       "ableton_set_master_volume",
       "ableton_set_master_pan",
       "ableton_set_device_parameter",
+      "ableton_rename_return_track",
+      "ableton_rename_scene",
       "ableton_rename_clip",
       "arrangement_markers",
       "clip_notes",

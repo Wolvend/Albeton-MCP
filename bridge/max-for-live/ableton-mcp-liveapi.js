@@ -492,6 +492,22 @@ function renameTrack(payload) {
   return { track_index: trackIndex, name: name };
 }
 
+function renameReturnTrack(payload) {
+  var returnTrackIndex = parseRequiredIndex(payload, "return_track_index");
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  if (!name) throw new Error("Return track name is required.");
+  liveObject("live_set return_tracks " + returnTrackIndex).set("name", name);
+  return { return_track_index: returnTrackIndex, name: name };
+}
+
+function renameScene(payload) {
+  var sceneIndex = parseRequiredIndex(payload, "scene_index");
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  if (!name) throw new Error("Scene name is required.");
+  liveObject("live_set scenes " + sceneIndex).set("name", name);
+  return { scene_index: sceneIndex, name: name };
+}
+
 function createTrack(kind, payload) {
   var song = liveObject("live_set");
   var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
@@ -1095,6 +1111,8 @@ function dispatch(action, payload) {
   if (action === "ableton_insert_instrument" || action === "ableton_insert_effect") return unsupportedDeviceInsertion(action, payload);
   if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);
+  if (action === "ableton_rename_return_track") return renameReturnTrack(payload);
+  if (action === "ableton_rename_scene") return renameScene(payload);
   if (action === "ableton_rename_clip") return renameClip(payload);
   if (action === "ableton_set_clip_color") return setClipColor(payload);
   if (action === "ableton_create_automation_envelope") return createAutomationEnvelope(payload);

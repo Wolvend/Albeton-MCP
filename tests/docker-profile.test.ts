@@ -52,6 +52,8 @@ describe("HyperNimbus Docker MCP profile plan", () => {
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_scene_color");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_track_color");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_return_track_color");
+    expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_rename_return_track");
+    expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_rename_scene");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_clip_gain");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_transpose_clip");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_clip_warp");

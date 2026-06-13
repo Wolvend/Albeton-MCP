@@ -35,6 +35,8 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_set_return_track_volume");
     expect(registeredToolNames).toContain("ableton_set_return_track_pan");
     expect(registeredToolNames).toContain("ableton_set_scene_color");
+    expect(registeredToolNames).toContain("ableton_rename_return_track");
+    expect(registeredToolNames).toContain("ableton_rename_scene");
     expect(registeredToolNames).toContain("ableton_set_master_volume");
     expect(registeredToolNames).toContain("ableton_set_master_pan");
     expect(registeredToolNames).toContain("ableton_search_freesound");
@@ -93,6 +95,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_insert_effect).toHaveProperty("device");
     expect(registeredToolSchemas.ableton_set_device_parameter).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_set_device_parameter).toHaveProperty("parameter_index");
+    expect(registeredToolSchemas.ableton_rename_return_track).toHaveProperty("return_track_index");
+    expect(registeredToolSchemas.ableton_rename_return_track).toHaveProperty("name");
+    expect(registeredToolSchemas.ableton_rename_scene).toHaveProperty("scene_index");
+    expect(registeredToolSchemas.ableton_rename_scene).toHaveProperty("name");
     expect(registeredToolSchemas.ableton_duplicate_clip).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_duplicate_clip).toHaveProperty("track_index");
     expect(registeredToolSchemas.ableton_duplicate_clip).toHaveProperty("clip_slot_index");
