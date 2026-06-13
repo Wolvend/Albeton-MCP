@@ -37,8 +37,10 @@ describe("concept-to-music planning", () => {
       "Stretched Room",
       "Low Pressure",
       "Mechanical Texture",
+      "Reversed Fragments",
       "Sparse Motif",
-      "Memory Reverb"
+      "Memory Reverb",
+      "Distant Delay"
     ]));
   });
 
@@ -56,6 +58,9 @@ describe("concept-to-music planning", () => {
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_insert_midi_notes")).toBe(true);
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_set_track_send")).toBe(true);
+    expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "filter")).toBe(true);
+    expect(arrangement.arrangement.automationPlan.some((entry) => entry.target === "delay")).toBe(true);
+    expect(arrangement.arrangement.automationPlan.every((entry) => entry.execution === "staged")).toBe(true);
     expect(arrangement.arrangement.actions.filter((action) => action.action === "ableton_set_track_volume").every((action) => typeof action.payload.track_created_offset === "number")).toBe(true);
     expect(arrangement.arrangement.actions.find((action) => action.action === "ableton_insert_midi_notes")?.payload.notes).toEqual(expect.arrayContaining([
       expect.objectContaining({ pitch: expect.any(Number), start_time: expect.any(Number), duration: expect.any(Number) })
@@ -80,6 +85,9 @@ describe("concept-to-music planning", () => {
     expect(staged.dry_run).toBe(true);
     if ("samples" in staged) {
       expect(staged.samples[0]?.destinationName).toBe("unsafe_name.wav");
+      expect(staged.samples[0]?.attribution.sourceUrl).toBe("https://archive.org/download/opensource_audio/opensource_audio_meta.xml");
+      expect(staged.samples[0]?.attribution.licensePolicy.allowed).toBe(true);
+      expect(staged.samples[0]?.attribution.checksum).toBeNull();
     }
   });
 

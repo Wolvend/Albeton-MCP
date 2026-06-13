@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 21 test files and 50 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, and concept arrangement checks for plan-derived MIDI, mix, and send actions.
+Result: succeeded. Vitest reported 21 test files and 51 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, and staged automation actions, and sample attribution record checks.
 
 ```powershell
 npm run lint
@@ -67,7 +67,7 @@ npm run sweep:all
 
 Result: succeeded. All-tool contract sweep called all 158 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> dry-run execution.
 
-The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode. Concept arrangement plans now include created-track placeholders for volume, pan, reverb sends, and sparse MIDI motifs; real execution resolves those placeholders from a live snapshot immediately before write-gated bridge calls.
+The sweep covers `ableton_insert_midi_notes` with bounded typed note input and `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode. Concept arrangement plans now include created-track placeholders for volume, pan, reverb/delay sends, sparse MIDI motifs, and staged automation metadata; real execution resolves those placeholders from a live snapshot immediately before write-gated bridge calls.
 
 ```powershell
 npm run verify:mcp
@@ -173,4 +173,5 @@ Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` du
 - HyperNimbus uses the safe tool allowlist.
 - Downloads, writes, and UI/mouse control remain disabled by default.
 - Remote sample metadata and concept sample preview URLs are sanitized or validated against the approved sample URL policy before being returned.
+- Real staged sample downloads now persist sidecar attribution with source URL, destination name, license policy, creator/title/identifier metadata, checksum, byte count, and staging time.
 - Docker/OpenClaw/client docs now treat Ableton MCP as the permission owner for write/download/UI gates.

@@ -16,6 +16,28 @@ export function normalizeLicense(input: string | null | undefined) {
   return { license, allowed, policy: "Default imports require CC0, public domain, or clearly attributed CC BY." };
 }
 
+export function buildSampleAttribution(options: {
+  sourceUrl: string;
+  destinationName: string;
+  metadata: Record<string, unknown>;
+  checksum?: string;
+  bytes?: number;
+}) {
+  const licensePolicy = normalizeLicense(String(options.metadata.license ?? options.metadata.licenseurl ?? ""));
+  return {
+    sourceUrl: options.sourceUrl,
+    destinationName: options.destinationName,
+    license: licensePolicy.license,
+    licensePolicy,
+    creator: options.metadata.creator ?? options.metadata.username ?? null,
+    title: options.metadata.title ?? options.metadata.name ?? null,
+    identifier: options.metadata.identifier ?? options.metadata.id ?? null,
+    checksum: options.checksum ?? null,
+    bytes: options.bytes ?? null,
+    metadata: options.metadata
+  };
+}
+
 export async function searchFreesound(query: string, page = 1, pageSize = 15) {
   const params = new URLSearchParams({
     query,
@@ -73,7 +95,13 @@ export async function downloadSample(url: string, destinationName: string, metad
   const bytes = Buffer.from(await response.arrayBuffer());
   await fs.writeFile(target, bytes, { flag: "wx" });
   const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
-  return { stagedPath: redactPath(target), checksum, bytes: bytes.length, metadata };
+  const attribution = {
+    ...buildSampleAttribution({ sourceUrl: safeUrl, destinationName: safeName, metadata, checksum, bytes: bytes.length }),
+    stagedAt: new Date().toISOString()
+  };
+  const attributionPath = `${target}.attribution.json`;
+  await fs.writeFile(attributionPath, `${JSON.stringify(attribution, null, 2)}\n`, { flag: "wx" });
+  return { stagedPath: redactPath(target), attributionPath: redactPath(attributionPath), checksum, bytes: bytes.length, metadata, attribution };
 }
 
 export async function importSampleToLibrary(stagedPath: string, attribution: Record<string, unknown>) {

@@ -16,6 +16,7 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
    - Dry-run by default.
    - Real staging requires `dry_run=false` and `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
    - Downloads only from approved sample hosts through the existing sample policy.
+   - Builds a provenance record with source URL, destination name, license policy, creator/title/identifier metadata, and checksum/byte count when a real download occurs.
 
 4. `ableton_build_layered_arrangement_plan`
    - Converts the concept plan into a stored Ableton action plan.
@@ -49,11 +50,12 @@ It creates these layers:
 - Stretched Room
 - Low Pressure
 - Mechanical Texture
+- Reversed Fragments
 - Sparse Motif
 - Memory Reverb
 - Distant Delay
 
-The preset is intended for slow, degraded, uneasy soundtrack work: tape-like melodic memory, wide empty-room tone, low pressure, mechanical texture, sparse MIDI, and long dark reverb.
+The preset is intended for slow, degraded, uneasy soundtrack work: tape-like melodic memory, wide empty-room tone, low pressure, mechanical texture, reversed transition fragments, sparse MIDI, long dark reverb, and unstable delay returns.
 
 The arrangement plan includes:
 
@@ -61,6 +63,7 @@ The arrangement plan includes:
 - Scene names and arrangement locators for isolation, motif, decay, collapse, and unresolved tail sections.
 - Initial volume, pan, and named reverb/delay return-send targets for each created non-return track.
 - A short editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer.
+- A staged automation plan for reverb, delay, filter, and volume movement. These lanes are review metadata until the live set has verified device/parameter targets.
 
 Sample placement remains staged until local sample paths are approved. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects.
 

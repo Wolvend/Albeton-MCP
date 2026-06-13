@@ -4,7 +4,7 @@ import path from "node:path";
 import { bridgeAction, getBridgeSnapshot } from "./bridge.js";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { requireFlag } from "./errors.js";
-import { downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
+import { buildSampleAttribution, downloadSample, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
 import { redactPath, resolveSafePath } from "./security.js";
 import { assertAllowedSampleUrl } from "./network.js";
 
@@ -73,6 +73,13 @@ type ArrangementPlan = {
   conceptPlanId: string;
   createdAt: string;
   actions: ArrangementAction[];
+  automationPlan: Array<{
+    layer: string;
+    automation: string;
+    target: "reverb" | "delay" | "filter" | "volume" | "unknown";
+    execution: "staged";
+    reason: string;
+  }>;
   notes: string[];
 };
 
@@ -193,6 +200,16 @@ function horrorLayers(concept: string): ConceptLayer[] {
       deviceChain: ["EQ Eight", "Saturator", "Echo"],
       automation: ["hard mutes", "delay throws"],
       mix: { volume: 0.34, pan: 0.22, sends: { reverb: 0.3, delay: 0.2 } }
+    },
+    {
+      name: "Reversed Fragments",
+      type: "audio",
+      role: "short reversed transition details and impossible-memory swells",
+      sourceStrategy: "Use licensed reversed cymbal, tape, or room fragments as section transitions.",
+      searchQueries: [baseQueries[4]!, "reverse tape swell public domain"],
+      deviceChain: ["EQ Eight", "Echo", "Hybrid Reverb", "Auto Filter"],
+      automation: ["reverse swells", "delay throw", "filter closing"],
+      mix: { volume: 0.28, pan: 0.18, sends: { reverb: 0.52, delay: 0.34 } }
     },
     {
       name: "Sparse Motif",
@@ -318,6 +335,15 @@ function bridgeSnapshotResolution(snapshot: unknown): CreatedTrackResolution {
     baseTrackCount: Number.isFinite(baseTrackCount) && baseTrackCount >= 0 ? Math.floor(baseTrackCount) : 0,
     baseReturnTrackCount: Number.isFinite(baseReturnTrackCount) && baseReturnTrackCount >= 0 ? Math.floor(baseReturnTrackCount) : 0
   };
+}
+
+function automationTargetName(automation: string): "reverb" | "delay" | "filter" | "volume" | "unknown" {
+  const text = automation.toLowerCase();
+  if (text.includes("reverb")) return "reverb";
+  if (text.includes("delay") || text.includes("feedback")) return "delay";
+  if (text.includes("filter") || text.includes("bandwidth") || text.includes("low-pass")) return "filter";
+  if (text.includes("volume") || text.includes("fade") || text.includes("swell") || text.includes("mute")) return "volume";
+  return "unknown";
 }
 
 async function writeJson(fileName: string, payload: unknown) {
@@ -447,7 +473,11 @@ export async function stageConceptSamples(options: {
       samples: options.samples.map((sample) => ({
         url: assertAllowedSampleUrl(sample.url),
         destinationName: sample.destinationName.replace(/[^a-zA-Z0-9._-]/g, "_"),
-        licensePolicy: normalizeLicense(String(sample.metadata?.license ?? sample.metadata?.licenseurl ?? ""))
+        attribution: buildSampleAttribution({
+          sourceUrl: assertAllowedSampleUrl(sample.url),
+          destinationName: sample.destinationName.replace(/[^a-zA-Z0-9._-]/g, "_"),
+          metadata: sample.metadata ?? {}
+        })
       })),
       nextStep: "Set dry_run=false and ABLETON_MCP_ENABLE_DOWNLOADS=1 to stage approved licensed samples."
     };
@@ -547,11 +577,19 @@ export async function buildLayeredArrangementPlan(planId: string) {
       }];
     })
   ];
+  const automationPlan: ArrangementPlan["automationPlan"] = plan.layers.flatMap((layer) => layer.automation.map((automation) => ({
+      layer: layer.name,
+      automation,
+      target: automationTargetName(automation),
+      execution: "staged",
+      reason: "Automation is planned for review and target discovery; write execution requires a verified device/parameter map for this Ableton set."
+    })));
   const arrangement: ArrangementPlan = {
-    id: stableId("arrangement", { planId, actions }),
+    id: stableId("arrangement", { planId, actions, automationPlan }),
     conceptPlanId: planId,
     createdAt: new Date().toISOString(),
     actions,
+    automationPlan,
     notes: [
       "Created-track placeholders are resolved from a live snapshot immediately before real execution, so the plan can append to a non-empty set.",
       "Sample placement and device insertion remain staged until local sample paths and LiveAPI device support are verified.",
