@@ -35,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 21 test files and 53 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged automation actions, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, and Internet Archive audio file candidate extraction.
+Result: succeeded. Vitest reported 21 test files and 56 tests passed, including typed MIDI/sample tool schema checks, OpenClaw client config documentation checks, concept arrangement checks for plan-derived MIDI, mix, send, staged automation actions, local sample assignment redaction, sample attribution record checks, bounded attribution-report sidecar scanning, Internet Archive audio file candidate extraction, redirect rejection for sample/plugin downloads, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
