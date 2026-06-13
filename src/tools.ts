@@ -431,6 +431,138 @@ function safeToolAllowlistReport() {
   };
 }
 
+async function bridgeReadinessProbe(checkBridge: boolean) {
+  if (!checkBridge) {
+    return {
+      checked: false,
+      reachable: null,
+      runtime: getBridgeRuntimeState(),
+      nextStep: "Set check_bridge=true or run live-smoke after Ableton is open and the Max for Live bridge is loaded."
+    };
+  }
+
+  try {
+    return {
+      checked: true,
+      reachable: true,
+      runtime: getBridgeRuntimeState(),
+      ping: await pingBridge() as Record<string, unknown>
+    };
+  } catch (error) {
+    return {
+      checked: true,
+      reachable: false,
+      runtime: getBridgeRuntimeState(),
+      code: error instanceof AbletonMcpError ? error.code : "BRIDGE_CHECK_FAILED",
+      error: error instanceof Error ? error.message : String(error),
+      nextSteps: error instanceof AbletonMcpError ? error.nextSteps : [
+        "Open Ableton Live.",
+        "Load the Max for Live bridge device.",
+        "Retry ableton_bridge_ping or launch.ps1 live-smoke -SkipSetup."
+      ]
+    };
+  }
+}
+
+async function productionReadinessReport(checkBridge: boolean) {
+  const environment = await environmentSnapshot();
+  const bridge = await bridgeReadinessProbe(checkBridge);
+  const safeAllowlist = safeToolAllowlistReport();
+  const bridgeCapabilities = getBridgeCapabilityMatrix();
+  const bridgeReachable = bridge.reachable === true;
+  const status = bridgeReachable && FLAGS.write
+    ? "ready_for_gated_live_writes"
+    : bridgeReachable
+      ? "ready_for_live_reads_and_dry_runs"
+      : "ready_for_offline_planning";
+  const liveExecutionMissing = [
+    ...(environment.liveRunning ? [] : ["Ableton Live process"]),
+    ...(bridgeReachable ? [] : ["Max for Live bridge listener"]),
+    ...(FLAGS.write ? [] : ["ABLETON_MCP_ENABLE_WRITE=1 for real writes"])
+  ];
+
+  return {
+    status,
+    liveRunning: environment.liveRunning,
+    gates: {
+      writeEnabled: FLAGS.write,
+      downloadsEnabled: FLAGS.downloads,
+      uiControlEnabled: FLAGS.uiControl,
+      defaults: {
+        write: "off",
+        downloads: "off",
+        uiControl: "off"
+      }
+    },
+    clients: {
+      hypernimbus: {
+        profile: HYPERNIMBUS_PROFILE_ID,
+        endpoint: safeAllowlist.endpoint,
+        safeToolCount: safeAllowlist.count,
+        enabledSurface: "planning/read/search/status/diagnostics only"
+      },
+      openclaw: {
+        role: "consumer",
+        permissionOwner: "Ableton MCP",
+        addCommand: safeAllowlist.openclaw.commands[0],
+        includeCommand: safeAllowlist.openclaw.commands[1],
+        doctorCommand: safeAllowlist.openclaw.commands[2]
+      },
+      localCodex: {
+        transport: "stdio",
+        command: process.platform === "win32" ? ".\\launch.ps1 stdio -SkipSetup" : "./launch.sh stdio --skip-setup"
+      }
+    },
+    bridge,
+    bridgeCapabilitySummary: bridgeCapabilities.summary,
+    scan: getScanStatus(),
+    conceptToMusic: {
+      preset: "liminal_backrooms_horror",
+      planningReady: true,
+      metadataSearchReady: true,
+      localStagingReady: FLAGS.downloads,
+      liveReadReady: bridgeReachable,
+      dryRunExecutionReady: true,
+      realExecutionReady: liveExecutionMissing.length === 0,
+      missingForRealExecution: liveExecutionMissing,
+      exactNextToolCalls: [
+        { name: "ableton_plan_concept_track", arguments: { preset: "liminal_backrooms_horror", concept: "liminal backrooms horror cue", target_duration_seconds: 90, intensity: 8 } },
+        { name: "ableton_render_concept_timeline", arguments: { plan_id: "concept-..." } },
+        { name: "ableton_render_concept_mix_plan", arguments: { plan_id: "concept-..." } },
+        { name: "ableton_render_concept_automation_map", arguments: { plan_id: "concept-..." } },
+        { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: "concept-..." } },
+        { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: "arrangement-...", check_bridge: true } }
+      ]
+    },
+    safety: {
+      arbitraryShell: false,
+      arbitraryUrlFetch: false,
+      broadFilesystemScan: false,
+      pluginInstallers: false,
+      publicHttpExposure: false,
+      uiMouseByDefault: false,
+      remoteSampleTextPolicy: "untrusted_data"
+    },
+    recommendedWorkflow: [
+      "Use concept, search, mix, timeline, automation-map, and approval-bundle tools first.",
+      "Use live read tools after Ableton and the Max for Live bridge are loaded.",
+      "Use dry_run=true for every write-capable tool before enabling writes.",
+      "Enable ABLETON_MCP_ENABLE_WRITE=1 only for reviewed stored plan execution.",
+      "Use foreground UI/mouse control only when the user intentionally starts the UI driver."
+    ],
+    nextActions: bridgeReachable ? [
+      "Run launch.ps1 live-smoke -SkipSetup.",
+      "Run ableton_get_full_snapshot.",
+      "Run one stored concept execution dry-run before any write-gated action."
+    ] : [
+      "Open Ableton Live.",
+      "Load the Ableton MCP Max for Live bridge device.",
+      "Run launch.ps1 live-smoke -SkipSetup.",
+      "Keep using offline planning and dry-run tools until the bridge is reachable."
+    ]
+  };
+}
+
 const toolDefs: ToolDef[] = [
   { name: "ableton_find_installation", description: "Find configured Ableton Live and Max paths for this host platform.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
@@ -486,25 +618,7 @@ const toolDefs: ToolDef[] = [
   } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
   { name: "ableton_mcp_get_safe_tool_allowlist", description: "Return the HyperNimbus/OpenClaw safe tool allowlist as structured data and CSV without changing client configuration.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, safeToolAllowlist: safeToolAllowlistReport() }) },
-  { name: "ableton_get_production_readiness", description: "Summarize Ableton MCP readiness for professional music-production work.", inputSchema: Empty, annotations: ro, handler: async () => {
-    const environment = await environmentSnapshot();
-    return {
-      ok: true,
-      readiness: {
-        liveRunning: environment.liveRunning,
-        writeEnabled: FLAGS.write,
-        uiControl: uiControlConsentProfile("Production readiness check"),
-        bridge: getBridgeRuntimeState(),
-        scan: getScanStatus(),
-        recommendedWorkflow: [
-          "Use LiveAPI bridge reads and dry-run writes first.",
-          "Use foreground UI/mouse control only when the user intentionally starts the UI driver.",
-          "Keep downloads and plugin installers separate from production sessions.",
-          "Run ableton_mcp_security_report before enabling remote or write modes."
-        ]
-      }
-    };
-  } },
+  { name: "ableton_get_production_readiness", description: "Summarize Ableton MCP readiness for professional music-production work.", inputSchema: { check_bridge: z.boolean().default(true) }, annotations: ro, handler: async (args) => ({ ok: true, readiness: await productionReadinessReport(args.check_bridge) }) },
   { name: "ableton_export_diagnostic_report", description: "Write a redacted diagnostics JSON report under diagnostics/reports.", inputSchema: { full_local_paths: z.boolean().default(false) }, annotations: ro, handler: async (args) => {
     const dir = path.join(LOCAL_PATHS.diagnostics, "reports");
     await fs.mkdir(dir, { recursive: true });

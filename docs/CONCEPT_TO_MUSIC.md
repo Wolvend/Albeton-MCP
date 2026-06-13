@@ -6,6 +6,11 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
 
 Fast path:
 
+- `ableton_get_production_readiness`
+  - Read-only status report for planning, live-read, dry-run, and write-ready capability.
+  - Reports current gates, HyperNimbus/OpenClaw/Codex connection posture, bridge reachability, concept workflow readiness, safety posture, and exact next calls.
+  - Use this before a client tries to turn a brief into an Ableton session.
+
 - `ableton_list_concept_presets`
   - Read-only catalog of production recipes such as `liminal_backrooms_horror`.
   - Returns sections, layer blueprints, sample strategy, production moves, bridge-readiness notes, and exact safe next tool calls.

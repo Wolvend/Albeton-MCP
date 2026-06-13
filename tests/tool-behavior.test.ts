@@ -21,6 +21,44 @@ async function callStructured(client: Client, name: string, args: Record<string,
 }
 
 describe("MCP tool behavior", () => {
+  it("reports production readiness across clients, gates, concept workflow, and bridge state", async () => {
+    await withClient(async (client) => {
+      const structured = await callStructured(client, "ableton_get_production_readiness", { check_bridge: false });
+      const readiness = structured.readiness as Record<string, any>;
+
+      expect(structured.ok).toBe(true);
+      expect(readiness.status).toMatch(/ready_for_/);
+      expect(readiness.gates).toMatchObject({
+        writeEnabled: false,
+        downloadsEnabled: false,
+        uiControlEnabled: false
+      });
+      expect(readiness.clients.hypernimbus).toMatchObject({
+        profile: "hypernimbus",
+        endpoint: "http://127.0.0.1:17366/mcp",
+        safeToolCount: expect.any(Number)
+      });
+      expect(readiness.clients.openclaw.role).toBe("consumer");
+      expect(readiness.bridge).toMatchObject({ checked: false, reachable: null });
+      expect(readiness.conceptToMusic).toMatchObject({
+        preset: "liminal_backrooms_horror",
+        planningReady: true,
+        dryRunExecutionReady: true
+      });
+      expect(readiness.conceptToMusic.exactNextToolCalls.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_plan_concept_track",
+        "ableton_render_concept_automation_map",
+        "ableton_preflight_concept_execution"
+      ]));
+      expect(readiness.safety).toMatchObject({
+        arbitraryShell: false,
+        arbitraryUrlFetch: false,
+        broadFilesystemScan: false,
+        uiMouseByDefault: false
+      });
+    });
+  }, INTEGRATION_TIMEOUT_MS);
+
   it("reports the safe HyperNimbus/OpenClaw tool allowlist without enabling risky tools", async () => {
     await withClient(async (client) => {
       const structured = await callStructured(client, "ableton_mcp_get_safe_tool_allowlist", {});

@@ -190,4 +190,4 @@ Use Ableton MCP through the app or agent runtime that is actually connecting to 
 | Claude | Use stdio locally; use HTTP only if the client supports Streamable HTTP MCP. |
 | Codex | Use stdio locally or HTTP/Docker routing for remote/private-device workflows. |
 
-The MCP tool `ableton_mcp_get_client_connection_profiles` reports current stdio, local HTTP, private-network candidate URLs, and required auth settings. `ableton_mcp_get_safe_tool_allowlist` reports the current HyperNimbus/OpenClaw safe tool include list as structured data and CSV.
+The MCP tool `ableton_mcp_get_client_connection_profiles` reports current stdio, local HTTP, private-network candidate URLs, and required auth settings. `ableton_mcp_get_safe_tool_allowlist` reports the current HyperNimbus/OpenClaw safe tool include list as structured data and CSV. After connecting, call `ableton_get_production_readiness` to see whether the environment is in offline-planning, live-read/dry-run, or write-ready mode before asking an agent to build music in Ableton.

@@ -46,6 +46,7 @@ Primary groups:
 Control-mode tools:
 
 - `ableton_control_mode_status`: reports background bridge default, UI fallback gate, and overlap policy.
+- `ableton_get_production_readiness`: reports current planning/live-control status across gates, HyperNimbus/OpenClaw/Codex client profiles, bridge reachability, concept-to-music readiness, safety posture, and exact next calls. Use `check_bridge=false` for a non-probing report.
 - `ableton_bridge_status`: reports loopback host/port, serialized queue state, and last bridge action.
 - `ableton_get_bridge_capabilities`: reports read-only, write-gated, unsupported, and diagnostic bridge actions; `check_bridge=true` compares against the loaded Max for Live bridge when available.
 - `ableton_list_track_sends`: reads selected or indexed track send parameters and return-track names so agents can route layers before using write-gated send changes.

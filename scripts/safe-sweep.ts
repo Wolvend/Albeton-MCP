@@ -61,7 +61,7 @@ const calls: SweepCall[] = [
   { name: "ableton_list_safe_ui_actions", arguments: {} },
   { name: "ableton_plan_ui_action_sequence", arguments: { actions: ["focus_window", "capture_screenshot"], dry_run: true } },
   { name: "ableton_run_ui_action_sequence", arguments: { actions: ["focus_window", "capture_screenshot"], dry_run: true }, expected: "any" },
-  { name: "ableton_get_production_readiness", arguments: {} },
+  { name: "ableton_get_production_readiness", arguments: { check_bridge: false } },
   { name: "ableton_bridge_status", arguments: {} },
   { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false } },
   { name: "ableton_ui_driver_status", arguments: {} },
