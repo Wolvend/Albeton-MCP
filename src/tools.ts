@@ -968,6 +968,131 @@ async function productionReadinessReport(checkBridge: boolean) {
   };
 }
 
+function liveControlCoverageReport() {
+  const capabilityMatrix = getBridgeCapabilityMatrix();
+  const byTool = new Map(
+    capabilityMatrix.actions
+      .filter((entry) => entry.tool)
+      .map((entry) => [entry.tool as string, entry])
+  );
+  const statusFor = (tools: string[]) => {
+    const statuses = tools.map((tool) => byTool.get(tool)?.status ?? "missing");
+    if (statuses.every((status) => status === "read_only")) return "read_only_supported";
+    if (statuses.every((status) => status === "write_gated")) return "write_gated_supported";
+    if (statuses.every((status) => status === "unsupported")) return "unsupported_by_current_bridge";
+    if (statuses.includes("missing")) return "incomplete_tool_mapping";
+    if (statuses.includes("unsupported")) return "partially_supported";
+    return "supported";
+  };
+  const evidenceFor = (tools: string[]) => tools.map((tool) => {
+    const capability = byTool.get(tool);
+    return {
+      tool,
+      status: capability?.status ?? "missing",
+      domain: capability?.domain ?? null,
+      notes: capability?.notes ?? null
+    };
+  });
+  const areas = [
+    {
+      id: "create_and_name_tracks",
+      objective: "Create and name audio, MIDI, and return tracks without relying on selected-track state.",
+      status: statusFor(["ableton_create_audio_track", "ableton_create_midi_track", "ableton_create_return_track", "ableton_rename_track", "ableton_rename_return_track"]),
+      tools: ["ableton_create_audio_track", "ableton_create_midi_track", "ableton_create_return_track", "ableton_rename_track", "ableton_rename_return_track"],
+      evidence: evidenceFor(["ableton_create_audio_track", "ableton_create_midi_track", "ableton_create_return_track", "ableton_rename_track", "ableton_rename_return_track"])
+    },
+    {
+      id: "create_and_name_scenes",
+      objective: "Create, color, tempo-map, time-signature-map, launch, duplicate, and rename scenes.",
+      status: statusFor(["ableton_create_scene", "ableton_set_scene_color", "ableton_set_scene_tempo", "ableton_set_scene_time_signature", "ableton_fire_scene", "ableton_duplicate_scene", "ableton_rename_scene"]),
+      tools: ["ableton_create_scene", "ableton_set_scene_color", "ableton_set_scene_tempo", "ableton_set_scene_time_signature", "ableton_fire_scene", "ableton_duplicate_scene", "ableton_rename_scene"],
+      evidence: evidenceFor(["ableton_create_scene", "ableton_set_scene_color", "ableton_set_scene_tempo", "ableton_set_scene_time_signature", "ableton_fire_scene", "ableton_duplicate_scene", "ableton_rename_scene"])
+    },
+    {
+      id: "approved_audio_sample_import",
+      objective: "Create Session View audio clips from approved local staging/User Library sample paths only.",
+      status: statusFor(["ableton_load_preset_or_sample"]),
+      tools: ["ableton_load_preset_or_sample"],
+      evidence: evidenceFor(["ableton_load_preset_or_sample"]),
+      boundaries: ["approved local paths only", "downloads and imports remain separate gates", "preset/device loading is not included"]
+    },
+    {
+      id: "midi_clip_creation_and_notes",
+      objective: "Create MIDI clips, insert bounded notes, and apply deterministic MIDI humanization.",
+      status: statusFor(["ableton_create_midi_clip", "ableton_insert_midi_notes", "ableton_humanize_midi_clip"]),
+      tools: ["ableton_create_midi_clip", "ableton_insert_midi_notes", "ableton_humanize_midi_clip"],
+      evidence: evidenceFor(["ableton_create_midi_clip", "ableton_insert_midi_notes", "ableton_humanize_midi_clip"])
+    },
+    {
+      id: "mixer_and_routing",
+      objective: "Inspect routing, then set track, return, master, and send levels through typed bridge calls.",
+      status: statusFor(["ableton_get_routing_overview", "ableton_get_track_mixer", "ableton_get_return_track_mixer", "ableton_set_track_volume", "ableton_set_track_pan", "ableton_set_track_send", "ableton_set_return_track_volume", "ableton_set_return_track_pan", "ableton_set_master_volume", "ableton_set_master_pan"]),
+      tools: ["ableton_get_routing_overview", "ableton_get_track_mixer", "ableton_get_return_track_mixer", "ableton_set_track_volume", "ableton_set_track_pan", "ableton_set_track_send", "ableton_set_return_track_volume", "ableton_set_return_track_pan", "ableton_set_master_volume", "ableton_set_master_pan"],
+      evidence: evidenceFor(["ableton_get_routing_overview", "ableton_get_track_mixer", "ableton_get_return_track_mixer", "ableton_set_track_volume", "ableton_set_track_pan", "ableton_set_track_send", "ableton_set_return_track_volume", "ableton_set_return_track_pan", "ableton_set_master_volume", "ableton_set_master_pan"])
+    },
+    {
+      id: "arrangement_markers",
+      objective: "Read and create arrangement locators/markers for section maps.",
+      status: statusFor(["ableton_list_arrangement_markers", "ableton_create_arrangement_marker"]),
+      tools: ["ableton_list_arrangement_markers", "ableton_create_arrangement_marker"],
+      evidence: evidenceFor(["ableton_list_arrangement_markers", "ableton_create_arrangement_marker"])
+    },
+    {
+      id: "device_discovery_and_parameters",
+      objective: "Inspect devices and parameters, then set known parameter values when indexes are reviewed.",
+      status: statusFor(["ableton_list_devices", "ableton_list_device_parameters", "ableton_get_device_parameter_map", "ableton_set_device_parameter"]),
+      tools: ["ableton_list_devices", "ableton_list_device_parameters", "ableton_get_device_parameter_map", "ableton_set_device_parameter"],
+      evidence: evidenceFor(["ableton_list_devices", "ableton_list_device_parameters", "ableton_get_device_parameter_map", "ableton_set_device_parameter"])
+    },
+    {
+      id: "native_device_insertion",
+      objective: "Insert Ableton-native instruments/effects by name.",
+      status: statusFor(["ableton_insert_instrument", "ableton_insert_effect"]),
+      tools: ["ableton_insert_instrument", "ableton_insert_effect", "ableton_plan_concept_device_ui_placement", "ableton_begin_concept_device_ui_session"],
+      evidence: evidenceFor(["ableton_insert_instrument", "ableton_insert_effect"]),
+      nextStep: "Use browse/read tools and the user-gated UI workflow only when foreground control is intentional."
+    },
+    {
+      id: "automation_breakpoint_writes",
+      objective: "Write automation envelopes and breakpoints.",
+      status: statusFor(["ableton_extract_automation_summary", "ableton_create_automation_envelope", "ableton_set_automation_point", "ableton_simplify_automation"]),
+      tools: ["ableton_extract_automation_summary", "ableton_create_automation_envelope", "ableton_set_automation_point", "ableton_simplify_automation"],
+      evidence: evidenceFor(["ableton_extract_automation_summary", "ableton_create_automation_envelope", "ableton_set_automation_point", "ableton_simplify_automation"]),
+      nextStep: "Use automation discovery and deterministic automation plans; breakpoint writes stay unsupported until LiveAPI support is proven."
+    }
+  ];
+  const dryRunSmokeSequence = [
+    { name: "ableton_create_audio_track", arguments: { name: "MCP Audio Dry Run", dry_run: true } },
+    { name: "ableton_create_midi_track", arguments: { name: "MCP MIDI Dry Run", dry_run: true } },
+    { name: "ableton_create_scene", arguments: { name: "MCP Scene Dry Run", dry_run: true } },
+    { name: "ableton_create_midi_clip", arguments: { track_index: 0, clip_slot_index: 0, length: 4, name: "MCP Motif", dry_run: true } },
+    { name: "ableton_insert_midi_notes", arguments: { track_index: 0, clip_slot_index: 0, notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 72 }], create_clip_if_missing: true, replace_existing: false, dry_run: true } },
+    { name: "ableton_set_track_volume", arguments: { track_index: 0, value: 0.72, dry_run: true } },
+    { name: "ableton_create_arrangement_marker", arguments: { time: 0, name: "MCP Section", dry_run: true } }
+  ];
+
+  return {
+    protocol: capabilityMatrix.protocol,
+    defaultControl: capabilityMatrix.defaultControl,
+    summary: {
+      areas: areas.length,
+      writeGatedSupported: areas.filter((area) => area.status === "write_gated_supported").length,
+      readOnlySupported: areas.filter((area) => area.status === "read_only_supported").length,
+      partiallySupported: areas.filter((area) => area.status === "partially_supported").length,
+      unsupported: areas.filter((area) => area.status === "unsupported_by_current_bridge").length,
+      bridgeCapabilitySummary: capabilityMatrix.summary
+    },
+    gates: capabilityMatrix.gates,
+    areas,
+    dryRunSmokeSequence,
+    unsupportedBoundaries: [
+      "Native device insertion by name remains unsupported in the background bridge until a reliable Browser/hot-swap path is proven.",
+      "Automation breakpoint creation/writes remain unsupported; agents should use automation discovery and staged automation plans.",
+      "Quantization remains unsupported because LiveAPI enum values vary by context."
+    ]
+  };
+}
+
 async function launchReadinessAudit(checkBridge: boolean) {
   const readiness = await productionReadinessReport(checkBridge) as Record<string, any>;
   const bridgeReachable = readiness.bridge?.reachable === true;
@@ -1061,6 +1186,7 @@ async function launchReadinessAudit(checkBridge: boolean) {
       bridgeReachable,
       liveRunning: readiness.liveRunning
     },
+    liveControlCoverage: liveControlCoverageReport(),
     exactNextToolCalls: bridgeReachable ? [
       { name: "ableton_get_full_snapshot", arguments: {} },
       { name: "ableton_plan_agent_music_session", arguments: { concept: "describe the place, feeling, or cue", client: "codex", check_bridge: true } },

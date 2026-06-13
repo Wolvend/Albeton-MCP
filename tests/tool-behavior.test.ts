@@ -64,12 +64,27 @@ describe("MCP tool behavior", () => {
       const structured = await callStructured(client, "ableton_mcp_get_launch_readiness_audit", { check_bridge: false });
       const audit = structured.launchReadiness as Record<string, any>;
       const checks = audit.checks as Record<string, any>[];
+      const coverage = audit.liveControlCoverage as Record<string, any>;
+      const coverageAreas = coverage.areas as Record<string, any>[];
 
       expect(structured.ok).toBe(true);
       expect(audit.mode).toMatch(/ready_for_|needs_attention/);
       expect(audit.okForDefaultClientUse).toBe(true);
       expect(audit.summary.safeToolCount).toBeGreaterThan(100);
       expect(audit.summary.bridgeReachable).toBe(false);
+      expect(coverage.summary.areas).toBeGreaterThanOrEqual(8);
+      expect(coverage.summary.writeGatedSupported).toBeGreaterThanOrEqual(4);
+      expect(coverage.dryRunSmokeSequence.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
+        "ableton_create_audio_track",
+        "ableton_insert_midi_notes",
+        "ableton_create_arrangement_marker"
+      ]));
+      expect(coverageAreas.find((area) => area.id === "native_device_insertion")).toMatchObject({
+        status: "unsupported_by_current_bridge"
+      });
+      expect(coverageAreas.find((area) => area.id === "automation_breakpoint_writes")).toMatchObject({
+        status: "partially_supported"
+      });
       expect(checks.map((check) => check.id)).toEqual(expect.arrayContaining([
         "safe_defaults",
         "client_profiles",
