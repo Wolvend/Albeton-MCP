@@ -57,6 +57,7 @@ describe("Max for Live bridge source", () => {
       "ableton_create_clip",
       "ableton_insert_midi_notes",
       "add_new_notes",
+      "remove_notes_extended",
       "create_audio_clip",
       "ableton_load_preset_or_sample",
       "ableton_set_clip_gain",
@@ -104,6 +105,24 @@ describe("Max for Live bridge source", () => {
     ]) {
       expect(source).toContain(action);
     }
+  });
+
+  it("supports conservative MIDI note replacement before insertion", async () => {
+    const liveApiScript = path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live", "ableton-mcp-liveapi.js");
+    const source = await fs.readFile(liveApiScript, "utf8");
+    const insertSource = functionSource(source, "insertMidiNotes");
+    const readIndex = source.indexOf("get_notes_extended");
+    const removeIndex = source.indexOf("remove_notes_extended");
+    const addIndex = insertSource.indexOf("add_new_notes");
+
+    expect(source).toContain("function readExistingMidiNotes");
+    expect(source).toContain("function removeExistingMidiNotes");
+    expect(insertSource).toContain("replace_existing");
+    expect(insertSource).toContain("removeExistingMidiNotes");
+    expect(insertSource).toContain("restoreExistingMidiNotes");
+    expect(readIndex).toBeGreaterThanOrEqual(0);
+    expect(removeIndex).toBeGreaterThan(readIndex);
+    expect(addIndex).toBeGreaterThan(insertSource.indexOf("removeExistingMidiNotes"));
   });
 
   it("uses typed track indexes for targeted read/write bridge actions", async () => {

@@ -797,27 +797,117 @@ function normalizeMidiNote(note) {
   return normalized;
 }
 
+function noteEndTime(note) {
+  return Number(note.start_time || 0) + Number(note.duration || 0);
+}
+
+function maxNoteEndTime(notes) {
+  var maxEndTime = 0;
+  for (var i = 0; i < notes.length; i += 1) {
+    maxEndTime = Math.max(maxEndTime, noteEndTime(notes[i]));
+  }
+  return maxEndTime;
+}
+
+function midiReplacementTimeSpan(payload, clip, normalizedNotes) {
+  var clipLength = Number(safeGet(clip, "length", 0));
+  var requestedLength = Number(payload && payload.clip_length ? payload.clip_length : 0);
+  return Math.max(
+    isFinite(clipLength) ? clipLength : 0,
+    isFinite(requestedLength) ? requestedLength : 0,
+    maxNoteEndTime(normalizedNotes),
+    1
+  );
+}
+
+function existingMidiNoteCount(result) {
+  return result && result.notes instanceof Array ? result.notes.length : null;
+}
+
+function readExistingMidiNotes(clip, target, timeSpan) {
+  var result = safeCall(clip, "get_notes_extended", [0, 128, 0, timeSpan]);
+  if (!callSucceeded(result)) {
+    return unsupported("ableton_insert_midi_notes", "Clip.get_notes_extended is unavailable, so existing notes cannot be inspected before replacement.", {
+      track_index: target.track_index,
+      clip_slot_index: target.slot_index,
+      time_span: timeSpan,
+      result: result
+    });
+  }
+  return result;
+}
+
+function removeExistingMidiNotes(clip, target, timeSpan) {
+  var result = safeCall(clip, "remove_notes_extended", [0, 128, 0, timeSpan]);
+  if (!callSucceeded(result)) {
+    return unsupported("ableton_insert_midi_notes", "Clip.remove_notes_extended is unavailable, so replacement cannot run safely.", {
+      track_index: target.track_index,
+      clip_slot_index: target.slot_index,
+      time_span: timeSpan,
+      result: result
+    });
+  }
+  return { time_span: timeSpan, result: result };
+}
+
+function restoreExistingMidiNotes(clip, existingNotes) {
+  if (existingNotes && existingNotes.notes instanceof Array && existingNotes.notes.length) {
+    return safeCall(clip, "add_new_notes", [{ notes: existingNotes.notes }]);
+  }
+  return null;
+}
+
 function insertMidiNotes(payload) {
   var target = clipSlotFromPayload(payload);
   var notes = payload && payload.notes instanceof Array ? payload.notes : [];
   if (!notes.length) throw new Error("notes must contain at least one MIDI note.");
-  if (payload && payload.replace_existing) {
-    return unsupported("ableton_insert_midi_notes", "Replacing existing MIDI note content needs a reviewed remove/replace note strategy for this Ableton version.", { track_index: target.track_index, clip_slot_index: target.slot_index });
-  }
   if (!clipExists(target.track_index, target.slot_index)) {
     if (!(payload && payload.create_clip_if_missing)) throw new Error("Clip slot does not contain a MIDI clip.");
     var created = createClip({ track_index: target.track_index, clip_slot_index: target.slot_index, length: payload.clip_length || 4, name: payload.name || "MIDI" });
     if (created.unsupported) return created;
   }
   var clip = liveObject(target.clip_path);
+  var isMidiClip = safeGet(clip, "is_midi_clip", null);
+  if (Number(isMidiClip) === 0) {
+    return unsupported("ableton_insert_midi_notes", "The target clip is not a MIDI clip.", { track_index: target.track_index, clip_slot_index: target.slot_index });
+  }
   var normalizedNotes = [];
   for (var i = 0; i < notes.length; i += 1) {
     normalizedNotes.push(normalizeMidiNote(notes[i]));
   }
+  var replaceExisting = Boolean(payload && payload.replace_existing);
+  var existingNotes = null;
+  var removal = null;
+  if (replaceExisting) {
+    var timeSpan = midiReplacementTimeSpan(payload, clip, normalizedNotes);
+    existingNotes = readExistingMidiNotes(clip, target, timeSpan);
+    if (existingNotes && existingNotes.unsupported) return existingNotes;
+    removal = removeExistingMidiNotes(clip, target, timeSpan);
+    if (removal && removal.unsupported) return removal;
+  }
   var notePayload = { notes: normalizedNotes };
   var result = safeCall(clip, "add_new_notes", [notePayload]);
-  if (!callSucceeded(result)) return unsupported("ableton_insert_midi_notes", "Clip.add_new_notes is unavailable from this bridge context.", { track_index: target.track_index, clip_slot_index: target.slot_index, note_count: notePayload.notes.length, result: result });
-  return { track_index: target.track_index, clip_slot_index: target.slot_index, note_count: notePayload.notes.length, result: result };
+  if (!callSucceeded(result)) {
+    var restoreResult = replaceExisting ? restoreExistingMidiNotes(clip, existingNotes) : null;
+    return unsupported("ableton_insert_midi_notes", "Clip.add_new_notes is unavailable from this bridge context.", {
+      track_index: target.track_index,
+      clip_slot_index: target.slot_index,
+      note_count: notePayload.notes.length,
+      replace_existing: replaceExisting,
+      removal: removal,
+      restore_result: restoreResult,
+      result: result
+    });
+  }
+  return {
+    track_index: target.track_index,
+    clip_slot_index: target.slot_index,
+    note_count: notePayload.notes.length,
+    replace_existing: replaceExisting,
+    removed_note_range: removal ? { from_pitch: 0, pitch_span: 128, from_time: 0, time_span: removal.time_span } : null,
+    existing_note_count: existingMidiNoteCount(existingNotes),
+    result: result
+  };
 }
 
 function unsupportedDeviceInsertion(action, payload) {
