@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import {
   buildArrangementFromPreparedAudio,
@@ -498,6 +499,51 @@ describe("concept-to-music planning", () => {
       arrangement_id: arrangement.arrangement.id,
       dry_run: false
     })).rejects.toThrow(/ABLETON_MCP_ENABLE_WRITE=0/);
+  });
+
+  it("rejects write-enabled concept execution without an approval id before bridge access", () => {
+    const script = `
+      import { buildLayeredArrangementPlan, executeConceptPlan, planConceptTrack } from "./src/concept.ts";
+      async function main() {
+        const planned = await planConceptTrack({
+          concept: "approval gate backrooms pressure",
+          target_duration_seconds: 90,
+          intensity: 7,
+          sources: ["local_library"]
+        });
+        const arrangement = await buildLayeredArrangementPlan(planned.plan.id);
+        try {
+          await executeConceptPlan({ arrangement_id: arrangement.arrangement.id, dry_run: false });
+          console.log(JSON.stringify({ ok: false, code: null, message: "execution unexpectedly succeeded" }));
+          process.exitCode = 2;
+        } catch (error) {
+          console.log(JSON.stringify({
+            ok: true,
+            code: error && typeof error === "object" && "code" in error ? error.code : null,
+            message: error instanceof Error ? error.message : String(error)
+          }));
+        }
+      }
+      main().catch((error) => {
+        console.error(error);
+        process.exitCode = 1;
+      });
+    `;
+    const output = execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ABLETON_MCP_ENABLE_WRITE: "1",
+        ABLETON_MCP_ENABLE_DOWNLOADS: "0",
+        ABLETON_MCP_ENABLE_UI_CONTROL: "0"
+      }
+    });
+    const result = JSON.parse(output.trim()) as { ok: boolean; code: string | null; message: string };
+
+    expect(result.ok).toBe(true);
+    expect(result.code).toBe("CONCEPT_EXECUTION_APPROVAL_REQUIRED");
+    expect(result.message).toMatch(/approval_id/);
   });
 
   it("rejects concept audio preparation without approved reference audio", async () => {
