@@ -13,12 +13,19 @@ describe("live smoke workflow", () => {
     const launchPs1 = fs.readFileSync(path.join(projectRoot, "launch.ps1"), "utf8");
     const launchSh = fs.readFileSync(path.join(projectRoot, "launch.sh"), "utf8");
 
+    expect(packageJson.scripts["live-ready"]).toBe("node dist/scripts/live-ready.js");
     expect(packageJson.scripts["live-smoke"]).toBe("node dist/scripts/live-smoke.js");
     expect(packageJson.scripts["bridge:status"]).toBe("node dist/scripts/bridge-setup-status.js");
+    expect(launchPs1).toContain('"live-ready"');
+    expect(launchPs1).toContain("npm.cmd run live-ready");
+    expect(launchPs1).toContain("-StartLive");
     expect(launchPs1).toContain('"live-smoke"');
     expect(launchPs1).toContain("npm.cmd run live-smoke");
     expect(launchPs1).toContain('"bridge-status"');
     expect(launchPs1).toContain("npm.cmd run bridge:status");
+    expect(launchSh).toContain("live-ready)");
+    expect(launchSh).toContain("npm run live-ready");
+    expect(launchSh).toContain("--start-live");
     expect(launchSh).toContain("live-smoke)");
     expect(launchSh).toContain("npm run live-smoke");
     expect(launchSh).toContain("bridge-status)");

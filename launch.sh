@@ -15,6 +15,7 @@ NO_BRIDGE_INSTALL=0
 WITH_WRITE=0
 WITH_DOWNLOADS=0
 WITH_UI_CONTROL=0
+START_LIVE=0
 REMOTE_HTTP=0
 HTTP_TOKEN="${ABLETON_MCP_HTTP_TOKEN:-}"
 for arg in "$@"; do
@@ -36,6 +37,9 @@ for arg in "$@"; do
       ;;
     --with-ui-control)
       WITH_UI_CONTROL=1
+      ;;
+    --start-live)
+      START_LIVE=1
       ;;
     --remote-http)
       REMOTE_HTTP=1
@@ -84,6 +88,9 @@ if [[ "${ABLETON_MCP_USE_BASH_NODE:-0}" != "1" ]]; then
     fi
     if [[ "$WITH_UI_CONTROL" == "1" ]]; then
       PS_ARGS+=("-WithUiControl")
+    fi
+    if [[ "$START_LIVE" == "1" ]]; then
+      PS_ARGS+=("-StartLive")
     fi
     if [[ "$REMOTE_HTTP" == "1" ]]; then
       PS_ARGS+=("-RemoteHttp")
@@ -148,6 +155,7 @@ Modes:
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
   sweep-all        Run exhaustive safe contract sweep for every registered tool.
+  live-ready       Report host/Ableton/bridge readiness; optionally start Ableton with --start-live.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
@@ -163,6 +171,7 @@ Options:
   --with-write         Set ABLETON_MCP_ENABLE_WRITE=1 for this process.
   --with-downloads     Set ABLETON_MCP_ENABLE_DOWNLOADS=1 for this process.
   --with-ui-control    Set ABLETON_MCP_ENABLE_UI_CONTROL=1 for this process.
+  --start-live         For live-ready only: explicitly start Ableton Live, then re-check readiness.
   --remote-http        For http/docker only: bind 0.0.0.0; requires token.
   --http-token=<token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 16 chars.
 
@@ -241,6 +250,14 @@ case "$MODE" in
   sweep-all)
     run_setup
     npm run sweep:all
+    ;;
+  live-ready)
+    run_setup
+    if [[ "$START_LIVE" == "1" ]]; then
+      npm run live-ready -- --launch-live --yes
+    else
+      npm run live-ready
+    fi
     ;;
   live-smoke)
     run_setup

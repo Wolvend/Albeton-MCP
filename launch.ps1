@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-smoke", "concept-demo", "inspect", "ui-driver", "bridge-status", "bridge-listener", "help")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-ready", "live-smoke", "concept-demo", "inspect", "ui-driver", "bridge-status", "bridge-listener", "help")]
   [string]$Mode = "stdio",
   [switch]$SkipSetup,
   [switch]$NoBuild,
@@ -7,6 +7,7 @@ param(
   [switch]$WithWrite,
   [switch]$WithDownloads,
   [switch]$WithUiControl,
+  [switch]$StartLive,
   [switch]$RemoteHttp,
   [string]$HttpToken
 )
@@ -47,6 +48,7 @@ Modes:
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
   sweep-all        Run exhaustive safe contract sweep for every registered tool.
+  live-ready       Report host/Ableton/bridge readiness; optionally start Ableton with -StartLive.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
@@ -62,6 +64,7 @@ Options:
   -WithWrite         Set ABLETON_MCP_ENABLE_WRITE=1 for this process.
   -WithDownloads     Set ABLETON_MCP_ENABLE_DOWNLOADS=1 for this process.
   -WithUiControl     Set ABLETON_MCP_ENABLE_UI_CONTROL=1 for this process.
+  -StartLive         For live-ready only: explicitly start Ableton Live, then re-check readiness.
   -RemoteHttp        For http/docker only: bind 0.0.0.0; requires -HttpToken or env token.
   -HttpToken <token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 16 chars.
 
@@ -182,6 +185,15 @@ switch ($Mode) {
   "sweep-all" {
     Invoke-Setup
     & npm.cmd run sweep:all
+    exit $LASTEXITCODE
+  }
+  "live-ready" {
+    Invoke-Setup
+    if ($StartLive) {
+      & npm.cmd run live-ready -- --launch-live --yes
+    } else {
+      & npm.cmd run live-ready
+    }
     exit $LASTEXITCODE
   }
   "live-smoke" {

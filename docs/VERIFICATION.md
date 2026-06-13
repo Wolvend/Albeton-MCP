@@ -57,15 +57,17 @@ npm run docker:profile:plan
 npm run docker:profile:verify
 ```
 
-Run the safe Ableton live bridge smoke after Ableton is open and the bridge device is loaded:
+Check host readiness, then run the safe Ableton live bridge smoke after Ableton is open and the bridge device is loaded:
 
 ```powershell
+.\launch.ps1 live-ready -SkipSetup
 .\launch.ps1 live-smoke -SkipSetup
 ```
 
 From WSL, use the Windows-backed launcher path for Ableton bridge checks:
 
 ```bash
+./launch.sh live-ready --skip-setup
 ./launch.sh live-smoke --skip-setup
 ```
 
