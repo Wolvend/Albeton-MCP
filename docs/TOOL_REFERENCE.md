@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-196 tools
+197 tools
 3 resources
 2 prompts
 ```
@@ -50,6 +50,7 @@ Control-mode tools:
 - `ableton_get_bridge_capabilities`: reports read-only, write-gated, unsupported, and diagnostic bridge actions; `check_bridge=true` compares against the loaded Max for Live bridge when available.
 - `ableton_list_track_sends`: reads selected or indexed track send parameters and return-track names so agents can route layers before using write-gated send changes.
 - `ableton_get_routing_overview`: reads tracks, returns, master state, and the send matrix in one call so agents can plan layered reverb/delay/texture routing quickly.
+- `ableton_plan_concept_routing_readiness`: maps a stored concept arrangement's planned sends to routing-overview discovery calls and exact dry-run send templates.
 - `ableton_ui_driver_status`: reports the ChromeDriver-style Ableton UI driver endpoint and queue state.
 - `ableton_ui_driver_ping`: pings the UI driver when UI control is enabled.
 - `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.

@@ -56,6 +56,8 @@ export type ConceptExecutionApprovalBundleOptions = ConceptExecutionPreflightOpt
 
 export type ConceptDeviceAutomationReadinessOptions = ConceptExecutionPreflightOptions;
 
+export type ConceptRoutingReadinessOptions = ConceptExecutionPreflightOptions;
+
 export type ConceptExecutionManifestOptions = {
   arrangement_id: string;
 };
@@ -2216,6 +2218,128 @@ export async function planConceptDeviceAutomationReadiness(options: ConceptDevic
   };
 }
 
+export async function planConceptRoutingReadiness(options: ConceptRoutingReadinessOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const bridge = {
+    checked: options.check_bridge !== false,
+    reachable: null as boolean | null,
+    resolution: null as CreatedTrackResolution | null,
+    routingOverview: null as Record<string, unknown> | null,
+    error: null as string | null,
+    nextSteps: [] as string[]
+  };
+
+  if (bridge.checked) {
+    try {
+      bridge.resolution = bridgeSnapshotResolution(await getBridgeSnapshot(false));
+      bridge.routingOverview = await bridgeAction("routing_overview", { include_devices: true }) as Record<string, unknown>;
+      bridge.reachable = true;
+    } catch (error) {
+      bridge.reachable = false;
+      bridge.error = error instanceof Error ? error.message : String(error);
+      bridge.nextSteps = bridgeSetupHints(error);
+    }
+  }
+
+  const trackLayers = new Map<number, string>();
+  const returnLayers = new Map<number, string>();
+  for (const entry of arrangement.devicePlan) {
+    if (typeof entry.track_created_offset === "number") trackLayers.set(entry.track_created_offset, entry.layer);
+    if (typeof entry.return_created_offset === "number") returnLayers.set(entry.return_created_offset, entry.layer);
+  }
+
+  const sendActions = arrangement.actions.filter((action) => action.action === "ableton_set_track_send");
+  const plannedSends = sendActions.map((action, index) => {
+    const trackOffset = typeof action.payload.track_created_offset === "number" ? action.payload.track_created_offset : null;
+    const returnOffset = typeof action.payload.return_created_offset === "number" ? action.payload.return_created_offset : null;
+    const value = typeof action.payload.value === "number" && Number.isFinite(action.payload.value) ? action.payload.value : 0;
+    const resolvedPayload = bridge.resolution ? actionPayloadWithCreatedTrack(action, bridge.resolution) : null;
+    const exactDryRunToolCall = resolvedPayload && typeof resolvedPayload.track_index === "number" && typeof resolvedPayload.send_index === "number"
+      ? {
+        name: "ableton_set_track_send",
+        arguments: {
+          track_index: resolvedPayload.track_index,
+          send_index: resolvedPayload.send_index,
+          value,
+          dry_run: true
+        }
+      }
+      : null;
+
+    return {
+      index,
+      layer: trackOffset === null ? null : trackLayers.get(trackOffset) ?? null,
+      returnLayer: returnOffset === null ? null : returnLayers.get(returnOffset) ?? null,
+      send_name: typeof action.payload.send_name === "string" ? action.payload.send_name : null,
+      value,
+      track_created_offset: trackOffset,
+      return_created_offset: returnOffset,
+      targetResolution: bridge.resolution && resolvedPayload
+        ? {
+          track_index: typeof resolvedPayload.track_index === "number" ? resolvedPayload.track_index : null,
+          send_index: typeof resolvedPayload.send_index === "number" ? resolvedPayload.send_index : null
+        }
+        : { status: "pending_bridge_snapshot" },
+      toolCallTemplate: {
+        name: "ableton_set_track_send",
+        executable: false,
+        reason: "Resolve track and send indexes with ableton_preflight_concept_execution or this readiness tool after the bridge is loaded.",
+        arguments: {
+          ...(trackOffset === null ? {} : { track_created_offset: trackOffset }),
+          ...(returnOffset === null ? {} : { return_created_offset: returnOffset }),
+          value,
+          dry_run: true
+        }
+      },
+      exactDryRunToolCall
+    };
+  });
+
+  const uniqueReturnTargets = [...new Set(plannedSends.map((entry) => entry.returnLayer ?? entry.send_name ?? "unknown"))];
+  const exactDryRunSendCalls = plannedSends.flatMap((entry) => entry.exactDryRunToolCall ? [entry.exactDryRunToolCall] : []);
+
+  return {
+    planType: "concept_routing_readiness",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      style: concept.style,
+      tempo: concept.tempo,
+      key: concept.key
+    },
+    bridge,
+    summary: {
+      plannedSendCount: plannedSends.length,
+      uniqueReturnTargets,
+      exactDryRunSendCalls: exactDryRunSendCalls.length,
+      requiresBridgeForRealIndexes: plannedSends.some((entry) => entry.track_created_offset !== null || entry.return_created_offset !== null),
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false
+    },
+    discoveryCalls: [
+      { name: "ableton_get_routing_overview", arguments: { include_devices: true } },
+      { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: arrangement.id, check_bridge: true } }
+    ],
+    plannedSends,
+    exactDryRunSendCalls,
+    nextSteps: bridge.reachable === true
+      ? [
+        "Compare exactDryRunSendCalls against bridge.routingOverview.send_matrix before real execution.",
+        "Run ableton_create_concept_execution_approval_bundle after routing, devices, automation, and samples have been reviewed.",
+        "Keep ABLETON_MCP_ENABLE_WRITE=0 until the final approved execution session."
+      ]
+      : [
+        "Load Ableton and the Max for Live bridge, then rerun with check_bridge=true.",
+        "Use ableton_get_routing_overview to inspect existing returns before applying concept sends.",
+        "Keep send changes dry-run until the routing matrix and approval bundle are reviewed."
+      ]
+  };
+}
+
 export async function createConceptExecutionApprovalBundle(options: ConceptExecutionApprovalBundleOptions) {
   const arrangement = await readArrangementPlan(options.arrangement_id);
   const concept = await readConceptPlan(arrangement.conceptPlanId);
@@ -2259,6 +2383,13 @@ export async function createConceptExecutionApprovalBundle(options: ConceptExecu
         arguments: {
           arrangement_id: arrangement.id,
           dry_run: true
+        }
+      },
+      routingReadiness: {
+        name: "ableton_plan_concept_routing_readiness",
+        arguments: {
+          arrangement_id: arrangement.id,
+          check_bridge: true
         }
       },
       deviceAutomationReadiness: {
@@ -2353,6 +2484,10 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
     stagedReview: {
       devicePlan: arrangement.devicePlan,
       automationPlan: arrangement.automationPlan,
+      routingReadinessToolCall: {
+        name: "ableton_plan_concept_routing_readiness",
+        arguments: { arrangement_id: arrangement.id, check_bridge: false }
+      },
       readinessToolCall: {
         name: "ableton_plan_concept_device_automation_readiness",
         arguments: { arrangement_id: arrangement.id, check_bridge: false }
@@ -2365,6 +2500,10 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
       },
       preflightWithBridge: {
         name: "ableton_preflight_concept_execution",
+        arguments: { arrangement_id: arrangement.id, check_bridge: true }
+      },
+      routingReadiness: {
+        name: "ableton_plan_concept_routing_readiness",
         arguments: { arrangement_id: arrangement.id, check_bridge: true }
       },
       approvalBundle: {
@@ -2384,6 +2523,7 @@ export async function renderConceptExecutionManifest(options: ConceptExecutionMa
     nextSteps: [
       "Review phases and stagedReview before touching Ableton.",
       "Run dryRunExecution first; it does not contact Ableton.",
+      "Run routingReadiness after loading the bridge to verify send and return mapping.",
       "Load the Max for Live bridge, then run preflightWithBridge.",
       "Only run realExecutionAfterApproval after reviewing the approval bundle and intentionally enabling ABLETON_MCP_ENABLE_WRITE=1."
     ]

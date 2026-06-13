@@ -15,6 +15,7 @@ import {
   listConceptPresets,
   planConceptDeviceAutomationReadiness,
   planConceptProduction,
+  planConceptRoutingReadiness,
   planConceptTrack,
   preflightConceptExecution,
   prepareConceptAudioLayers,
@@ -120,6 +121,10 @@ describe("concept-to-music planning", () => {
       arrangement_id: arrangement.arrangement.id,
       check_bridge: false
     });
+    const routing = await planConceptRoutingReadiness({
+      arrangement_id: arrangement.arrangement.id,
+      check_bridge: false
+    });
     const manifest = await renderConceptExecutionManifest({
       arrangement_id: arrangement.arrangement.id
     });
@@ -187,6 +192,12 @@ describe("concept-to-music planning", () => {
     expect(readiness.summary.realDeviceInsertionSupported).toBe(false);
     expect(readiness.deviceChains.some((entry) => entry.toolCallTemplates.some((call) => call.name === "ableton_insert_effect"))).toBe(true);
     expect(readiness.automationTargets.some((entry) => entry.parameterHints.includes("Cutoff"))).toBe(true);
+    expect(routing.bridge).toMatchObject({ checked: false, reachable: null });
+    expect(routing.summary.plannedSendCount).toBeGreaterThan(0);
+    expect(routing.summary.writesAbleton).toBe(false);
+    expect(routing.discoveryCalls.map((call) => call.name)).toContain("ableton_get_routing_overview");
+    expect(routing.plannedSends.some((entry) => entry.toolCallTemplate.name === "ableton_set_track_send")).toBe(true);
+    expect(routing.exactDryRunSendCalls).toEqual([]);
     expect(manifest.manifestType).toBe("concept_execution_manifest");
     expect(manifest.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, arbitraryBridgePayloads: false });
     expect(manifest.actionSummary.executable).toBeGreaterThan(0);
@@ -199,6 +210,8 @@ describe("concept-to-music planning", () => {
       approval_id: approvalRequirement.approval_id,
       approval_confirmed: true
     });
+    expect(manifest.exactToolCalls.routingReadiness.name).toBe("ableton_plan_concept_routing_readiness");
+    expect(manifest.stagedReview.routingReadinessToolCall.name).toBe("ableton_plan_concept_routing_readiness");
     expect(timeline.sectionCount).toBe(5);
     expect(timeline.sections.map((section) => section.name)).toContain("Spatial Collapse");
     expect(timeline.sections.some((section) => section.activeLayers.some((layer) => layer.name === "Sparse Motif" && layer.role === "entrance"))).toBe(true);
@@ -267,6 +280,7 @@ describe("concept-to-music planning", () => {
       approval_confirmed: true
     });
     expect(bundle.exactToolCalls.deviceAutomationReadiness.name).toBe("ableton_plan_concept_device_automation_readiness");
+    expect(bundle.exactToolCalls.routingReadiness.name).toBe("ableton_plan_concept_routing_readiness");
     expect(bundle.preflight.readyForRealWrite).toBe(false);
     expect(bundle.arrangement.actions.some((action) => action.payload.path === stagedPath)).toBe(false);
     expect(bundle.securityBoundaries.join(" ")).toMatch(/does not approve execution/i);
