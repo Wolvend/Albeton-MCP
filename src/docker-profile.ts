@@ -97,6 +97,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
   "ableton_suggest_arrangement",
   "ableton_suggest_mix_actions",
   "ableton_validate_production_plan",
+  "ableton_list_concept_presets",
   "ableton_plan_concept_track",
   "ableton_list_concept_plans",
   "ableton_get_concept_plan",

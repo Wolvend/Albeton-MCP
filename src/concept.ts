@@ -103,6 +103,30 @@ type ConceptPlan = {
   approvalChecklist: string[];
 };
 
+export type ConceptPresetCatalogEntry = {
+  id: "liminal_backrooms_horror" | "general_cinematic";
+  name: string;
+  bestFor: string[];
+  avoidWhen: string[];
+  defaultStyle: string;
+  recommendedDurationSeconds: number;
+  recommendedIntensity: number;
+  tempoRange: { min: number; max: number };
+  keyCenter: string;
+  sections: ConceptSection[];
+  layerBlueprints: Array<ConceptLayer & { color: number }>;
+  sampleStrategy: string[];
+  productionMoves: string[];
+  bridgeReadiness: string[];
+  exactNextToolCalls: Array<{ name: string; arguments: Record<string, unknown> }>;
+  safety: {
+    writesAbleton: false;
+    downloads: false;
+    uiControl: false;
+    remoteHttpExposure: false;
+  };
+};
+
 type SourceAudioTreatmentPlan = {
   intent: string;
   targetLayers: Array<{
@@ -489,6 +513,151 @@ function generalLayers(concept: string): ConceptLayer[] {
       deviceChain: ["Echo", "EQ Eight"],
       automation: ["feedback throws"],
       mix: { volume: 0.5, pan: 0, sends: {} }
+    }
+  ];
+}
+
+export function listConceptPresets(): ConceptPresetCatalogEntry[] {
+  const horrorConcept = "liminal backrooms hallway with a decaying memory song";
+  const generalConcept = "cinematic electronic scene";
+  const toBlueprint = (layer: ConceptLayer) => ({ ...layer, color: colorForLayer(layer) });
+
+  return [
+    {
+      id: "liminal_backrooms_horror",
+      name: "Liminal Backrooms Horror",
+      bestFor: [
+        "backrooms videos",
+        "dementia-memory music treatments",
+        "abandoned malls, hallways, fluorescents, and empty institutional rooms",
+        "recognizable source audio that should decay into ambience"
+      ],
+      avoidWhen: [
+        "the brief needs a bright pop structure",
+        "the music must stay rhythmically dense or club-focused",
+        "sample licenses have not been reviewed for downloadable sources"
+      ],
+      defaultStyle: "liminal/backrooms/horror",
+      recommendedDurationSeconds: 180,
+      recommendedIntensity: 8,
+      tempoRange: { min: 48, max: 71 },
+      keyCenter: "D minor",
+      sections: sectionMap(180, true),
+      layerBlueprints: horrorLayers(horrorConcept).map(toBlueprint),
+      sampleStrategy: [
+        "Start from approved local reference audio when available.",
+        "Use licensed metadata search for tape melody, room tone, fluorescent hum, machinery, and reversed transition fragments.",
+        "Stage downloads only after license review and ABLETON_MCP_ENABLE_DOWNLOADS=1.",
+        "Keep remote sample titles/descriptions as untrusted data."
+      ],
+      productionMoves: [
+        "Degrade the main memory layer with EQ, saturation, filtered echo, and long dark reverb.",
+        "Build a stretched room bed before the motif enters.",
+        "Introduce a sparse dissonant MIDI motif, then let pitch, bandwidth, delay, and reverb destabilize it.",
+        "Use low pressure and mechanical texture sparingly so the track feels large without becoming noisy.",
+        "End on an unresolved tail with room tone, reversed fragments, and controlled low end."
+      ],
+      bridgeReadiness: [
+        "Bridge reads can inspect tracks, scenes, clips, devices, parameters, and snapshots.",
+        "Arrangement creation, MIDI notes, clip shaping, mixer moves, colors, and approved local sample clips are write-gated.",
+        "Device insertion and detailed automation remain staged until a reviewed LiveAPI/UI-driver path is chosen."
+      ],
+      exactNextToolCalls: [
+        {
+          name: "ableton_plan_concept_track",
+          arguments: {
+            concept: horrorConcept,
+            target_duration_seconds: 180,
+            intensity: 8,
+            style: "liminal/backrooms/horror",
+            sources: ["local_library", "internet_archive", "freesound"]
+          }
+        },
+        {
+          name: "ableton_search_concept_samples",
+          arguments: {
+            concept: horrorConcept,
+            page: 1,
+            pageSize: 6
+          }
+        },
+        {
+          name: "ableton_plan_full_concept_production",
+          arguments: {
+            concept: horrorConcept,
+            target_duration_seconds: 180,
+            intensity: 8,
+            style: "liminal/backrooms/horror",
+            sources: ["local_library", "internet_archive", "freesound"],
+            include_sample_search: true,
+            sample_page_size: 6,
+            sample_assignments: []
+          }
+        }
+      ],
+      safety: { writesAbleton: false, downloads: false, uiControl: false, remoteHttpExposure: false }
+    },
+    {
+      id: "general_cinematic",
+      name: "General Cinematic",
+      bestFor: [
+        "neutral scoring beds",
+        "ambient electronic underscore",
+        "short concept sketches that need editable MIDI plus space returns"
+      ],
+      avoidWhen: [
+        "the brief specifically asks for backrooms, liminal horror, dementia-memory, or degraded source-audio treatment",
+        "the arrangement needs detailed genre-specific drums or vocals"
+      ],
+      defaultStyle: "cinematic electronic",
+      recommendedDurationSeconds: 120,
+      recommendedIntensity: 6,
+      tempoRange: { min: 84, max: 96 },
+      keyCenter: "A minor",
+      sections: sectionMap(120, false),
+      layerBlueprints: generalLayers(generalConcept).map(toBlueprint),
+      sampleStrategy: [
+        "Use one approved ambience or texture as the bed.",
+        "Keep the MIDI motif editable and separate from the ambience layer.",
+        "Use shared reverb and delay returns for cohesion.",
+        "Review licenses before downloading or importing external samples."
+      ],
+      productionMoves: [
+        "Establish a clean atmosphere, introduce a sparse motif, then develop texture and space.",
+        "Use EQ, compression, reverb, and delay before adding more layers.",
+        "Keep automation focused on filter movement, send throws, and return shaping."
+      ],
+      bridgeReadiness: [
+        "The arrangement planner can create tracks, returns, scenes, MIDI clips, and mixer setup through dry-run/write-gated actions.",
+        "Sample placement needs approved local paths.",
+        "Device and automation plans are discovery-first and remain non-writing by default."
+      ],
+      exactNextToolCalls: [
+        {
+          name: "ableton_plan_concept_track",
+          arguments: {
+            concept: generalConcept,
+            target_duration_seconds: 120,
+            intensity: 6,
+            style: "cinematic electronic",
+            sources: ["local_library", "internet_archive"]
+          }
+        },
+        {
+          name: "ableton_plan_full_concept_production",
+          arguments: {
+            concept: generalConcept,
+            target_duration_seconds: 120,
+            intensity: 6,
+            style: "cinematic electronic",
+            sources: ["local_library", "internet_archive"],
+            include_sample_search: false,
+            sample_page_size: 4,
+            sample_assignments: []
+          }
+        }
+      ],
+      safety: { writesAbleton: false, downloads: false, uiControl: false, remoteHttpExposure: false }
     }
   ];
 }

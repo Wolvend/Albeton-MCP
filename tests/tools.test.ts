@@ -50,6 +50,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_quantize_clip");
     expect(registeredToolNames).toContain("ableton_plan_export_audio");
     expect(registeredToolNames).toContain("ableton_validate_plugin_package");
+    expect(registeredToolNames).toContain("ableton_list_concept_presets");
     expect(registeredToolNames).toContain("ableton_plan_concept_track");
     expect(registeredToolNames).toContain("ableton_search_concept_samples");
     expect(registeredToolNames).toContain("ableton_stage_concept_samples");
@@ -121,6 +122,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_set_clip_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_convert_audio_file).toHaveProperty("preset");
     expect(registeredToolSchemas.ableton_list_internet_archive_audio_files).toHaveProperty("identifier");
+    expect(registeredToolSchemas.ableton_list_concept_presets).toHaveProperty("page");
     expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_get_concept_plan).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_get_arrangement_plan).toHaveProperty("arrangement_id");

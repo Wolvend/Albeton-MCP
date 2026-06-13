@@ -28,6 +28,7 @@ import {
   getConceptPlanForReport,
   listArrangementPlans,
   listConceptPlans,
+  listConceptPresets,
   planConceptDeviceAutomationReadiness,
   planConceptProduction,
   planConceptTrack,
@@ -626,6 +627,7 @@ toolDefs.push(
   { name: "ableton_browse_max_devices", description: "Return a Max for Live device browser plan limited to Ableton User Library and project bridge files.", inputSchema: { query: z.string().max(120).default("") }, annotations: ro, handler: async (args) => ({ ok: true, browser: productionPlan("max_for_live_devices", { query: args.query, roots: [redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), redactPath(path.join(LOCAL_PATHS.userLibrary, "Presets", "MIDI Effects", "Max MIDI Effect"))] }) }) },
   { name: "ableton_browse_drum_hits", description: "Search indexed local drum-hit samples with pagination.", inputSchema: { query: z.string().max(120).default("kick OR snare OR hat"), ...Page }, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
 
+  { name: "ableton_list_concept_presets", description: "List read-only concept-to-music production presets with exact safe next tool calls for agents.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, presets: paginate(listConceptPresets(), args.page, args.pageSize) }) },
   { name: "ableton_plan_concept_track", description: "Turn a mood, place, or liminal concept into a stored staged Ableton production plan.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), sources: ConceptSources, reference_path: z.string().min(1).optional() }, annotations: ro, handler: async (args) => ({ ok: true, concept: await planConceptTrack(args) as any }) },
   { name: "ableton_list_concept_plans", description: "List stored concept plans from the bounded diagnostics plan store.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, plans: paginate(await listConceptPlans(), args.page, args.pageSize) }) },
   { name: "ableton_get_concept_plan", description: "Read one stored concept plan by id with local paths redacted.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, concept: await getConceptPlanForReport(args.plan_id) as any }) },

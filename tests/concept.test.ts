@@ -11,6 +11,7 @@ import {
   getConceptPlanForReport,
   listArrangementPlans,
   listConceptPlans,
+  listConceptPresets,
   planConceptDeviceAutomationReadiness,
   planConceptProduction,
   planConceptTrack,
@@ -26,6 +27,40 @@ import {
 import { LOCAL_PATHS } from "../src/config.js";
 
 describe("concept-to-music planning", () => {
+  it("lists read-only concept production presets with safe next calls", () => {
+    const presets = listConceptPresets();
+    const horror = presets.find((preset) => preset.id === "liminal_backrooms_horror");
+
+    expect(presets.map((preset) => preset.id)).toEqual(["liminal_backrooms_horror", "general_cinematic"]);
+    expect(horror?.sections.map((section) => section.name)).toEqual([
+      "Isolation",
+      "Recognizable Motif",
+      "Decay Loop",
+      "Spatial Collapse",
+      "Unresolved Tail"
+    ]);
+    expect(horror?.layerBlueprints.map((layer) => layer.name)).toEqual(expect.arrayContaining([
+      "Degraded Memory",
+      "Stretched Room",
+      "Low Pressure",
+      "Mechanical Texture",
+      "Reversed Fragments",
+      "Sparse Motif"
+    ]));
+    expect(horror?.productionMoves.join(" ")).toMatch(/degrade/i);
+    expect(horror?.exactNextToolCalls.map((call) => call.name)).toEqual(expect.arrayContaining([
+      "ableton_plan_concept_track",
+      "ableton_search_concept_samples",
+      "ableton_plan_full_concept_production"
+    ]));
+    expect(horror?.safety).toMatchObject({
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      remoteHttpExposure: false
+    });
+  });
+
   it("creates deterministic liminal horror plans with layered backrooms structure", async () => {
     const first = await planConceptTrack({
       concept: "a backrooms hallway where an old memory song decays under fluorescent lights",

@@ -135,7 +135,8 @@ const calls: SweepCall[] = [
   { name: "ableton_suggest_effect_chain", arguments: { source: "drums" } },
   { name: "ableton_suggest_arrangement", arguments: { brief: "safe sweep" } },
   { name: "ableton_suggest_mix_actions", arguments: { issue: "muddy low mids" } },
-  { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep" } } }
+  { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep" } } },
+  { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } }
 ];
 
 const transport = new StdioClientTransport({ command: "node", args: ["dist/src/index.js"] });
