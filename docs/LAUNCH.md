@@ -46,6 +46,7 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `sweep-all` | `.\launch.ps1 sweep-all` | Calls every registered tool once with safe read-only or dry-run arguments. |
 | `live-ready` | `.\launch.ps1 live-ready -SkipSetup` | Reports installed bridge file freshness, Ableton process state, and listener reachability without starting Ableton. |
 | `live-ready -StartLive` | `.\launch.ps1 live-ready -StartLive -SkipSetup` | Explicitly starts Ableton Live, waits for the process, then re-checks bridge readiness. Does not enable writes, downloads, or UI/mouse control. |
+| `live-ready -OpenBridge` | `.\launch.ps1 live-ready -OpenBridge -SkipSetup` | Explicitly asks the OS/Ableton to open the installed `Ableton MCP Bridge.amxd` preset, then re-checks the listener. It does not move the mouse; Ableton may still prompt or require the current set to accept the device. |
 | `live-smoke` | `.\launch.ps1 live-smoke` | Confirms objective readiness, launch readiness, LiveAPI coverage, bridge reachability, routing readiness, and one dry-run write probe. |
 | `concept-demo` | `.\launch.ps1 concept-demo` | Runs a side-effect-free MCP client workflow from concept brief to stored arrangement, action matrix, approval dry-run, and delivery plan. |
 | `inspect` | `.\launch.ps1 inspect` | Lists tools through MCP Inspector. |
@@ -63,6 +64,7 @@ Recommended local sequence:
 # Open Ableton and load the bridge device if bridge-status reports device_not_loaded.
 .\launch.ps1 bridge-status -SkipSetup
 .\launch.ps1 live-ready -StartLive -SkipSetup
+.\launch.ps1 live-ready -OpenBridge -SkipSetup
 .\launch.ps1 live-smoke -SkipSetup
 ```
 
@@ -77,6 +79,7 @@ Recommended local sequence:
 | `-WithDownloads` | `--with-downloads` | Set `ABLETON_MCP_ENABLE_DOWNLOADS=1` for this process. |
 | `-WithUiControl` | `--with-ui-control` | Set `ABLETON_MCP_ENABLE_UI_CONTROL=1` for this process. |
 | `-StartLive` | `--start-live` | For `live-ready` only: explicitly start Ableton Live, then re-check readiness. |
+| `-OpenBridge` | `--open-bridge` | For `live-ready` only: explicitly open the installed bridge preset, then re-check readiness. |
 | `-RemoteHttp` | `--remote-http` | Bind HTTP to `0.0.0.0`; valid only for `http`/`docker` and requires a token. |
 | `-HttpToken <token>` | `--http-token=<token>` | Set an HTTP bearer token for this process. Minimum 16 characters. |
 

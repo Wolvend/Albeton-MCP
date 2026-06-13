@@ -16,6 +16,7 @@ WITH_WRITE=0
 WITH_DOWNLOADS=0
 WITH_UI_CONTROL=0
 START_LIVE=0
+OPEN_BRIDGE=0
 REMOTE_HTTP=0
 HTTP_TOKEN="${ABLETON_MCP_HTTP_TOKEN:-}"
 for arg in "$@"; do
@@ -40,6 +41,9 @@ for arg in "$@"; do
       ;;
     --start-live)
       START_LIVE=1
+      ;;
+    --open-bridge)
+      OPEN_BRIDGE=1
       ;;
     --remote-http)
       REMOTE_HTTP=1
@@ -91,6 +95,9 @@ if [[ "${ABLETON_MCP_USE_BASH_NODE:-0}" != "1" ]]; then
     fi
     if [[ "$START_LIVE" == "1" ]]; then
       PS_ARGS+=("-StartLive")
+    fi
+    if [[ "$OPEN_BRIDGE" == "1" ]]; then
+      PS_ARGS+=("-OpenBridge")
     fi
     if [[ "$REMOTE_HTTP" == "1" ]]; then
       PS_ARGS+=("-RemoteHttp")
@@ -155,7 +162,7 @@ Modes:
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
   sweep-all        Run exhaustive safe contract sweep for every registered tool.
-  live-ready       Report host/Ableton/bridge readiness; optionally start Ableton with --start-live.
+  live-ready       Report host/Ableton/bridge readiness; optionally start Ableton or open the bridge preset.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
@@ -172,6 +179,7 @@ Options:
   --with-downloads     Set ABLETON_MCP_ENABLE_DOWNLOADS=1 for this process.
   --with-ui-control    Set ABLETON_MCP_ENABLE_UI_CONTROL=1 for this process.
   --start-live         For live-ready only: explicitly start Ableton Live, then re-check readiness.
+  --open-bridge        For live-ready only: explicitly open the installed bridge preset, then re-check readiness.
   --remote-http        For http/docker only: bind 0.0.0.0; requires token.
   --http-token=<token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 16 chars.
 
@@ -253,8 +261,12 @@ case "$MODE" in
     ;;
   live-ready)
     run_setup
-    if [[ "$START_LIVE" == "1" ]]; then
+    if [[ "$START_LIVE" == "1" && "$OPEN_BRIDGE" == "1" ]]; then
+      npm run live-ready -- --launch-live --open-bridge-device --yes
+    elif [[ "$START_LIVE" == "1" ]]; then
       npm run live-ready -- --launch-live --yes
+    elif [[ "$OPEN_BRIDGE" == "1" ]]; then
+      npm run live-ready -- --open-bridge-device --yes
     else
       npm run live-ready
     fi

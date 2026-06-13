@@ -193,6 +193,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_get_environment", arguments: {} },
     { name: "ableton_validate_config", arguments: {} },
     { name: "ableton_launch_live", arguments: { dry_run: true } },
+    { name: "ableton_open_bridge_device", arguments: { dry_run: true } },
     { name: "ableton_live_status", arguments: {} },
     { name: "ableton_bridge_install_instructions", arguments: {} },
     { name: "ableton_bridge_install_plan", arguments: {} },

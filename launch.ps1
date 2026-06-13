@@ -8,6 +8,7 @@ param(
   [switch]$WithDownloads,
   [switch]$WithUiControl,
   [switch]$StartLive,
+  [switch]$OpenBridge,
   [switch]$RemoteHttp,
   [string]$HttpToken
 )
@@ -48,7 +49,7 @@ Modes:
   build            Build TypeScript only.
   sweep            Run safe read-only/dry-run MCP sweep.
   sweep-all        Run exhaustive safe contract sweep for every registered tool.
-  live-ready       Report host/Ableton/bridge readiness; optionally start Ableton with -StartLive.
+  live-ready       Report host/Ableton/bridge readiness; optionally start Ableton or open the bridge preset.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
@@ -65,6 +66,7 @@ Options:
   -WithDownloads     Set ABLETON_MCP_ENABLE_DOWNLOADS=1 for this process.
   -WithUiControl     Set ABLETON_MCP_ENABLE_UI_CONTROL=1 for this process.
   -StartLive         For live-ready only: explicitly start Ableton Live, then re-check readiness.
+  -OpenBridge        For live-ready only: explicitly open the installed bridge preset, then re-check readiness.
   -RemoteHttp        For http/docker only: bind 0.0.0.0; requires -HttpToken or env token.
   -HttpToken <token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 16 chars.
 
@@ -190,7 +192,13 @@ switch ($Mode) {
   "live-ready" {
     Invoke-Setup
     if ($StartLive) {
-      & npm.cmd run live-ready -- --launch-live --yes
+      if ($OpenBridge) {
+        & npm.cmd run live-ready -- --launch-live --open-bridge-device --yes
+      } else {
+        & npm.cmd run live-ready -- --launch-live --yes
+      }
+    } elseif ($OpenBridge) {
+      & npm.cmd run live-ready -- --open-bridge-device --yes
     } else {
       & npm.cmd run live-ready
     }

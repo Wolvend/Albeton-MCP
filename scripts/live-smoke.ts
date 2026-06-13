@@ -71,9 +71,9 @@ export type LiveSmokeReport = {
 };
 
 export const liveSmokeCalls: SmokeCall[] = [
-  { name: "ableton_mcp_get_objective_readiness_report", arguments: { check_bridge: false }, required: true },
-  { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: false }, required: true },
-  { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: false }, required: true },
+  { name: "ableton_mcp_get_objective_readiness_report", arguments: { check_bridge: true }, required: true },
+  { name: "ableton_mcp_get_launch_readiness_audit", arguments: { check_bridge: true }, required: true },
+  { name: "ableton_get_bridge_capabilities", arguments: { check_bridge: true }, required: true },
   { name: "ableton_live_status", arguments: {}, required: true },
   { name: "ableton_bridge_status", arguments: {}, required: true },
   { name: "ableton_bridge_setup_status", arguments: { check_bridge: true }, required: true },

@@ -90,6 +90,7 @@ const calls: SweepCall[] = [
   { name: "ableton_extract_set_clip_summary", arguments: { path: fixtures.setPath } },
   { name: "ableton_compare_sets", arguments: { left: fixtures.setPath, right: fixtures.setPath } },
   { name: "ableton_launch_live", arguments: { dry_run: true } },
+  { name: "ableton_open_bridge_device", arguments: { dry_run: true } },
   { name: "ableton_install_bridge_files", arguments: { dry_run: true } },
   { name: "ableton_create_automation_envelope", arguments: { track_index: 0, device_index: 0, parameter_index: 1, dry_run: true } },
   { name: "ableton_set_automation_point", arguments: { track_index: 0, device_index: 0, parameter_index: 1, time: 1, value: 0.5, dry_run: true } },

@@ -21,6 +21,7 @@ describe("live smoke workflow", () => {
     expect(launchPs1).toContain('"live-ready"');
     expect(launchPs1).toContain("npm.cmd run live-ready");
     expect(launchPs1).toContain("-StartLive");
+    expect(launchPs1).toContain("-OpenBridge");
     expect(launchPs1).toContain('"live-smoke"');
     expect(launchPs1).toContain("npm.cmd run live-smoke");
     expect(launchPs1).toContain('"bridge-status"');
@@ -28,11 +29,13 @@ describe("live smoke workflow", () => {
     expect(launchSh).toContain("live-ready)");
     expect(launchSh).toContain("npm run live-ready");
     expect(launchSh).toContain("--start-live");
+    expect(launchSh).toContain("--open-bridge");
     expect(launchSh).toContain("live-smoke)");
     expect(launchSh).toContain("npm run live-smoke");
     expect(launchSh).toContain("bridge-status)");
     expect(launchSh).toContain("npm run bridge:status");
     expect(liveReady).toContain("bridgeDevice");
+    expect(liveReady).toContain("bridgeOpen");
     expect(liveReady).toContain("bridgeListener");
     expect(liveReady).toContain("safeNextCommands");
     expect(bridgeSetup).toContain("User Library > Presets > MIDI Effects > Max MIDI Effect > Ableton MCP Bridge");
@@ -45,13 +48,13 @@ describe("live smoke workflow", () => {
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_download_sample");
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_mcp_get_objective_readiness_report");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_mcp_get_objective_readiness_report")?.arguments)
-      .toMatchObject({ check_bridge: false });
+      .toMatchObject({ check_bridge: true });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_mcp_get_launch_readiness_audit");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_mcp_get_launch_readiness_audit")?.arguments)
-      .toMatchObject({ check_bridge: false });
+      .toMatchObject({ check_bridge: true });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_bridge_capabilities");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_get_bridge_capabilities")?.arguments)
-      .toMatchObject({ check_bridge: false });
+      .toMatchObject({ check_bridge: true });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_bridge_setup_status");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_bridge_setup_status")?.arguments)
       .toMatchObject({ check_bridge: true });

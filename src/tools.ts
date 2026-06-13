@@ -4,6 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { analyzeAbletonSet, analyzeAudioFile, convertAudioFile } from "./analysis.js";
+import { openBridgeDevice } from "./bridge-activation.js";
 import { bridgeAction, getBridgeCapabilityMatrix, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
 import { getBridgeSetupStatus } from "./bridge-setup.js";
@@ -1446,6 +1447,11 @@ const toolDefs: ToolDef[] = [
     const child = (await import("node:child_process")).spawn(LOCAL_PATHS.liveExecutable, [], { detached: true, stdio: "ignore", env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
     child.unref();
     return { ok: true, pid: child.pid ?? null };
+  } },
+  { name: "ableton_open_bridge_device", description: "Open the installed Ableton MCP Bridge Max for Live preset through the host OS; dry-run by default and real opening requires write gate.", inputSchema: { ...DryRun }, annotations: rw, handler: async (args) => {
+    if (args.dry_run !== false) return { ok: true, bridgeOpen: await openBridgeDevice({ dryRun: true }) };
+    requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Opening Ableton MCP bridge device");
+    return { ok: true, bridgeOpen: await openBridgeDevice({ dryRun: false }) };
   } },
   { name: "ableton_live_status", description: "Detect whether Ableton Live is running.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, status: { liveRunning: (await environmentSnapshot()).liveRunning, processes: (await environmentSnapshot()).abletonProcesses } }) },
   { name: "ableton_bridge_install_instructions", description: "Return Max for Live bridge setup steps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bridge: { type: "max-for-live", path: redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), files: ["Ableton MCP Bridge.amxd", "ableton-mcp-bridge.maxpat", "ableton-mcp-http.js", "ableton-mcp-liveapi.js", "ableton-mcp-status.js", "package.json"], persistentPresetFolder: "%USERPROFILE%\\Documents\\Ableton\\User Library\\Presets\\MIDI Effects\\Max MIDI Effect", persistentDevice: "Ableton MCP Bridge.amxd", persistentSet: "%USERPROFILE%\\Documents\\Ableton\\Ableton MCP Bridge Set\\Ableton MCP Bridge Set Project\\Ableton MCP Bridge Set.als", steps: ["Run npm run bridge:install after npm run build.", "Open Ableton Live.", "Create or open a Live Set.", "Load Ableton MCP Bridge from User Library > Presets > MIDI Effects > Max MIDI Effect.", "Confirm the Max console says: Ableton MCP HTTP bridge listening on 127.0.0.1:17364.", "Run ableton_bridge_ping."] } }) },

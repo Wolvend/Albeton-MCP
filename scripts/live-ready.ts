@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
+import { openBridgeDevice } from "../src/bridge-activation.js";
 import { getBridgeSetupStatus } from "../src/bridge-setup.js";
 import { LOCAL_PATHS, PLATFORM } from "../src/config.js";
 
 type LiveReadyOptions = {
   launchLive: boolean;
+  openBridge: boolean;
   yes: boolean;
   waitSeconds: number;
 };
@@ -17,6 +19,7 @@ function readOptions(argv: string[]): LiveReadyOptions {
     : 45;
   return {
     launchLive: argv.includes("--launch-live"),
+    openBridge: argv.includes("--open-bridge-device"),
     yes: argv.includes("--yes"),
     waitSeconds: Number.isFinite(waitSeconds) ? Math.max(0, Math.min(300, waitSeconds)) : 45
   };
@@ -41,6 +44,16 @@ async function waitForLiveProcess(waitSeconds: number) {
   while (!latest.live.running && Date.now() - startedAt < waitSeconds * 1000) {
     await sleep(2000);
     latest = await getBridgeSetupStatus(false);
+  }
+  return latest;
+}
+
+async function waitForBridge(waitSeconds: number) {
+  const startedAt = Date.now();
+  let latest = await getBridgeSetupStatus(true);
+  while (latest.bridge.reachable !== true && Date.now() - startedAt < waitSeconds * 1000) {
+    await sleep(2000);
+    latest = await getBridgeSetupStatus(true);
   }
   return latest;
 }
@@ -96,9 +109,51 @@ async function launchLiveIfRequested(options: LiveReadyOptions, initial: Awaited
   };
 }
 
+async function openBridgeIfRequested(options: LiveReadyOptions, latest: Awaited<ReturnType<typeof getBridgeSetupStatus>>) {
+  if (!options.openBridge) {
+    return {
+      requested: false,
+      attempted: false,
+      skippedReason: "Use --open-bridge-device --yes or .\\launch.ps1 live-ready -OpenBridge to ask Ableton to load the bridge preset."
+    };
+  }
+  if (!options.yes) {
+    return {
+      requested: true,
+      attempted: false,
+      skippedReason: "--open-bridge-device requires --yes so scripts cannot alter the current Live set by accident."
+    };
+  }
+  if (!latest.live.running) {
+    return {
+      requested: true,
+      attempted: false,
+      skippedReason: "Ableton Live is not running. Use -StartLive with -OpenBridge or start Ableton first."
+    };
+  }
+  if (latest.bridge.reachable === true) {
+    return {
+      requested: true,
+      attempted: false,
+      skippedReason: "Bridge listener is already reachable."
+    };
+  }
+
+  const opened = await openBridgeDevice({ dryRun: false });
+  await waitForBridge(options.waitSeconds);
+  return {
+    requested: true,
+    attempted: opened.ok,
+    ...opened,
+    waitSeconds: options.waitSeconds
+  };
+}
+
 export async function buildLiveReadyReport(options: LiveReadyOptions) {
   const initial = await getBridgeSetupStatus(true);
   const launch = await launchLiveIfRequested(options, initial);
+  const afterLaunch = await getBridgeSetupStatus(true);
+  const bridgeOpen = await openBridgeIfRequested(options, afterLaunch);
   const final = await getBridgeSetupStatus(true);
   return {
     ok: final.status === "ready",
@@ -107,6 +162,7 @@ export async function buildLiveReadyReport(options: LiveReadyOptions) {
     platform: PLATFORM,
     executable: LOCAL_PATHS.liveExecutable || null,
     launch,
+    bridgeOpen,
     bridgeDevice: final.bridgeDevice,
     bridgeListener: {
       host: "127.0.0.1",
