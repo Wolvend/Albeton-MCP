@@ -100,7 +100,7 @@ ableton_get_full_snapshot
 
 If the bridge is not loaded, these tools should return `BRIDGE_UNREACHABLE` with setup steps.
 
-The live-smoke workflow calls `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_ping`, `ableton_get_live_state`, `ableton_get_full_snapshot`, track/scene/device listing, `ableton_control_mode_status`, and one `dry_run=true` write probe. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
+The live-smoke workflow calls `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_ping`, `ableton_get_live_state`, `ableton_get_full_snapshot`, track/scene/device listing, `ableton_get_routing_overview`, `ableton_control_mode_status`, and one `dry_run=true` write probe. When the bridge is loaded it reports track, scene, device, and send-matrix row counts. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
 
 ## Check the UI driver
 

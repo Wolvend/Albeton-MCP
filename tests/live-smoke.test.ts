@@ -26,6 +26,9 @@ describe("live smoke workflow", () => {
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_capture_screenshot");
     expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_download_sample");
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_live_state");
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_routing_overview");
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_get_routing_overview")?.arguments)
+      .toMatchObject({ include_devices: false });
   });
 
   it("builds a compact success report from mocked MCP results", () => {
@@ -37,6 +40,8 @@ describe("live smoke workflow", () => {
         ? { snapshot: { data: { state: { track_count: 4, scene_count: 9 }, tracks: [{}, {}], scenes: [{}, {}, {}] } } }
         : call.name === "ableton_duplicate_clip"
           ? { ok: true, dry_run: true }
+          : call.name === "ableton_get_routing_overview"
+            ? { ok: true, bridge: { data: { send_matrix: [{}, {}] } } }
           : call.name === "ableton_list_devices"
             ? { bridge: { data: { devices: [{}] } } }
           : { ok: true }
@@ -50,6 +55,7 @@ describe("live smoke workflow", () => {
     expect(report.counts.tracks).toBe(2);
     expect(report.counts.scenes).toBe(3);
     expect(report.counts.devices).toBe(1);
+    expect(report.counts.routingRows).toBe(2);
     expect(report.setupHints).toEqual([]);
   });
 

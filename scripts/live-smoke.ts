@@ -37,6 +37,7 @@ export type LiveSmokeReport = {
     tracks: number | null;
     scenes: number | null;
     devices: number | null;
+    routingRows: number | null;
   };
   setupHints: string[];
   results: PublicSmokeResult[];
@@ -51,6 +52,7 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_list_tracks", arguments: {}, required: true },
   { name: "ableton_list_scenes", arguments: {}, required: true },
   { name: "ableton_list_devices", arguments: {}, required: true },
+  { name: "ableton_get_routing_overview", arguments: { include_devices: false }, required: true },
   {
     name: "ableton_duplicate_clip",
     arguments: { track_index: 0, clip_slot_index: 0, destination_clip_slot_index: 1, dry_run: true },
@@ -117,6 +119,7 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
   const tracks = resultByName(results, "ableton_list_tracks")?.structuredContent;
   const scenes = resultByName(results, "ableton_list_scenes")?.structuredContent;
   const devices = resultByName(results, "ableton_list_devices")?.structuredContent;
+  const routing = resultByName(results, "ableton_get_routing_overview")?.structuredContent;
   const dryRun = resultByName(results, "ableton_duplicate_clip")?.structuredContent;
 
   const counts = {
@@ -127,7 +130,8 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
       ?? arrayLengthAt(snapshot, [["snapshot", "data", "scenes"]])
       ?? numberAt(snapshot, [["snapshot", "data", "state", "scene_count"]]),
     devices: arrayLengthAt(devices, [["bridge", "data", "devices"], ["devices", "data"], ["devices"], ["data", "devices"]])
-      ?? numberAt(snapshot, [["snapshot", "data", "state", "device_count"]])
+      ?? numberAt(snapshot, [["snapshot", "data", "state", "device_count"]]),
+    routingRows: arrayLengthAt(routing, [["bridge", "data", "send_matrix"], ["bridge", "send_matrix"], ["data", "send_matrix"], ["send_matrix"]])
   };
 
   const bridgePing = resultByName(results, "ableton_bridge_ping");

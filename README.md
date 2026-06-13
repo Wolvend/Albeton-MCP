@@ -73,7 +73,7 @@ Use these launch modes:
 | Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
-| Live smoke | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge readiness with read-only and dry-run calls only. |
+| Live smoke | `.\launch.ps1 live-smoke` | Confirms Ableton Live bridge and routing readiness with read-only and dry-run calls only. |
 | UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
 
 Pass `-SkipSetup` after first setup when you want fast startup from existing `dist` and installed bridge files. Generated client configs use this fast path by default, so rerun `.\launch.ps1 setup` after code updates that need a rebuild or bridge reinstall.

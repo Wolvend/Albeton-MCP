@@ -172,7 +172,7 @@ Result: succeeded under WSL with 197 tools, 3 resources, and 2 prompts. Platform
 wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh live-smoke'
 ```
 
-Result: completed with the same structured setup failure as the Windows live-smoke check because the Max for Live bridge was not loaded/listening.
+Result: completed with the same structured setup failure as the Windows live-smoke check because the Max for Live bridge was not loaded/listening. The smoke report included the routing overview probe and reported `routingRows: null` because bridge reads were unavailable.
 
 ## Live Bridge Smoke
 
@@ -186,9 +186,10 @@ Result: completed with structured setup failure, not fake success:
 ok: false
 bridgeReachable: false
 dryRunWriteConfirmed: true
+routingRows: null
 ```
 
-Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` during this run. Next steps are to open Ableton Live, load the Ableton MCP Bridge Max for Live device, then rerun live-smoke.
+Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` during this run. The workflow now calls `ableton_get_routing_overview` so a loaded bridge will also prove the send-matrix read path before real routing work. Next steps are to open Ableton Live, load the Ableton MCP Bridge Max for Live device, then rerun live-smoke.
 
 ## Security Notes
 
