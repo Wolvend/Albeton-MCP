@@ -11,6 +11,7 @@ import {
   getConceptPlanForReport,
   listArrangementPlans,
   listConceptPlans,
+  planConceptDeviceAutomationReadiness,
   planConceptProduction,
   planConceptTrack,
   preflightConceptExecution,
@@ -76,6 +77,10 @@ describe("concept-to-music planning", () => {
     }]);
     const stored = await readArrangementPlan(arrangement.arrangement.id);
     const dryRun = await executeConceptPlan({ arrangement_id: arrangement.arrangement.id, dry_run: true });
+    const readiness = await planConceptDeviceAutomationReadiness({
+      arrangement_id: arrangement.arrangement.id,
+      check_bridge: false
+    });
     const delivery = await renderDeliveryPlan(planned.plan.id);
 
     expect(arrangement.arrangement.actions.some((action) => action.action === "ableton_create_audio_track")).toBe(true);
@@ -100,6 +105,12 @@ describe("concept-to-music planning", () => {
     expect(stored.actions.find((action) => action.action === "ableton_load_preset_or_sample")?.payload.path).toBe(stagedPath);
     expect(dryRun.dry_run).toBe(true);
     expect(dryRun.executableActions).toBeGreaterThan(0);
+    expect(readiness.bridge).toMatchObject({ checked: false, reachable: null });
+    expect(readiness.summary.deviceChains).toBeGreaterThan(0);
+    expect(readiness.summary.automationTargets).toBeGreaterThan(0);
+    expect(readiness.summary.realDeviceInsertionSupported).toBe(false);
+    expect(readiness.deviceChains.some((entry) => entry.toolCallTemplates.some((call) => call.name === "ableton_insert_effect"))).toBe(true);
+    expect(readiness.automationTargets.some((entry) => entry.parameterHints.includes("Cutoff"))).toBe(true);
     expect(delivery.export.sampleRate).toBe(48000);
   });
 
@@ -151,6 +162,7 @@ describe("concept-to-music planning", () => {
     expect(bundle.approvalRequired).toBe(true);
     expect(bundle.gates.write.required).toBe(true);
     expect(bundle.exactToolCalls.realExecutionAfterApproval.arguments).toMatchObject({ dry_run: false });
+    expect(bundle.exactToolCalls.deviceAutomationReadiness.name).toBe("ableton_plan_concept_device_automation_readiness");
     expect(bundle.preflight.readyForRealWrite).toBe(false);
     expect(bundle.arrangement.actions.some((action) => action.payload.path === stagedPath)).toBe(false);
     expect(bundle.securityBoundaries.join(" ")).toMatch(/does not approve execution/i);

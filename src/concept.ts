@@ -54,6 +54,8 @@ export type ConceptExecutionPreflightOptions = {
 
 export type ConceptExecutionApprovalBundleOptions = ConceptExecutionPreflightOptions;
 
+export type ConceptDeviceAutomationReadinessOptions = ConceptExecutionPreflightOptions;
+
 type ConceptLayer = {
   name: string;
   type: "audio" | "midi" | "return";
@@ -719,6 +721,47 @@ function automationTargetName(automation: string): "reverb" | "delay" | "filter"
   if (text.includes("filter") || text.includes("bandwidth") || text.includes("low-pass")) return "filter";
   if (text.includes("volume") || text.includes("fade") || text.includes("swell") || text.includes("mute")) return "volume";
   return "unknown";
+}
+
+function deviceInsertTool(device: string) {
+  return /wavetable|operator|simpler|sampler|instrument rack|drum rack/i.test(device)
+    ? "ableton_insert_instrument"
+    : "ableton_insert_effect";
+}
+
+function automationParameterHints(target: ArrangementPlan["automationPlan"][number]["target"]) {
+  if (target === "filter") return ["Frequency", "Cutoff", "Filter Freq"];
+  if (target === "delay") return ["Feedback", "Dry/Wet", "Filter"];
+  if (target === "reverb") return ["Dry/Wet", "Decay Time", "Size"];
+  if (target === "volume") return ["Mixer volume"];
+  return ["Use ableton_get_device_parameter_map to choose a reviewed parameter."];
+}
+
+function devicesForAutomation(target: ArrangementPlan["automationPlan"][number]["target"], devices: string[]) {
+  const patterns = {
+    reverb: /reverb/i,
+    delay: /echo|delay/i,
+    filter: /filter|eq eight/i,
+    volume: /utility|compressor/i,
+    unknown: /.^/
+  } satisfies Record<ArrangementPlan["automationPlan"][number]["target"], RegExp>;
+  return devices.filter((device) => patterns[target].test(device));
+}
+
+function plannedTargetResolution(
+  plan: { target: "track" | "return"; track_created_offset?: number; return_created_offset?: number },
+  resolution?: CreatedTrackResolution
+) {
+  if (plan.target === "return") {
+    if (typeof plan.return_created_offset !== "number") return { kind: "return", status: "unresolved" };
+    return resolution
+      ? { kind: "return", status: "resolved", return_track_index: resolution.baseReturnTrackCount + plan.return_created_offset }
+      : { kind: "return", status: "requires_bridge_preflight", return_created_offset: plan.return_created_offset };
+  }
+  if (typeof plan.track_created_offset !== "number") return { kind: "track", status: "unresolved" };
+  return resolution
+    ? { kind: "track", status: "resolved", track_index: resolution.baseTrackCount + plan.track_created_offset }
+    : { kind: "track", status: "requires_bridge_preflight", track_created_offset: plan.track_created_offset };
 }
 
 async function writeJson(fileName: string, payload: unknown) {
@@ -1587,6 +1630,126 @@ export async function preflightConceptExecution(options: ConceptExecutionPreflig
   }
 }
 
+export async function planConceptDeviceAutomationReadiness(options: ConceptDeviceAutomationReadinessOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const bridge = {
+    checked: options.check_bridge !== false,
+    reachable: null as boolean | null,
+    resolution: null as CreatedTrackResolution | null,
+    error: null as string | null,
+    nextSteps: [] as string[]
+  };
+
+  if (bridge.checked) {
+    try {
+      bridge.resolution = bridgeSnapshotResolution(await getBridgeSnapshot(false));
+      bridge.reachable = true;
+    } catch (error) {
+      bridge.reachable = false;
+      bridge.error = error instanceof Error ? error.message : String(error);
+      bridge.nextSteps = bridgeSetupHints(error);
+    }
+  }
+
+  const deviceChains = arrangement.devicePlan.map((entry) => {
+    const target = plannedTargetResolution(entry, bridge.resolution ?? undefined);
+    const resolvedTrackIndex = "track_index" in target && typeof target.track_index === "number" ? target.track_index : null;
+    const canUseTrackDeviceTools = entry.target === "track" && resolvedTrackIndex !== null;
+    return {
+      layer: entry.layer,
+      target,
+      devices: entry.devices,
+      bridgeInsertionSupported: false,
+      supportReason: entry.target === "return"
+        ? "Return-track device insertion is not exposed by the current typed bridge tools."
+        : "Named Ableton-native device insertion returns unsupported until a reliable Browser/hot-swap path is verified.",
+      discoveryCalls: canUseTrackDeviceTools
+        ? [{ name: "ableton_list_devices", arguments: { track_id: String(resolvedTrackIndex) } }]
+        : [],
+      exactDryRunToolCalls: canUseTrackDeviceTools
+        ? entry.devices.map((device, index) => ({
+          name: deviceInsertTool(device),
+          arguments: {
+            track_index: resolvedTrackIndex,
+            device,
+            ...(deviceInsertTool(device) === "ableton_insert_effect" ? { position: index, dry_run: true } : { dry_run: true })
+          }
+        }))
+        : [],
+      toolCallTemplates: entry.devices.map((device, index) => ({
+        name: deviceInsertTool(device),
+        executable: false,
+        reason: "Resolve the generated track index with ableton_preflight_concept_execution before calling this template.",
+        arguments: {
+          ...(entry.track_created_offset === undefined ? {} : { track_created_offset: entry.track_created_offset }),
+          ...(entry.return_created_offset === undefined ? {} : { return_created_offset: entry.return_created_offset }),
+          device,
+          ...(deviceInsertTool(device) === "ableton_insert_effect" ? { position: index } : {}),
+          dry_run: true
+        }
+      }))
+    };
+  });
+
+  const automationTargets = arrangement.automationPlan.map((entry) => {
+    const chain = arrangement.devicePlan.find((candidate) => candidate.layer === entry.layer);
+    const target = chain ? plannedTargetResolution(chain, bridge.resolution ?? undefined) : { kind: "unknown", status: "unresolved" };
+    const resolvedTrackIndex = "track_index" in target && typeof target.track_index === "number" ? target.track_index : null;
+    const matchingDevices = chain ? devicesForAutomation(entry.target, chain.devices) : [];
+    return {
+      layer: entry.layer,
+      automation: entry.automation,
+      target: entry.target,
+      targetResolution: target,
+      candidateDevices: matchingDevices,
+      parameterHints: automationParameterHints(entry.target),
+      discoveryCalls: resolvedTrackIndex === null
+        ? []
+        : [
+          { name: "ableton_list_devices", arguments: { track_id: String(resolvedTrackIndex) } },
+          { name: "ableton_get_device_parameter_map", arguments: { track_index: resolvedTrackIndex, device_index: 0 } }
+        ],
+      exactDryRunToolCalls: resolvedTrackIndex !== null && entry.target === "volume"
+        ? [
+          { name: "ableton_create_automation_envelope", arguments: { track_index: resolvedTrackIndex, parameter_index: 0, dry_run: true } },
+          { name: "ableton_set_automation_point", arguments: { track_index: resolvedTrackIndex, parameter_index: 0, time: 0, value: 0.5, dry_run: true } }
+        ]
+        : [],
+      writeSupport: entry.target === "volume" && resolvedTrackIndex !== null
+        ? "dry_run_only_current_bridge_returns_unsupported"
+        : "requires_device_parameter_map_and_verified_liveapi_support"
+    };
+  });
+
+  return {
+    planType: "concept_device_automation_readiness",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      style: concept.style
+    },
+    bridge,
+    summary: {
+      deviceChains: deviceChains.length,
+      automationTargets: automationTargets.length,
+      exactDryRunDeviceCalls: deviceChains.reduce((count, entry) => count + entry.exactDryRunToolCalls.length, 0),
+      exactDryRunAutomationCalls: automationTargets.reduce((count, entry) => count + entry.exactDryRunToolCalls.length, 0),
+      realDeviceInsertionSupported: false,
+      realAutomationWriteSupported: false
+    },
+    deviceChains,
+    automationTargets,
+    nextSteps: [
+      "Run ableton_preflight_concept_execution with check_bridge=true after the bridge is loaded.",
+      "Use the discoveryCalls to inspect actual devices and parameter names before any automation attempt.",
+      "Keep device insertion and automation writes dry-run unless Ableton MCP reports support for the running bridge.",
+      "Use the user-enabled UI driver fallback only after explicit user choice."
+    ]
+  };
+}
+
 export async function createConceptExecutionApprovalBundle(options: ConceptExecutionApprovalBundleOptions) {
   const arrangement = await readArrangementPlan(options.arrangement_id);
   const concept = await readConceptPlan(arrangement.conceptPlanId);
@@ -1629,6 +1792,13 @@ export async function createConceptExecutionApprovalBundle(options: ConceptExecu
         arguments: {
           arrangement_id: arrangement.id,
           dry_run: true
+        }
+      },
+      deviceAutomationReadiness: {
+        name: "ableton_plan_concept_device_automation_readiness",
+        arguments: {
+          arrangement_id: arrangement.id,
+          check_bridge: true
         }
       },
       realExecutionAfterApproval: {

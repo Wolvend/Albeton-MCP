@@ -66,17 +66,22 @@ Fast path:
    - Checks the stored arrangement action counts, bridge reachability, created-track placeholder resolution, staged review items, and likely clip-slot blockers.
    - Reports `readyForRealWrite=false` unless a bridge snapshot is checked successfully and no blockers are found.
 
-11. `ableton_create_concept_execution_approval_bundle`
+11. `ableton_plan_concept_device_automation_readiness`
+   - Read-only.
+   - Converts staged `devicePlan` and `automationPlan` entries into discovery calls, dry-run templates, target hints, and explicit unsupported/support status.
+   - Does not insert devices, write automation, move the mouse, or approve execution.
+
+12. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
    - Packages the redacted concept, redacted arrangement, preflight result, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
-12. `ableton_execute_concept_plan`
+13. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-13. `ableton_render_delivery_plan`
+14. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -115,7 +120,7 @@ The arrangement plan includes:
 - A short editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
 - Optional approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Mechanical Texture`, or `Reversed Fragments`.
 - Optional approved reference-audio treatments for the user's own source track: degraded recognizable motif, stretched room wash, and reversed fragments. These can be rendered into staging with `ableton_prepare_concept_audio_layers`.
-- A staged automation plan for reverb, delay, filter, and volume movement. These lanes are review metadata until the live set has verified device/parameter targets.
+- A staged automation plan for reverb, delay, filter, and volume movement. `ableton_plan_concept_device_automation_readiness` turns these lanes into parameter-discovery calls and dry-run templates; they remain non-writing until the bridge proves support.
 
 Sample placement remains staged until local sample paths are approved. Assignment paths and executable reference audio must come from sample staging, Codex Imports, the Ableton User Library, or Live Recordings; tool responses redact the local path while stored plans retain the executable path. Device insertion and detailed automation remain explicit bridge/UI capability steps, not hidden side effects. Device chains are stored as reviewable `devicePlan` entries because named device insertion through LiveAPI requires a verified Browser or hot-swap target for the running Ableton version.
 
@@ -148,6 +153,7 @@ ableton_export_concept_midi_motif with dry_run=true
 ableton_prepare_concept_audio_layers with dry_run=true
 ableton_build_arrangement_from_prepared_audio after real layer preparation
 ableton_preflight_concept_execution with check_bridge=true
+ableton_plan_concept_device_automation_readiness
 ableton_create_concept_execution_approval_bundle
 ableton_execute_concept_plan with dry_run=true
 ```
