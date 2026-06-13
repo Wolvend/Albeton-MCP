@@ -32,6 +32,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_set_clip_color");
     expect(registeredToolNames).toContain("ableton_set_track_send");
     expect(registeredToolNames).toContain("ableton_list_track_sends");
+    expect(registeredToolNames).toContain("ableton_get_routing_overview");
     expect(registeredToolNames).toContain("ableton_get_return_track_mixer");
     expect(registeredToolNames).toContain("ableton_set_track_color");
     expect(registeredToolNames).toContain("ableton_set_return_track_color");
@@ -91,6 +92,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_set_track_volume).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_set_track_volume).toHaveProperty("track_index");
     expect(registeredToolSchemas.ableton_list_track_sends).toHaveProperty("track_index");
+    expect(registeredToolSchemas.ableton_get_routing_overview).toHaveProperty("include_devices");
     expect(registeredToolSchemas.ableton_set_track_color).toHaveProperty("color");
     expect(registeredToolSchemas.ableton_get_return_track_mixer).toHaveProperty("return_track_index");
     expect(registeredToolSchemas.ableton_set_return_track_color).toHaveProperty("color");

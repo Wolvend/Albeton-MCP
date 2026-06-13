@@ -90,6 +90,7 @@ const calls: SweepCall[] = [
   { name: "ableton_set_automation_point", arguments: { track_index: 0, device_index: 0, parameter_index: 1, time: 1, value: 0.5, dry_run: true } },
   { name: "ableton_simplify_automation", arguments: { track_index: 0, device_index: 0, parameter_index: 1, tolerance: 0.05, dry_run: true } },
   { name: "ableton_list_track_sends", arguments: {}, expected: "any" },
+  { name: "ableton_get_routing_overview", arguments: { include_devices: false }, expected: "any" },
   { name: "ableton_get_return_track_mixer", arguments: { return_track_index: 0 }, expected: "any" },
   { name: "ableton_set_return_track_volume", arguments: { return_track_index: 0, value: 0.7, dry_run: true } },
   { name: "ableton_set_return_track_pan", arguments: { return_track_index: 0, value: 0, dry_run: true } },

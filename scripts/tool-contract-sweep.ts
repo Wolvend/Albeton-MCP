@@ -179,6 +179,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_get_master_track", arguments: {}, expected: "any" },
     { name: "ableton_get_track_mixer", arguments: { track_id: "selected" }, expected: "any" },
     { name: "ableton_list_track_sends", arguments: {}, expected: "any" },
+    { name: "ableton_get_routing_overview", arguments: { include_devices: false }, expected: "any" },
     { name: "ableton_get_return_track_mixer", arguments: { return_track_index: 0 }, expected: "any" },
     { name: "ableton_list_scenes", arguments: {}, expected: "any" },
     { name: "ableton_list_clips", arguments: {}, expected: "any" },

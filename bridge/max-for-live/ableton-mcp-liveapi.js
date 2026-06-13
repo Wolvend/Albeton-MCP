@@ -248,6 +248,46 @@ function summarizeSends(trackPath) {
   return sends;
 }
 
+function routingOverview(payload) {
+  var includeDevices = Boolean(payload && payload.include_devices);
+  var tracks = listTracks(includeDevices, false);
+  var returnTracks = listReturnTracks(includeDevices);
+  var masterTrack = summarizeMasterTrack(includeDevices);
+  var sendMatrix = [];
+
+  for (var i = 0; i < tracks.length; i += 1) {
+    var track = tracks[i];
+    var sends = track && track.mixer && track.mixer.sends instanceof Array ? track.mixer.sends : [];
+    for (var j = 0; j < sends.length; j += 1) {
+      var send = sends[j];
+      sendMatrix.push({
+        track_index: track.index,
+        track_name: track.name,
+        send_index: send.send_index,
+        return_track_index: send.return_track_index,
+        return_track_name: send.return_track_name,
+        value: send.value,
+        min: send.min,
+        max: send.max,
+        is_enabled: send.is_enabled
+      });
+    }
+  }
+
+  return {
+    track_count: tracks.length,
+    return_track_count: returnTracks.length,
+    tracks: tracks,
+    return_tracks: returnTracks,
+    master_track: masterTrack,
+    send_matrix: sendMatrix,
+    next_steps: [
+      "Use send_matrix rows to choose send_index values for ableton_set_track_send.",
+      "Inspect return_tracks devices before routing reverb, delay, texture, or pressure layers."
+    ]
+  };
+}
+
 function summarizeScene(sceneIndex) {
   var sceneApi = liveObject("live_set scenes " + sceneIndex);
   return {
@@ -1091,6 +1131,7 @@ function bridgeCapabilities() {
     ["list_return_tracks", "read_only", "returns"],
     ["master_track", "read_only", "master"],
     ["track_mixer", "read_only", "mixer"],
+    ["routing_overview", "read_only", "mixer"],
     ["return_track_mixer", "read_only", "mixer"],
     ["list_scenes", "read_only", "scenes"],
     ["list_clips", "read_only", "clips"],
@@ -1197,6 +1238,7 @@ function dispatch(action, payload) {
   if (action === "list_return_tracks") return { return_tracks: listReturnTracks(false) };
   if (action === "master_track") return { master_track: summarizeMasterTrack(false) };
   if (action === "track_mixer") return getTrackMixer(payload);
+  if (action === "routing_overview") return routingOverview(payload);
   if (action === "return_track_mixer") return getReturnTrackMixer(payload);
   if (action === "list_scenes") return { scenes: listScenes() };
   if (action === "arrangement_markers") return listArrangementMarkers();
