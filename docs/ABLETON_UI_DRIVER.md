@@ -46,6 +46,7 @@ Response:
 - `ableton_list_safe_ui_actions`
 - `ableton_plan_ui_action_sequence`
 - `ableton_run_ui_action_sequence`
+- `ableton_begin_concept_device_ui_session`
 - `ableton_ui_driver_ping`
 - `ableton_focus_window`
 - `ableton_capture_screenshot`
@@ -64,6 +65,8 @@ Use named actions first:
 - `capture_detail_region`
 
 These actions are reviewed, Ableton-window scoped, serialized, and dry-run friendly. Raw coordinate clicks remain a fallback for cases where the named action map does not cover the workflow.
+
+For staged concept device placement, use `ableton_plan_concept_device_ui_placement` first. If the user intentionally starts the UI driver, `ableton_begin_concept_device_ui_session` runs only the reviewed focus and Browser/Detail capture sequence; it does not click, type, or insert devices.
 
 ## Concept Device Placement
 

@@ -80,6 +80,7 @@ describe("HyperNimbus Docker MCP profile plan", () => {
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_mcp_get_safe_tool_allowlist");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).toContain("ableton_plan_agent_music_session");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_execute_concept_plan");
+    expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_begin_concept_device_ui_session");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_stage_concept_samples");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_download_sample");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_click_coordinates");
@@ -102,6 +103,7 @@ describe("HyperNimbus Docker MCP profile plan", () => {
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_clip_markers");
     expect(HYPERNIMBUS_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_clip_color");
     expect(HYPERNIMBUS_RISKY_TOOL_DENYLIST).toContain("ableton_execute_concept_plan");
+    expect(HYPERNIMBUS_RISKY_TOOL_DENYLIST).toContain("ableton_begin_concept_device_ui_session");
     expect(HYPERNIMBUS_RISKY_TOOL_DENYLIST).toContain("ableton_stage_concept_samples");
     expect(HYPERNIMBUS_RISKY_TOOL_DENYLIST).toContain("ableton_click_coordinates");
   });

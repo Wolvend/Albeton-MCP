@@ -494,6 +494,8 @@ describe("concept-to-music planning", () => {
     expect(uiPlacement.placements.some((placement) => placement.exactGatedCallTemplates.dryRunUiSequence.name === "ableton_run_ui_action_sequence")).toBe(true);
     expect(uiPlacement.placements.every((placement) => placement.bridgeInsertionStatus === "unsupported_until_verified_browser_or_hotswap_path")).toBe(true);
     expect(uiPlacement.exactNextToolCalls.listSafeUiActions.name).toBe("ableton_list_safe_ui_actions");
+    expect(uiPlacement.exactNextToolCalls.beginUserGatedUiSession.name).toBe("ableton_begin_concept_device_ui_session");
+    expect(uiPlacement.exactNextToolCalls.beginUserGatedUiSession.arguments).toMatchObject({ dry_run: true });
     const stretchedDeviceSpec = deviceChainSpec.chainSpecs.find((entry) => entry.layer === "Stretched Room");
     expect(stretchedDeviceSpec?.devices.map((device) => device.name)).toContain("Hybrid Reverb");
     expect(stretchedDeviceSpec?.devices.some((device) =>

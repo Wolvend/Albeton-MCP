@@ -323,6 +323,69 @@ async function uiWrite(action: string, args: any) {
   return { ok: true, uiDriver: await uiDriverAction(action, args) as Record<string, unknown> };
 }
 
+async function beginConceptDeviceUiSession(args: any) {
+  const placement = await planConceptDeviceUiPlacement({
+    arrangement_id: args.arrangement_id,
+    max_devices: args.max_devices,
+    include_catalog_matches: args.include_catalog_matches,
+    include_plugin_presets: args.include_plugin_presets
+  }) as Record<string, any>;
+  const actions = ["focus_window", "capture_browser_region", "capture_detail_region"];
+  const session = {
+    arrangement_id: args.arrangement_id,
+    dry_run: args.dry_run !== false,
+    canExecuteNow: FLAGS.uiControl,
+    uiDriver: getUiDriverRuntimeState(),
+    placementSummary: placement.summary,
+    firstPlacements: Array.isArray(placement.placements) ? placement.placements.slice(0, Math.min(5, args.max_devices ?? 5)) : [],
+    reviewedUiActions: actions,
+    boundaries: {
+      focusesAbletonWindow: true,
+      capturesBrowserAndDetailRegions: true,
+      clicks: false,
+      typesText: false,
+      insertsDevices: false,
+      bridgeWrites: false,
+      rawCoordinates: false
+    },
+    followUpRequiresUserChoice: [
+      "Review the captured Browser and Detail screenshots.",
+      "Use ableton_type_text or ableton_click_coordinates only after explicit user approval for the visible Ableton window.",
+      "Rerun ableton_list_devices and ableton_get_device_parameter_map after any foreground device placement."
+    ]
+  };
+  if (args.dry_run !== false) {
+    return {
+      ok: true,
+      dry_run: true,
+      session,
+      exactNextToolCall: {
+        name: "ableton_begin_concept_device_ui_session",
+        arguments: {
+          arrangement_id: args.arrangement_id,
+          max_devices: args.max_devices,
+          include_catalog_matches: args.include_catalog_matches,
+          include_plugin_presets: args.include_plugin_presets,
+          dry_run: false
+        }
+      },
+      nextStep: "Start .\\launch.ps1 ui-driver, confirm Ableton is foreground-safe to control, then rerun with dry_run=false."
+    };
+  }
+  requireFlag(FLAGS.uiControl, "ABLETON_MCP_ENABLE_UI_CONTROL", "Begin concept device UI session");
+  const uiDriver = await uiDriverAction("run_ui_action_sequence", { actions, dry_run: false }) as Record<string, unknown>;
+  return {
+    ok: true,
+    dry_run: false,
+    session: { ...session, dry_run: false, uiDriver },
+    nextSteps: [
+      "Review the captured screenshots before any click or type action.",
+      "Keep bridge write execution paused while foreground UI placement is active.",
+      "Use raw coordinate clicks only after the user has approved the visible target."
+    ]
+  };
+}
+
 function controlModeStatus() {
   return {
     defaultMode: "background_bridge",
@@ -1148,6 +1211,7 @@ toolDefs.push(
   { name: "ableton_render_concept_device_chain_spec", description: "Render a read-only production device-chain spec for each staged concept layer with roles, parameter hints, discovery calls, and dry-run templates.", inputSchema: { arrangement_id: ArrangementPlanId }, annotations: ro, handler: async (args) => ({ ok: true, deviceChainSpec: await renderConceptDeviceChainSpec(args) as any }) },
   { name: "ableton_render_concept_device_catalog_matches", description: "Match staged concept device chains against already-indexed Ableton presets, Max devices, and optionally plugin presets without scanning or writing.", inputSchema: { arrangement_id: ArrangementPlanId, max_candidates_per_device: z.number().int().min(1).max(10).default(3), include_plugin_presets: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, catalogMatches: await renderConceptDeviceCatalogMatches(args) as any }) },
   { name: "ableton_plan_concept_device_ui_placement", description: "Plan user-gated foreground UI placement for staged concept devices without moving the mouse, typing, or inserting devices.", inputSchema: { arrangement_id: ArrangementPlanId, max_devices: z.number().int().min(1).max(64).default(24), include_catalog_matches: z.boolean().default(true), include_plugin_presets: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, uiPlacement: await planConceptDeviceUiPlacement(args) as any }) },
+  { name: "ableton_begin_concept_device_ui_session", description: "Begin a user-gated concept device UI session by focusing Ableton and capturing Browser/Detail regions; dry-run by default and never clicks or types.", inputSchema: { arrangement_id: ArrangementPlanId, max_devices: z.number().int().min(1).max(64).default(12), include_catalog_matches: z.boolean().default(true), include_plugin_presets: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, uiSession: await beginConceptDeviceUiSession(args) }) },
   { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default and real execution requires a matching approval bundle id.", inputSchema: { arrangement_id: ArrangementPlanId, approval_id: z.string().regex(/^approval-[a-f0-9]{16}$/).optional(), approval_confirmed: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run, approval_id: args.approval_id, approval_confirmed: args.approval_confirmed }) as any }) },
   { name: "ableton_render_concept_timeline", description: "Render a stored concept plan as a section-by-section layer timeline without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, timeline: await renderConceptTimeline(args.plan_id) as any }) },
   { name: "ableton_render_concept_mix_plan", description: "Render a stored concept plan into layer-by-layer mix, routing, automation, and gain-staging guidance without downloads, writes, or UI control.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, mixPlan: await renderConceptMixPlan(args.plan_id) as any }) },

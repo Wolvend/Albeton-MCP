@@ -146,6 +146,7 @@ export const HYPERNIMBUS_SAFE_TOOL_ALLOWLIST = [
 
 export const HYPERNIMBUS_RISKY_TOOL_DENYLIST = [
   "ableton_execute_concept_plan",
+  "ableton_begin_concept_device_ui_session",
   "ableton_stage_concept_samples",
   "ableton_download_sample",
   "ableton_import_sample_to_library",

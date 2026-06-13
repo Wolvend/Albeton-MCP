@@ -77,6 +77,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_render_concept_device_chain_spec");
     expect(registeredToolNames).toContain("ableton_render_concept_device_catalog_matches");
     expect(registeredToolNames).toContain("ableton_plan_concept_device_ui_placement");
+    expect(registeredToolNames).toContain("ableton_begin_concept_device_ui_session");
     expect(registeredToolNames).toContain("ableton_execute_concept_plan");
     expect(registeredToolNames).toContain("ableton_render_concept_timeline");
     expect(registeredToolNames).toContain("ableton_render_concept_mix_plan");
@@ -199,6 +200,8 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_render_concept_device_catalog_matches).toHaveProperty("include_plugin_presets");
     expect(registeredToolSchemas.ableton_plan_concept_device_ui_placement).toHaveProperty("max_devices");
     expect(registeredToolSchemas.ableton_plan_concept_device_ui_placement).toHaveProperty("include_catalog_matches");
+    expect(registeredToolSchemas.ableton_begin_concept_device_ui_session).toHaveProperty("dry_run");
+    expect(registeredToolSchemas.ableton_begin_concept_device_ui_session).toHaveProperty("max_devices");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("approval_id");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("approval_confirmed");

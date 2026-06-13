@@ -172,34 +172,40 @@ Fast path:
    - Does not move the mouse, type, insert devices, click raw coordinates, contact Ableton, write files, or approve execution.
    - Use this only when the background bridge cannot yet insert a device and the user intentionally chooses a separate foreground UI session.
 
-26. `ableton_plan_concept_device_automation_readiness`
+26. `ableton_begin_concept_device_ui_session`
+   - Dry-run by default.
+   - Starts the user-gated foreground readiness session for staged concept devices only after `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
+   - Runs the reviewed UI action sequence `focus_window`, `capture_browser_region`, and `capture_detail_region`; it never clicks, types, inserts devices, writes bridge actions, or uses raw coordinates.
+   - Use this to collect screenshot evidence before any user-approved device search, click, or typing step.
+
+27. `ableton_plan_concept_device_automation_readiness`
    - Read-only.
    - Converts staged `devicePlan` and `automationPlan` entries into discovery calls, dry-run templates, target hints, and explicit unsupported/support status.
    - Does not insert devices, write automation, move the mouse, or approve execution.
 
-27. `ableton_create_concept_execution_approval_bundle`
+28. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
    - Packages the redacted concept, redacted arrangement, preflight result, deterministic `approval_id`, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
-28. `ableton_execute_concept_plan`
+29. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false`, `ABLETON_MCP_ENABLE_WRITE=1`, the matching `approval_id`, `approval_confirmed=true`, and a successful bridge preflight.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
    - Writes a redacted execution journal under `diagnostics\runtime\concept-executions` before live preflight and after each action outcome.
    - Stops immediately with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` if the loaded bridge returns `unsupported: true` for any approved action, so clients do not mistake a bridge limitation for successful execution.
 
-29. `ableton_list_concept_execution_journals`
+30. `ableton_list_concept_execution_journals`
    - Read-only.
    - Lists recent redacted execution journals with status, event counts, failure counts, and exact follow-up calls.
    - Does not accept file paths, scan broadly, or expose raw local sample paths.
 
-30. `ableton_get_concept_execution_journal`
+31. `ableton_get_concept_execution_journal`
    - Read-only.
    - Reads one generated execution journal id and returns the redacted event timeline for post-run forensics.
    - Use this after a failed or stopped real execution to see which action ran last.
 
-31. `ableton_render_delivery_plan`
+32. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 

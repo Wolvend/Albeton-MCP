@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-212 tools
+213 tools
 3 resources
 2 prompts
 ```
@@ -57,6 +57,7 @@ Control-mode tools:
 - `ableton_render_concept_device_chain_spec`: renders the staged device chains as a production-ready review spec with layer roles, device order, conservative parameter hints, automation links, discovery calls, and dry-run templates.
 - `ableton_render_concept_device_catalog_matches`: matches staged device-chain names against already-indexed Ableton presets, Max devices, and optional plugin presets without scanning, writing, or exposing local paths.
 - `ableton_plan_concept_device_ui_placement`: plans explicit user-gated foreground UI placement for staged concept devices without moving the mouse, typing, inserting devices, or using raw coordinates.
+- `ableton_begin_concept_device_ui_session`: dry-run-first foreground readiness session for staged concept devices; when `ABLETON_MCP_ENABLE_UI_CONTROL=1`, it only focuses Ableton and captures Browser/Detail regions, with no clicks, typing, or device insertion.
 - `ableton_plan_reference_audio_intake`: classifies a local reference-audio path as ready, needing staging/import, or unsupported without reading unapproved paths.
 - `ableton_plan_source_audio_transformation`: maps approved or not-yet-staged source audio into liminal concept treatments, layer roles, dry-run conversion templates, and exact next calls without reading unapproved paths or writing files.
 - `ableton_render_concept_execution_action_matrix`: renders each stored arrangement action with bridge capability status, write gates, placeholder dependencies, staged-only notes, and direct dry-run availability.

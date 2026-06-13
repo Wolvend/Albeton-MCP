@@ -4040,6 +4040,7 @@ export async function planConceptDeviceUiPlacement(options: ConceptDeviceUiPlace
       listSafeUiActions: { name: "ableton_list_safe_ui_actions", arguments: {} },
       planUiControlSession: { name: "ableton_plan_ui_control_session", arguments: { purpose: "Review staged concept device placement", actions: ["focus", "screenshot", "region_capture", "click", "type"] } },
       dryRunUiReadinessSequence: { name: "ableton_run_ui_action_sequence", arguments: { actions: ["focus_window", "capture_browser_region", "capture_detail_region"], dry_run: true } },
+      beginUserGatedUiSession: { name: "ableton_begin_concept_device_ui_session", arguments: { arrangement_id: arrangement.id, max_devices: maxDevices, include_catalog_matches: options.include_catalog_matches !== false, include_plugin_presets: options.include_plugin_presets === true, dry_run: true } },
       deviceCatalogMatches: { name: "ableton_render_concept_device_catalog_matches", arguments: { arrangement_id: arrangement.id, max_candidates_per_device: 3, include_plugin_presets: options.include_plugin_presets === true } },
       bridgeReadiness: { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: arrangement.id, check_bridge: true } }
     },

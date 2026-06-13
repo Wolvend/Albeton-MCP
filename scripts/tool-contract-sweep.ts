@@ -375,6 +375,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_render_concept_device_chain_spec", arguments: { arrangement_id: "arrangement-0000000000000000" } },
     { name: "ableton_render_concept_device_catalog_matches", arguments: { arrangement_id: "arrangement-0000000000000000", max_candidates_per_device: 3, include_plugin_presets: false } },
     { name: "ableton_plan_concept_device_ui_placement", arguments: { arrangement_id: "arrangement-0000000000000000", max_devices: 12, include_catalog_matches: true } },
+    { name: "ableton_begin_concept_device_ui_session", arguments: { arrangement_id: "arrangement-0000000000000000", max_devices: 3, include_catalog_matches: true, dry_run: true } },
     { name: "ableton_export_concept_midi_motif", arguments: { plan_id: conceptPlanId, output_name: "contract-sweep-motif.mid", dry_run: true } },
     { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-0000000000000000", dry_run: true } },
     { name: "ableton_render_concept_timeline", arguments: { plan_id: conceptPlanId } },
