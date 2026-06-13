@@ -47,6 +47,11 @@ export type ConceptProductionPlanInput = ConceptPlanInput & {
   sample_page_size?: number;
 };
 
+export type ConceptExecutionPreflightOptions = {
+  arrangement_id: string;
+  check_bridge?: boolean;
+};
+
 type ConceptLayer = {
   name: string;
   type: "audio" | "midi" | "return";
@@ -587,6 +592,52 @@ function actionPayloadWithCreatedTrack(action: ArrangementAction, resolution: Cr
   }
 
   return payload;
+}
+
+function dataFromBridgeResponse(snapshot: unknown): Record<string, unknown> {
+  const response = snapshot as { data?: unknown };
+  return response.data && typeof response.data === "object" && !Array.isArray(response.data)
+    ? response.data as Record<string, unknown>
+    : {};
+}
+
+function bridgeSetupHints(error?: unknown) {
+  const fromError = error as { nextSteps?: unknown };
+  if (Array.isArray(fromError?.nextSteps)) {
+    return fromError.nextSteps.filter((step): step is string => typeof step === "string");
+  }
+  return [
+    "Open Ableton Live.",
+    "Install/load the Max for Live bridge from bridge/max-for-live.",
+    "Retry ableton_bridge_ping or ableton_preflight_concept_execution."
+  ];
+}
+
+function clipSlotIssue(snapshot: unknown, action: ArrangementAction, payload: Record<string, unknown>) {
+  if (action.action !== "ableton_load_preset_or_sample" && action.action !== "ableton_insert_midi_notes") return null;
+  if (typeof action.payload.track_created_offset === "number") return null;
+  const trackIndex = typeof payload.track_index === "number" ? payload.track_index : null;
+  const clipSlotIndex = typeof payload.clip_slot_index === "number" ? payload.clip_slot_index : null;
+  if (trackIndex === null || clipSlotIndex === null) return null;
+  const tracks = dataFromBridgeResponse(snapshot).tracks;
+  if (!Array.isArray(tracks)) return null;
+  const track = tracks.find((entry) => {
+    const record = entry as { index?: unknown };
+    return Number(record.index) === trackIndex;
+  }) as { clips?: unknown } | undefined;
+  const clips = track?.clips;
+  if (!Array.isArray(clips)) return null;
+  const slot = clips.find((entry) => {
+    const record = entry as { slot_index?: unknown };
+    return Number(record.slot_index) === clipSlotIndex;
+  }) as { has_clip?: unknown } | undefined;
+  if (!slot || slot.has_clip !== true) return null;
+  return {
+    severity: "blocker",
+    code: "CLIP_SLOT_OCCUPIED",
+    action: action.action,
+    message: `Track ${trackIndex} clip slot ${clipSlotIndex} already contains a clip.`
+  };
 }
 
 function redactActionPayload(payload: Record<string, unknown>) {
@@ -1381,6 +1432,134 @@ export async function planConceptProduction(options: ConceptProductionPlanInput)
       "Execute the stored arrangement only after Ableton bridge live-smoke passes and ABLETON_MCP_ENABLE_WRITE=1 is intentional."
     ]
   };
+}
+
+export async function preflightConceptExecution(options: ConceptExecutionPreflightOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const safeActions = arrangement.actions.filter((action) => action.safeToExecute);
+  const skippedActions = arrangement.actions.filter((action) => !action.safeToExecute);
+  const checkBridge = options.check_bridge !== false;
+  const issues = [];
+  const actionSummary = {
+    total: arrangement.actions.length,
+    executable: safeActions.length,
+    skipped: skippedActions.length,
+    samplePlacements: arrangement.actions.filter((action) => action.action === "ableton_load_preset_or_sample").length,
+    midiNoteInsertions: arrangement.actions.filter((action) => action.action === "ableton_insert_midi_notes").length,
+    trackCreates: arrangement.actions.filter((action) => action.action.endsWith("_track")).length,
+    sceneCreates: arrangement.actions.filter((action) => action.action === "ableton_create_scene").length,
+    markerCreates: arrangement.actions.filter((action) => action.action === "ableton_create_arrangement_marker").length,
+    devicePlan: arrangement.devicePlan.length,
+    automationPlan: arrangement.automationPlan.length
+  };
+  if (skippedActions.length > 0) {
+    issues.push({
+      severity: "warning",
+      code: "SKIPPED_ACTIONS",
+      message: `${skippedActions.length} stored action(s) are marked not safe to execute and will be skipped.`
+    });
+  }
+  if (arrangement.devicePlan.length > 0) {
+    issues.push({
+      severity: "warning",
+      code: "STAGED_DEVICE_PLAN",
+      message: `${arrangement.devicePlan.length} device-chain plan item(s) remain staged for review or user-enabled UI fallback.`
+    });
+  }
+  if (arrangement.automationPlan.length > 0) {
+    issues.push({
+      severity: "warning",
+      code: "STAGED_AUTOMATION_PLAN",
+      message: `${arrangement.automationPlan.length} automation plan item(s) remain staged until LiveAPI parameter targets are verified.`
+    });
+  }
+
+  if (!checkBridge) {
+    issues.push({
+      severity: "warning",
+      code: "BRIDGE_NOT_CHECKED",
+      message: "Bridge snapshot was not requested; run with check_bridge=true before real execution."
+    });
+    return {
+      arrangement_id: arrangement.id,
+      status: "bridge_not_checked",
+      readyForRealWrite: false,
+      actionSummary,
+      bridge: {
+        checked: false,
+        reachable: null
+      },
+      issues,
+      nextSteps: [
+        "Run this preflight again with check_bridge=true after Ableton and the Max for Live bridge are loaded.",
+        "Keep ableton_execute_concept_plan dry_run=true until this preflight reports readyForRealWrite=true."
+      ]
+    };
+  }
+
+  try {
+    const snapshot = await getBridgeSnapshot(false);
+    const resolution = bridgeSnapshotResolution(snapshot);
+    const snapshotData = dataFromBridgeResponse(snapshot);
+    const snapshotState = snapshotData.state && typeof snapshotData.state === "object"
+      ? snapshotData.state as { scene_count?: unknown }
+      : {};
+    const sceneCount = Number(snapshotState.scene_count);
+    const resolvedActions = [];
+    for (const action of safeActions) {
+      const payload = actionPayloadWithCreatedTrack(action, resolution);
+      const issue = clipSlotIssue(snapshot, action, payload);
+      if (issue) issues.push(issue);
+      resolvedActions.push({
+        action: action.action,
+        payload: redactActionPayload(payload),
+        reason: action.reason
+      });
+    }
+    const blockers = issues.filter((issue) => issue.severity === "blocker");
+    return {
+      arrangement_id: arrangement.id,
+      status: blockers.length === 0 ? "ready" : "blocked",
+      readyForRealWrite: blockers.length === 0,
+      actionSummary,
+      bridge: {
+        checked: true,
+        reachable: true,
+        resolution,
+        trackCount: resolution.baseTrackCount,
+        returnTrackCount: resolution.baseReturnTrackCount,
+        sceneCount: Number.isFinite(sceneCount) ? sceneCount : null
+      },
+      issues,
+      resolvedActions,
+      stagedReview: {
+        devicePlan: arrangement.devicePlan,
+        automationPlan: arrangement.automationPlan
+      },
+      nextSteps: blockers.length === 0
+        ? ["Review resolvedActions, then call ableton_execute_concept_plan with dry_run=false only after ABLETON_MCP_ENABLE_WRITE=1 is intentional."]
+        : ["Resolve blocker issues, then rerun preflight before real execution."]
+    };
+  } catch (error) {
+    return {
+      arrangement_id: arrangement.id,
+      status: "bridge_unreachable",
+      readyForRealWrite: false,
+      actionSummary,
+      bridge: {
+        checked: true,
+        reachable: false,
+        error: error instanceof Error ? error.message : String(error),
+        nextSteps: bridgeSetupHints(error)
+      },
+      issues: [{
+        severity: "blocker",
+        code: "BRIDGE_UNREACHABLE",
+        message: "Ableton bridge snapshot could not be read; real execution is not ready."
+      }],
+      nextSteps: bridgeSetupHints(error)
+    };
+  }
 }
 
 export async function executeConceptPlan(options: { arrangement_id: string; dry_run: boolean }) {

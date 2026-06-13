@@ -61,12 +61,17 @@ Fast path:
    - Builds a stored arrangement plan using the prepared layer files internally.
    - Returns redacted paths only.
 
-10. `ableton_execute_concept_plan`
+10. `ableton_preflight_concept_execution`
+   - Read-only.
+   - Checks the stored arrangement action counts, bridge reachability, created-track placeholder resolution, staged review items, and likely clip-slot blockers.
+   - Reports `readyForRealWrite=false` unless a bridge snapshot is checked successfully and no blockers are found.
+
+11. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false` and `ABLETON_MCP_ENABLE_WRITE=1`.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
 
-11. `ableton_render_delivery_plan`
+12. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -136,6 +141,7 @@ ableton_build_layered_arrangement_plan
 ableton_export_concept_midi_motif with dry_run=true
 ableton_prepare_concept_audio_layers with dry_run=true
 ableton_build_arrangement_from_prepared_audio after real layer preparation
+ableton_preflight_concept_execution with check_bridge=true
 ableton_execute_concept_plan with dry_run=true
 ```
 

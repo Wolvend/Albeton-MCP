@@ -12,6 +12,7 @@ import {
   listConceptPlans,
   planConceptProduction,
   planConceptTrack,
+  preflightConceptExecution,
   prepareConceptAudioLayers,
   readArrangementPlan,
   renderDeliveryPlan,
@@ -96,6 +97,28 @@ describe("concept-to-music planning", () => {
     expect(dryRun.dry_run).toBe(true);
     expect(dryRun.executableActions).toBeGreaterThan(0);
     expect(delivery.export.sampleRate).toBe(48000);
+  });
+
+  it("preflights concept execution without contacting the bridge when disabled", async () => {
+    const planned = await planConceptTrack({
+      concept: "preflight backrooms corridor with pressure tone",
+      target_duration_seconds: 90,
+      intensity: 7,
+      sources: ["local_library"]
+    });
+    const arrangement = await buildLayeredArrangementPlan(planned.plan.id);
+    const preflight = await preflightConceptExecution({
+      arrangement_id: arrangement.arrangement.id,
+      check_bridge: false
+    });
+
+    expect(preflight.status).toBe("bridge_not_checked");
+    expect(preflight.readyForRealWrite).toBe(false);
+    expect(preflight.bridge).toMatchObject({ checked: false, reachable: null });
+    expect(preflight.actionSummary.executable).toBeGreaterThan(0);
+    expect(preflight.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "BRIDGE_NOT_CHECKED", severity: "warning" })
+    ]));
   });
 
   it("plans concept MIDI motif export without writing by default", async () => {
