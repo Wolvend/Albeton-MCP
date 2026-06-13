@@ -26,6 +26,7 @@ import {
   prepareConceptAudioLayers,
   renderConceptAttributionBundle,
   renderConceptAutomationMap,
+  renderConceptDeviceChainSpec,
   renderConceptExecutionActionMatrix,
   renderConceptExecutionManifest,
   renderConceptMixPlan,
@@ -252,6 +253,9 @@ describe("concept-to-music planning", () => {
       arrangement_id: arrangement.arrangement.id,
       check_bridge: false
     });
+    const deviceChainSpec = await renderConceptDeviceChainSpec({
+      arrangement_id: arrangement.arrangement.id
+    });
     const readiness = await planConceptDeviceAutomationReadiness({
       arrangement_id: arrangement.arrangement.id,
       check_bridge: false
@@ -338,6 +342,19 @@ describe("concept-to-music planning", () => {
       name: "ableton_preflight_concept_execution",
       arguments: { arrangement_id: arrangement.arrangement.id, check_bridge: true }
     });
+    expect(deviceChainSpec.specType).toBe("concept_device_chain_spec");
+    expect(deviceChainSpec.safety).toMatchObject({ writesAbleton: false, downloads: false, uiControl: false, bridgeContact: false });
+    expect(deviceChainSpec.summary.deviceChains).toBe(arrangement.arrangement.devicePlan.length);
+    expect(deviceChainSpec.summary.realDeviceInsertionSupported).toBe(false);
+    expect(deviceChainSpec.summary.realAutomationWriteSupported).toBe(false);
+    expect(deviceChainSpec.exactNextToolCalls.readinessWithBridge.name).toBe("ableton_plan_concept_device_automation_readiness");
+    expect(deviceChainSpec.automationDiscoveryCalls.some((entry) => entry.call.name === "ableton_extract_automation_summary")).toBe(true);
+    const stretchedDeviceSpec = deviceChainSpec.chainSpecs.find((entry) => entry.layer === "Stretched Room");
+    expect(stretchedDeviceSpec?.devices.map((device) => device.name)).toContain("Hybrid Reverb");
+    expect(stretchedDeviceSpec?.devices.some((device) =>
+      device.name === "Hybrid Reverb" && device.parameterHints.some((hint) => hint.parameter === "Dry/Wet")
+    )).toBe(true);
+    expect(stretchedDeviceSpec?.dryRunToolTemplates.every((call) => call.arguments.dry_run === true)).toBe(true);
     const sampleMatrixAction = actionMatrix.actions.find((action) => action.action === "ableton_load_preset_or_sample");
     expect(sampleMatrixAction?.requiresApprovedLocalSample).toBe(true);
     expect(sampleMatrixAction?.directDryRunToolCall).toBeNull();

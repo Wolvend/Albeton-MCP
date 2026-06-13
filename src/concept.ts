@@ -75,6 +75,10 @@ export type ConceptDeviceAutomationReadinessOptions = ConceptExecutionPreflightO
 
 export type ConceptRoutingReadinessOptions = ConceptExecutionPreflightOptions;
 
+export type ConceptDeviceChainSpecOptions = {
+  arrangement_id: string;
+};
+
 export type ConceptExecutionManifestOptions = {
   arrangement_id: string;
 };
@@ -1614,6 +1618,66 @@ function devicesForAutomation(target: ArrangementPlan["automationPlan"][number][
     unknown: /.^/
   } satisfies Record<ArrangementPlan["automationPlan"][number]["target"], RegExp>;
   return devices.filter((device) => patterns[target].test(device));
+}
+
+function deviceRoleHint(device: string, layer: ConceptLayer | undefined) {
+  const text = device.toLowerCase();
+  const layerName = layer?.name.toLowerCase() ?? "";
+  if (text.includes("hybrid reverb") || text === "reverb") return "Creates the long architectural tail and distance cue for the layer.";
+  if (text.includes("echo") || text.includes("delay")) return "Adds repeat smear, throw movement, and feedback instability.";
+  if (text.includes("auto filter") || text.includes("eq eight")) return layerName.includes("memory")
+    ? "Band-limits the recognizable memory so it feels damaged and receded."
+    : "Shapes bandwidth, removes masking, and creates darkening or reveal movement.";
+  if (text.includes("saturator") || text.includes("redux")) return "Adds age, grit, nonlinear pressure, and degraded playback texture.";
+  if (text.includes("utility")) return "Controls gain, width, phase safety, and automation-friendly level staging.";
+  if (text.includes("compressor") || text.includes("glue")) return "Contains peaks and keeps the layer stable under long ambience.";
+  if (text.includes("operator") || text.includes("wavetable") || text.includes("simpler")) return "Provides the instrument source for the layer before mix effects.";
+  return layer?.role ?? "Supports the layer's sound-design role.";
+}
+
+function deviceDefaultParameterHints(device: string) {
+  const text = device.toLowerCase();
+  if (text.includes("hybrid reverb")) return [
+    { parameter: "Dry/Wet", startingValue: "18-35%", automationUse: "Increase during collapse and tails." },
+    { parameter: "Decay Time", startingValue: "5-12s", automationUse: "Lengthen late sections for spatial loss." },
+    { parameter: "Size", startingValue: "70-100%", automationUse: "Keep large for backrooms-scale space." }
+  ];
+  if (text.includes("echo")) return [
+    { parameter: "Dry/Wet", startingValue: "8-22%", automationUse: "Raise on phrase ends and memory fragments." },
+    { parameter: "Feedback", startingValue: "18-42%", automationUse: "Increase only where repeats should destabilize." },
+    { parameter: "Filter", startingValue: "dark high cut", automationUse: "Narrow the repeats over time." }
+  ];
+  if (text.includes("auto filter")) return [
+    { parameter: "Frequency/Cutoff", startingValue: "350-1800 Hz", automationUse: "Sweep downward for suffocation or upward for reveals." },
+    { parameter: "Resonance", startingValue: "8-24%", automationUse: "Use sparingly to avoid piercing peaks." }
+  ];
+  if (text.includes("eq eight")) return [
+    { parameter: "High-pass", startingValue: "40-140 Hz by layer", automationUse: "Keep rumble intentional and remove masking." },
+    { parameter: "Low-pass", startingValue: "3-9 kHz", automationUse: "Dull clear memories into tape-like distance." }
+  ];
+  if (text.includes("saturator")) return [
+    { parameter: "Drive", startingValue: "1-5 dB", automationUse: "Push texture during tension sections." },
+    { parameter: "Dry/Wet", startingValue: "35-70%", automationUse: "Blend so ambience stays usable." }
+  ];
+  if (text.includes("utility")) return [
+    { parameter: "Gain", startingValue: "-12 to -4 dB", automationUse: "Use as the safest level automation target." },
+    { parameter: "Width", startingValue: "60-120%", automationUse: "Narrow lows and widen distant beds only when stable." }
+  ];
+  if (text.includes("compressor") || text.includes("glue")) return [
+    { parameter: "Threshold", startingValue: "light gain reduction", automationUse: "Avoid pumping unless it is an intentional effect." },
+    { parameter: "Makeup", startingValue: "off or minimal", automationUse: "Keep gain staging predictable." }
+  ];
+  if (text.includes("redux")) return [
+    { parameter: "Bit Reduction", startingValue: "10-14 bit", automationUse: "Lower in short moments for memory collapse." },
+    { parameter: "Sample Rate", startingValue: "soft reduction", automationUse: "Avoid full-range harshness on long beds." }
+  ];
+  return [
+    { parameter: "Dry/Wet or Amount", startingValue: "conservative", automationUse: "Review the device parameter map before writing." }
+  ];
+}
+
+function deviceCategory(device: string) {
+  return deviceInsertTool(device) === "ableton_insert_instrument" ? "instrument" : "audio_effect";
 }
 
 function sampleClipShapeForLayer(layerName: string, horror: boolean) {
@@ -3177,6 +3241,151 @@ export async function planConceptDeviceAutomationReadiness(options: ConceptDevic
       "Use ableton_extract_automation_summary discovery calls to inspect mixer, send, and device parameter candidates before any automation attempt.",
       "Keep device insertion and automation writes dry-run unless Ableton MCP reports support for the running bridge.",
       "Use the user-enabled UI driver fallback only after explicit user choice."
+    ]
+  };
+}
+
+export async function renderConceptDeviceChainSpec(options: ConceptDeviceChainSpecOptions) {
+  const arrangement = await readArrangementPlan(options.arrangement_id);
+  const concept = await readConceptPlan(arrangement.conceptPlanId);
+  const layersByName = new Map(concept.layers.map((layer) => [layer.name.toLowerCase(), layer]));
+  const automationByLayer = new Map<string, ArrangementPlan["automationPlan"]>();
+  for (const entry of arrangement.automationPlan) {
+    const key = entry.layer.toLowerCase();
+    automationByLayer.set(key, [...(automationByLayer.get(key) ?? []), entry]);
+  }
+
+  const chainSpecs = arrangement.devicePlan.map((entry, index) => {
+    const layer = layersByName.get(entry.layer.toLowerCase());
+    const automationLinks = automationByLayer.get(entry.layer.toLowerCase()) ?? [];
+    const targetResolution = plannedTargetResolution(entry);
+    const devices = entry.devices.map((device, deviceIndex) => {
+      const linkedAutomation = automationLinks.filter((automation) =>
+        devicesForAutomation(automation.target, [device]).length > 0 ||
+        (automation.target === "volume" && /utility|compressor/i.test(device)) ||
+        (automation.target === "unknown" && deviceIndex === 0)
+      );
+      return {
+        index: deviceIndex,
+        name: device,
+        category: deviceCategory(device),
+        insertTool: deviceInsertTool(device),
+        role: deviceRoleHint(device, layer),
+        parameterHints: deviceDefaultParameterHints(device),
+        automationCandidates: linkedAutomation.map((automation) => ({
+          target: automation.target,
+          cue: automation.automation,
+          candidateTargetTypes: automationCandidateTargetTypes(automation.target),
+          parameterHints: automationParameterHints(automation.target)
+        }))
+      };
+    });
+
+    return {
+      index,
+      layer: entry.layer,
+      layerType: layer?.type ?? "unknown",
+      layerRole: layer?.role ?? entry.reason,
+      busRole: layer ? layerBusRole(layer, concept.preset === "liminal_backrooms_horror") : "unknown",
+      target: entry.target,
+      targetResolution,
+      mix: layer?.mix ?? null,
+      devices,
+      automationLinks: automationLinks.map((automation) => ({
+        target: automation.target,
+        cue: automation.automation,
+        candidateDevices: devicesForAutomation(automation.target, entry.devices),
+        candidateTargetTypes: automationCandidateTargetTypes(automation.target),
+        parameterHints: automationParameterHints(automation.target),
+        writeSupport: automation.target === "volume"
+          ? "dry_run_templates_only_until_bridge_preflight"
+          : "requires_device_parameter_map_and_verified_liveapi_support"
+      })),
+      insertionSupport: {
+        supportedForRealWrite: false,
+        status: "staged_review",
+        reason: entry.target === "return"
+          ? "Return-track device insertion remains review-only until a reliable typed bridge path exists."
+          : "Track device insertion remains dry-run/staged until Ableton device browser placement is verified for the running bridge."
+      },
+      discoveryCalls: [
+        { name: "ableton_browse_live_devices", arguments: { category: entry.target === "return" ? "audio_effects" : "" } },
+        ...(entry.target === "track"
+          ? [{ name: "ableton_list_devices", arguments: { track_id: "resolved-after-preflight" } }]
+          : [])
+      ],
+      dryRunToolTemplates: entry.devices.map((device, deviceIndex) => ({
+        name: deviceInsertTool(device),
+        arguments: {
+          ...(entry.track_created_offset === undefined ? {} : { track_created_offset: entry.track_created_offset }),
+          ...(entry.return_created_offset === undefined ? {} : { return_created_offset: entry.return_created_offset }),
+          device,
+          ...(deviceInsertTool(device) === "ableton_insert_effect" ? { position: deviceIndex } : {}),
+          dry_run: true
+        },
+        executable: false,
+        reason: "Resolve generated track or return indexes with bridge preflight before any direct dry-run call."
+      }))
+    };
+  });
+
+  const automationDiscoveryCalls = arrangement.automationPlan
+    .filter((entry) => entry.target !== "midi_velocity")
+    .map((entry) => ({
+      layer: entry.layer,
+      target: entry.target,
+      call: {
+        name: "ableton_extract_automation_summary",
+        arguments: {
+          track_index: "resolved-after-preflight",
+          include_devices: entry.target !== "volume",
+          max_parameters: entry.target === "volume" ? 16 : 64
+        }
+      }
+    }));
+
+  return {
+    specType: "concept_device_chain_spec",
+    arrangement_id: arrangement.id,
+    concept: {
+      id: concept.id,
+      preset: concept.preset,
+      style: concept.style,
+      tempo: concept.tempo,
+      key: concept.key,
+      duration_seconds: concept.target_duration_seconds
+    },
+    safety: {
+      writesAbleton: false,
+      downloads: false,
+      uiControl: false,
+      bridgeContact: false,
+      broadScan: false,
+      arbitraryBridgePayloads: false
+    },
+    summary: {
+      deviceChains: chainSpecs.length,
+      totalDevices: chainSpecs.reduce((count, chain) => count + chain.devices.length, 0),
+      trackChains: chainSpecs.filter((chain) => chain.target === "track").length,
+      returnChains: chainSpecs.filter((chain) => chain.target === "return").length,
+      automationTargetsLinked: arrangement.automationPlan.length,
+      dryRunTemplates: chainSpecs.reduce((count, chain) => count + chain.dryRunToolTemplates.length, 0),
+      realDeviceInsertionSupported: false,
+      realAutomationWriteSupported: false
+    },
+    chainSpecs,
+    automationDiscoveryCalls,
+    exactNextToolCalls: {
+      executionManifest: { name: "ableton_render_concept_execution_manifest", arguments: { arrangement_id: arrangement.id } },
+      actionMatrix: { name: "ableton_render_concept_execution_action_matrix", arguments: { arrangement_id: arrangement.id, check_bridge: false } },
+      readinessWithBridge: { name: "ableton_plan_concept_device_automation_readiness", arguments: { arrangement_id: arrangement.id, check_bridge: true } },
+      preflightWithBridge: { name: "ableton_preflight_concept_execution", arguments: { arrangement_id: arrangement.id, check_bridge: true } }
+    },
+    nextSteps: [
+      "Review chainSpecs for layer role, device order, and conservative parameter defaults.",
+      "Load Ableton and the Max for Live bridge, then call readinessWithBridge to resolve generated track indexes and inspect automation targets.",
+      "Keep dry-run templates non-mutating until ABLETON_MCP_ENABLE_WRITE=1 is intentional and a bridge preflight succeeds.",
+      "Use UI/mouse device placement only when ABLETON_MCP_ENABLE_UI_CONTROL=1 is explicitly chosen by the user."
     ]
   };
 }

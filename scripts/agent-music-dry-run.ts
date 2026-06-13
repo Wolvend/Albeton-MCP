@@ -106,6 +106,12 @@ export function buildAgentMusicDryRunToolPlan(options: AgentMusicDryRunOptions):
       dynamic: true
     },
     {
+      phase: "device_review",
+      name: "ableton_render_concept_device_chain_spec",
+      arguments: { arrangement_id: "arrangement-..." },
+      dynamic: true
+    },
+    {
       phase: "qa",
       name: "ableton_render_concept_production_scorecard",
       arguments: { arrangement_id: "arrangement-...", check_bridge: false },
@@ -257,6 +263,7 @@ function collectReport(options: AgentMusicDryRunOptions, results: StepResult[], 
   const conceptResult = results.find((result) => result.name === "ableton_plan_concept_track")?.structuredContent;
   const matrixResult = results.find((result) => result.name === "ableton_render_concept_execution_action_matrix")?.structuredContent;
   const curationResult = results.find((result) => result.name === "ableton_curate_concept_samples")?.structuredContent;
+  const deviceSpecResult = results.find((result) => result.name === "ableton_render_concept_device_chain_spec")?.structuredContent;
   const preflightResult = results.find((result) => result.name === "ableton_preflight_concept_execution")?.structuredContent;
   const failures = results.filter((result) => !result.ok);
 
@@ -283,6 +290,8 @@ function collectReport(options: AgentMusicDryRunOptions, results: StepResult[], 
       curationLayers: arrayLength(getNested(curationResult, ["curation", "layerCuration"])),
       actionMatrixActions: getNested(matrixResult, ["actionMatrix", "summary", "totalActions"]) ?? null,
       writeGatedActions: getNested(matrixResult, ["actionMatrix", "summary", "bridgeStatusCounts", "write_gated"]) ?? null,
+      deviceSpecChains: getNested(deviceSpecResult, ["deviceChainSpec", "summary", "deviceChains"]) ?? null,
+      deviceSpecDevices: getNested(deviceSpecResult, ["deviceChainSpec", "summary", "totalDevices"]) ?? null,
       stagedDeviceChains: getNested(matrixResult, ["actionMatrix", "summary", "stagedDeviceChains"]) ?? null,
       stagedAutomationTargets: getNested(matrixResult, ["actionMatrix", "summary", "stagedAutomationTargets"]) ?? null
     },

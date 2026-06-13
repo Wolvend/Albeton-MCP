@@ -144,34 +144,40 @@ Fast path:
    - Does not write sends, approve execution, download samples, or use UI/mouse control.
    - Use this before approval when an agent needs to verify reverb, delay, and texture routing against the live set.
 
-22. `ableton_plan_concept_device_automation_readiness`
+22. `ableton_render_concept_device_chain_spec`
+   - Read-only.
+   - Renders each staged concept device chain as a production review spec with layer role, bus role, device order, conservative parameter hints, automation links, discovery calls, and dry-run templates.
+   - Does not contact Ableton, insert devices, write automation, download files, or use UI/mouse control.
+   - Use this before bridge readiness when an agent needs professional device-chain decisions it can inspect and revise.
+
+23. `ableton_plan_concept_device_automation_readiness`
    - Read-only.
    - Converts staged `devicePlan` and `automationPlan` entries into discovery calls, dry-run templates, target hints, and explicit unsupported/support status.
    - Does not insert devices, write automation, move the mouse, or approve execution.
 
-23. `ableton_create_concept_execution_approval_bundle`
+24. `ableton_create_concept_execution_approval_bundle`
    - Read-only.
    - Packages the redacted concept, redacted arrangement, preflight result, deterministic `approval_id`, required gates, exact next tool calls, and approval checklist.
    - Always returns `approved=false`; it is a review artifact, not an execution grant.
 
-24. `ableton_execute_concept_plan`
+25. `ableton_execute_concept_plan`
    - Dry-run by default.
    - Real execution requires `dry_run=false`, `ABLETON_MCP_ENABLE_WRITE=1`, the matching `approval_id`, `approval_confirmed=true`, and a successful bridge preflight.
    - Sends only stored, pre-approved plan actions through the serialized LiveAPI bridge.
    - Writes a redacted execution journal under `diagnostics\runtime\concept-executions` before live preflight and after each action outcome.
    - Stops immediately with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` if the loaded bridge returns `unsupported: true` for any approved action, so clients do not mistake a bridge limitation for successful execution.
 
-25. `ableton_list_concept_execution_journals`
+26. `ableton_list_concept_execution_journals`
    - Read-only.
    - Lists recent redacted execution journals with status, event counts, failure counts, and exact follow-up calls.
    - Does not accept file paths, scan broadly, or expose raw local sample paths.
 
-26. `ableton_get_concept_execution_journal`
+27. `ableton_get_concept_execution_journal`
    - Read-only.
    - Reads one generated execution journal id and returns the redacted event timeline for post-run forensics.
    - Use this after a failed or stopped real execution to see which action ran last.
 
-27. `ableton_render_delivery_plan`
+28. `ableton_render_delivery_plan`
    - Plans master/stem export settings and naming.
    - Does not render audio.
 
@@ -212,6 +218,7 @@ The arrangement plan includes:
 - Initial return-track volume and pan actions for the generated reverb and delay returns.
 - A read-only mix plan with layer priorities, routing roles, frequency focus, spatial treatment, return use cases, gain-staging, automation targets, and conservative master-bus settings.
 - A read-only routing readiness plan that links planned sends to `ableton_get_routing_overview`, dry-run send templates, and approval-time verification.
+- A read-only device-chain spec that turns staged device choices into layer roles, bus roles, parameter hints, automation links, discovery calls, and dry-run templates.
 - A staged device-chain plan for each layer, including instruments, EQ, saturation, reverb, delay, filtering, compression, and utility devices.
 - A named and looped editable MIDI motif with sparse, dissonant note placement for the `Sparse Motif` layer, exportable as a staged `.mid` artifact.
 - Optional named, shaped, and looped approved local sample clips assigned to audio layers such as `Degraded Memory`, `Stretched Room`, `Distant Room Tone`, `Mechanical Texture`, or `Reversed Fragments`. Sample shaping uses conservative layer-specific gain, transpose/detune, warp mode, and start/end marker actions.
@@ -258,6 +265,7 @@ ableton_render_concept_execution_action_matrix with check_bridge=true
 ableton_render_concept_execution_manifest
 ableton_render_concept_attribution_bundle
 ableton_render_concept_production_scorecard
+ableton_render_concept_device_chain_spec
 ableton_plan_concept_device_automation_readiness
 ableton_create_concept_execution_approval_bundle
 ableton_execute_concept_plan with dry_run=true

@@ -151,6 +151,7 @@ describe("MCP tool behavior", () => {
       expect(bootstrap.recommendedAgentWorkflow.map((call: Record<string, unknown>) => call.name)).toEqual(expect.arrayContaining([
         "ableton_plan_full_concept_production",
         "ableton_curate_concept_samples",
+        "ableton_render_concept_device_chain_spec",
         "ableton_render_concept_execution_action_matrix",
         "ableton_preflight_concept_execution"
       ]));

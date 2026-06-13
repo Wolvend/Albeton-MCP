@@ -73,6 +73,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_render_concept_production_scorecard");
     expect(registeredToolNames).toContain("ableton_plan_concept_routing_readiness");
     expect(registeredToolNames).toContain("ableton_plan_concept_device_automation_readiness");
+    expect(registeredToolNames).toContain("ableton_render_concept_device_chain_spec");
     expect(registeredToolNames).toContain("ableton_execute_concept_plan");
     expect(registeredToolNames).toContain("ableton_render_concept_timeline");
     expect(registeredToolNames).toContain("ableton_render_concept_mix_plan");
@@ -174,6 +175,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_render_concept_production_scorecard).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_plan_concept_routing_readiness).toHaveProperty("check_bridge");
     expect(registeredToolSchemas.ableton_plan_concept_device_automation_readiness).toHaveProperty("check_bridge");
+    expect(registeredToolSchemas.ableton_render_concept_device_chain_spec).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("approval_id");
     expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("approval_confirmed");
