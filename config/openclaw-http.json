@@ -1,0 +1,12 @@
+{
+  "mcp": {
+    "servers": {
+      "ableton-mcp": {
+        "url": "http://127.0.0.1:17366/mcp",
+        "transport": "streamable-http",
+        "connectTimeout": 10,
+        "timeout": 60
+      }
+    }
+  }
+}

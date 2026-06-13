@@ -50,6 +50,13 @@ Run the exhaustive safe contract sweep for every registered tool:
 npm run sweep:all
 ```
 
+Check the HyperNimbus Docker MCP profile plan:
+
+```powershell
+npm run docker:hypernimbus:plan
+npm run docker:hypernimbus:verify
+```
+
 Run the safe Ableton live bridge smoke after Ableton is open and the bridge device is loaded:
 
 ```powershell
@@ -67,9 +74,9 @@ Native WSL Node can verify the MCP server, but it may not reach the Windows-only
 Expected current results:
 
 ```text
-Tests: 18 files, 42 tests passed
-MCP verifier: 151 tools, 3 resources, 2 prompts
-All-tool contract sweep: 151 registered tools, 151 safe calls
+Tests: 20 files, 49 tests passed
+MCP verifier: 158 tools, 3 resources, 2 prompts
+All-tool contract sweep: 158 registered tools, 158 safe calls
 Audit: 0 vulnerabilities
 ```
 

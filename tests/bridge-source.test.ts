@@ -44,6 +44,7 @@ describe("Max for Live bridge source", () => {
       "ableton_stop_clip",
       "ableton_set_track_volume",
       "ableton_set_track_pan",
+      "ableton_set_track_send",
       "ableton_set_device_parameter",
       "ableton_rename_clip",
       "arrangement_markers",

@@ -1,6 +1,6 @@
 # MCP Tool Catalog
 
-The server currently registers 151 MCP tools.
+The server currently registers 158 MCP tools.
 
 Use this command to inspect the live catalog:
 
@@ -24,6 +24,7 @@ npm run inspect
 | Bridge discovery | `ableton_list_arrangement_markers`, `ableton_get_clip_notes`, `ableton_get_clip_envelopes`, `ableton_get_device_parameter_map` |
 | UI driver fallback | `ableton_ui_driver_ping`, `ableton_window_status`, `ableton_focus_window`, `ableton_click_coordinates` |
 | Sample discovery/import | `ableton_search_internet_archive_audio`, `ableton_search_freesound`, `ableton_download_sample`, `ableton_import_sample_to_library` |
+| Concept-to-music | `ableton_plan_concept_track`, `ableton_search_concept_samples`, `ableton_stage_concept_samples`, `ableton_build_layered_arrangement_plan`, `ableton_execute_concept_plan`, `ableton_render_delivery_plan` |
 | Plugin/package safety | `ableton_validate_plugin_package`, `ableton_scan_vst_folders`, `ableton_check_plugin_license_metadata` |
 | Export planning | `ableton_plan_export_audio`, `ableton_validate_export_settings`, `ableton_prepare_stems_plan` |
 | Composition helpers | `ableton_generate_session_plan`, `ableton_suggest_effect_chain`, `ableton_validate_production_plan` |

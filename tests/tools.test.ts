@@ -18,6 +18,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_mcp_get_client_connection_profiles");
     expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");
     expect(registeredToolNames).toContain("ableton_set_tempo");
+    expect(registeredToolNames).toContain("ableton_set_track_send");
     expect(registeredToolNames).toContain("ableton_search_freesound");
     expect(registeredToolNames).toContain("ableton_search_plugin_catalog");
     expect(registeredToolNames).toContain("ableton_download_plugin_package");
@@ -27,6 +28,12 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_quantize_clip");
     expect(registeredToolNames).toContain("ableton_plan_export_audio");
     expect(registeredToolNames).toContain("ableton_validate_plugin_package");
+    expect(registeredToolNames).toContain("ableton_plan_concept_track");
+    expect(registeredToolNames).toContain("ableton_search_concept_samples");
+    expect(registeredToolNames).toContain("ableton_stage_concept_samples");
+    expect(registeredToolNames).toContain("ableton_build_layered_arrangement_plan");
+    expect(registeredToolNames).toContain("ableton_execute_concept_plan");
+    expect(registeredToolNames).toContain("ableton_render_delivery_plan");
   });
 
   it("uses typed schemas for newer bridge workflow tools", () => {
@@ -37,5 +44,7 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_create_arrangement_marker).toHaveProperty("name");
     expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("parameter_index");
     expect(registeredToolSchemas.ableton_set_automation_point).toHaveProperty("value");
+    expect(registeredToolSchemas.ableton_plan_concept_track).toHaveProperty("concept");
+    expect(registeredToolSchemas.ableton_execute_concept_plan).toHaveProperty("arrangement_id");
   });
 });

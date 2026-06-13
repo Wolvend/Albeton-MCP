@@ -98,6 +98,31 @@ Default URL:
 http://127.0.0.1:17366/mcp
 ```
 
+## OpenClaw
+
+OpenClaw should consume Ableton MCP as an outbound MCP server. Keep Ableton MCP as the permission owner for writes, downloads, path policy, and UI control.
+
+Start local HTTP:
+
+```powershell
+.\launch.ps1 docker -SkipSetup
+```
+
+Use the template:
+
+```text
+config/openclaw-http.json
+```
+
+Or add it with the OpenClaw MCP registry:
+
+```powershell
+openclaw mcp set ableton-mcp '{"url":"http://127.0.0.1:17366/mcp","transport":"streamable-http","connectTimeout":10,"timeout":60}'
+openclaw mcp doctor --probe ableton-mcp
+```
+
+OpenClaw's [MCP docs](https://docs.openclaw.ai/cli/mcp) distinguish `openclaw mcp serve` for exposing OpenClaw as an MCP server from `openclaw mcp set`, `doctor`, and `probe` for consuming third-party MCP servers. Ableton MCP uses the consumer path.
+
 ## WSL
 
 Use Windows-backed control from WSL:
@@ -149,6 +174,7 @@ Use Ableton MCP through the app or agent runtime that is actually connecting to 
 | Gemini | Configure Ableton MCP in a Gemini client/agent runtime if it supports MCP server config. |
 | llama.cpp | Use an MCP-capable local agent wrapper around llama.cpp. |
 | Antigravity | Use stdio or Streamable HTTP if the app exposes MCP server configuration. |
+| OpenClaw | Use the local Streamable HTTP profile through `openclaw mcp set` and verify with `openclaw mcp doctor --probe`. |
 | Claude | Use stdio locally; use HTTP only if the client supports Streamable HTTP MCP. |
 | Codex | Use stdio locally or HTTP/Docker routing for remote/private-device workflows. |
 

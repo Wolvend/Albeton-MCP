@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import crypto from "node:crypto";
 import path from "node:path";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
@@ -80,7 +81,20 @@ function bridgePayload(dryRun = true) {
   return { payload: {}, dry_run: dryRun };
 }
 
+function sweepConceptPlanId() {
+  const payload = {
+    concept: "liminal backrooms horror contract sweep",
+    target_duration_seconds: 120,
+    intensity: 7,
+    style: "liminal/backrooms/horror",
+    sources: ["local_library", "internet_archive"],
+    reference_path: ""
+  };
+  return `concept-${crypto.createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 16)}`;
+}
+
 export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepCall[] {
+  const conceptPlanId = sweepConceptPlanId();
   return [
     { name: "ableton_find_installation", arguments: {} },
     { name: "ableton_get_environment", arguments: {} },
@@ -157,6 +171,7 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_solo_track", arguments: bridgePayload() },
     { name: "ableton_set_track_volume", arguments: bridgePayload() },
     { name: "ableton_set_track_pan", arguments: bridgePayload() },
+    { name: "ableton_set_track_send", arguments: bridgePayload() },
     { name: "ableton_insert_instrument", arguments: bridgePayload() },
     { name: "ableton_insert_effect", arguments: bridgePayload() },
     { name: "ableton_load_preset_or_sample", arguments: bridgePayload() },
@@ -215,6 +230,12 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_browse_live_devices", arguments: { category: "effects" } },
     { name: "ableton_browse_max_devices", arguments: { query: "bridge" } },
     { name: "ableton_browse_drum_hits", arguments: { query: "kick", page: 1, pageSize: 5 } },
+    { name: "ableton_plan_concept_track", arguments: { concept: "liminal backrooms horror contract sweep", target_duration_seconds: 120, intensity: 7, sources: ["local_library", "internet_archive"] } },
+    { name: "ableton_search_concept_samples", arguments: { concept: "liminal backrooms horror contract sweep", page: 1, pageSize: 1 }, expected: "any" },
+    { name: "ableton_stage_concept_samples", arguments: { samples: [{ url: "https://archive.org/download/opensource_audio/opensource_audio_meta.xml", destinationName: "contract-sweep.wav", metadata: { license: "CC0" } }], dry_run: true } },
+    { name: "ableton_build_layered_arrangement_plan", arguments: { plan_id: conceptPlanId } },
+    { name: "ableton_execute_concept_plan", arguments: { arrangement_id: "arrangement-0000000000000000", dry_run: true } },
+    { name: "ableton_render_delivery_plan", arguments: { plan_id: conceptPlanId } },
     { name: "ableton_generate_session_plan", arguments: { brief: "contract sweep" } },
     { name: "ableton_generate_midi_clip_plan", arguments: { key: "C minor", bars: 4, style: "electronic" } },
     { name: "ableton_generate_drum_rack_plan", arguments: { style: "house" } },
@@ -273,12 +294,20 @@ async function main() {
   await client.connect(transport);
 
   const results = [];
+  let conceptArrangementId: string | null = null;
   if (coverage.missingSpecs.length === 0 && coverage.extraSpecs.length === 0 && coverage.duplicateSpecs.length === 0) {
     for (const call of calls) {
       try {
-        const result = await client.callTool({ name: call.name, arguments: call.arguments });
+        const callArguments = call.name === "ableton_execute_concept_plan" && conceptArrangementId
+          ? { ...call.arguments, arrangement_id: conceptArrangementId }
+          : call.arguments;
+        const result = await client.callTool({ name: call.name, arguments: callArguments });
         const expected = call.expected ?? "ok";
         const isError = Boolean(result.isError);
+        if (call.name === "ableton_build_layered_arrangement_plan" && !isError) {
+          const id = (result as any).structuredContent?.arrangement?.arrangement?.id;
+          if (typeof id === "string") conceptArrangementId = id;
+        }
         results.push({ name: call.name, ok: !isError || expected === "any", isError, expected });
       } catch (error) {
         results.push({ name: call.name, ok: false, expected: call.expected ?? "ok", error: error instanceof Error ? error.message : String(error) });

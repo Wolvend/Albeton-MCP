@@ -1,10 +1,29 @@
 # Final Verification Report
 
-Date: 2026-06-06 / 2026-06-07 local runtime checks
+Date: 2026-06-13 local runtime checks
 
-This report records the latest local verification pass for the Ableton MCP production build.
+This report records the latest verification pass for the Ableton MCP production build.
 
-## Commands run
+## Current Surface
+
+```text
+Tools: 158
+Resources: 3
+Prompts: 2
+HyperNimbus Docker MCP enabled tools: 103
+Default HTTP endpoint: http://127.0.0.1:17366/mcp
+```
+
+Default gates remained off during verification:
+
+```text
+ABLETON_MCP_ENABLE_WRITE=0
+ABLETON_MCP_ENABLE_UI_CONTROL=0
+ABLETON_MCP_ENABLE_DOWNLOADS=0
+ABLETON_MCP_HTTP_ALLOW_REMOTE=0
+```
+
+## Commands Run
 
 ```powershell
 npm run build
@@ -16,7 +35,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Latest pass reported 18 test files and 42 tests passed.
+Result: succeeded. Vitest reported 20 test files and 49 tests passed.
 
 ```powershell
 npm run lint
@@ -28,197 +47,122 @@ Result: succeeded.
 npm run doctor
 ```
 
-Result: succeeded. Doctor reported 8 checks, 0 failures, and 0 warnings: tool catalog, Node, ffprobe, Ableton User Library, bridge sources, HTTP transport, UI driver, and Max for Live bridge.
+Result: succeeded. Doctor reported 8 checks, 0 failures, and 2 runtime warnings because the UI driver on `127.0.0.1:17365` and Max for Live bridge on `127.0.0.1:17364` were not loaded. The HTTP transport on `127.0.0.1:17366` was reachable.
 
 ```powershell
 npm run release:check
 ```
 
-Result: succeeded. Release check found all required files and scripts. It reported working-tree-only folders that must stay excluded from release archives: `node_modules`, `diagnostics/screenshots`, `diagnostics/runtime`, and `data/cache`.
-
-```powershell
-npm run configure:clients -- --out diagnostics/runtime/generated-config-test --with-token
-```
-
-Result: succeeded. Generated Codex, Claude Desktop, Cursor, WSL stdio, local HTTP, Tailscale HTTP, remote env, and install-summary files. Terminal output redacted the generated bearer token.
-
-```powershell
-.\launch.ps1 setup
-```
-
-Result: succeeded. Built the server, installed the Max for Live bridge files, and generated real local client configs under `config/generated/` with the default Tailscale URL `http://100.84.223.22:17366/mcp`.
+Result: succeeded. Release check found no missing required files or scripts. It reported working-tree-only folders that must stay excluded from release archives: `node_modules`, `diagnostics/screenshots`, `diagnostics/runtime`, and `data/cache`.
 
 ```powershell
 npm run sweep:safe
 ```
 
-Result: succeeded. The safe sweep called 78 representative read-only and dry-run tools with local fixtures and reported 0 unexpected failures. The sweep includes the named safe UI action listing, planning, and dry-run sequence tools.
+Result: succeeded. Safe sweep called 78 read-only and dry-run tools with 0 unexpected failures.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. The all-tool contract sweep called all 151 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 151 registered tools, 151 calls, 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures.
+Result: succeeded. All-tool contract sweep called all 158 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The concept workflow sweep now exercises stored concept plan -> stored arrangement plan -> dry-run execution.
 
 ```powershell
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 151 tools, 3 resources, and 2 prompts. It called path security, runtime report, security report, bridge mock, and Internet Archive sample metadata checks.
-
-```powershell
-wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
-```
-
-Result: succeeded under WSL2 Ubuntu with native WSL Node. The verifier reported 151 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
-
-```powershell
-wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh sweep-all'
-```
-
-Result: succeeded under WSL2 Ubuntu with native WSL Node. The all-tool sweep reported 151 registered tools, 151 calls, and 0 unexpected failures.
-
-```powershell
-# Temporary localhost auth smoke on port 17466
-```
-
-Result: succeeded. Without `Authorization`, `/health` returned HTTP 401. With `Authorization: Bearer temporary-test-token-12345`, `/health` returned HTTP 200 and `authRequired: true`.
-
-```powershell
-# MCP client smoke for ableton_mcp_get_client_connection_profiles
-```
-
-Result: succeeded. The profile tool returned stdio, local HTTP, private-network candidate URLs, required remote auth environment, and model-provider host-app guidance for Codex, Claude, Docker MCP, WSL, OpenRouter, Gemini, llama.cpp, and Antigravity.
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\launch.ps1 install
-cmd /c launch.cmd install
-bash ./launch.sh install
-```
-
-Result: succeeded. All three launch entry points built the project and installed the bridge preset files into `%USERPROFILE%\Documents\Ableton\User Library\Presets\MIDI Effects\Max MIDI Effect`.
-
-```powershell
-# MCP client smoke test against launch.cmd stdio -SkipSetup
-```
-
-Result: succeeded. The stdio client connected through `launch.cmd`, called `tools/list`, and received 151 tools. This verifies launcher setup output does not corrupt MCP stdout.
-
-```powershell
-.\launch.ps1 docker -SkipSetup
-```
-
-Result: skipped as a new process because `127.0.0.1:17366` was already bound by `"C:\Program Files\nodejs\node.exe" dist/src/http.js`. A Streamable HTTP MCP `initialize` POST to `http://127.0.0.1:17366/mcp` returned HTTP 200 from that existing service.
-
-```powershell
-npm run inspect
-```
-
-Result: succeeded. MCP Inspector listed the stdio server tools.
+Result: succeeded. The verifier reported 158 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
 ```
 
-Result: succeeded. npm reported 0 vulnerabilities.
+Result: succeeded. npm reported 0 vulnerabilities after updating the dev `esbuild` lockfile entries to the patched 0.28.1 line.
+
+## Docker MCP
 
 ```powershell
-.\launch.ps1 check -SkipSetup
+npm run docker:hypernimbus:plan
+npm run docker:hypernimbus:apply
+npm run docker:hypernimbus:verify
 ```
 
-Result: succeeded. The one-command launcher check ran tests, lint, doctor, release check, safe sweep, all-tool contract sweep, MCP verifier, and npm audit. It reported 18 test files, 42 tests, 151 tools, 78 safe-sweep calls, 151 all-tool sweep calls, and 0 vulnerabilities.
+Result: succeeded. The apply command backed up the existing HyperNimbus profile to `diagnostics\runtime\docker-mcp\hypernimbus.before.yaml`, added `ableton-mcp`, disabled all Ableton tools, then enabled the 103-tool safe allowlist.
+
+The profile now includes:
+
+```text
+hypernimbus | remote | ableton-mcp
+```
+
+Risky tools checked as absent from the enabled list:
+
+```text
+ableton_execute_concept_plan
+ableton_stage_concept_samples
+ableton_download_sample
+ableton_click_coordinates
+ableton_set_tempo
+```
+
+The host HTTP service was started with:
 
 ```powershell
-# Named safe UI action verifier
+.\launch.ps1 docker -SkipSetup
 ```
 
-Result: succeeded as part of `npm run doctor`, `npm run sweep:safe`, and `npm run verify:mcp`. The tool catalog now includes `ableton_list_safe_ui_actions`, `ableton_plan_ui_action_sequence`, and `ableton_run_ui_action_sequence`; raw coordinate UI control remains an explicit fallback only.
+Health result:
+
+```text
+ok: true
+transport: streamable-http
+host: 127.0.0.1
+port: 17366
+authRequired: false
+```
+
+MCP initialize over Streamable HTTP succeeded when the request included:
+
+```text
+Accept: application/json, text/event-stream
+```
+
+Docker gateway dry-run:
+
+```powershell
+docker mcp gateway run --profile hypernimbus --dry-run --block-secrets --block-network
+```
+
+Result: succeeded. Docker loaded the HyperNimbus profile and listed `ableton-mcp` with 103 tools.
+
+## WSL
+
+```powershell
+wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh verify'
+```
+
+Result: succeeded under WSL with 158 tools, 3 resources, and 2 prompts. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+
+## Live Bridge Smoke
 
 ```powershell
 .\launch.ps1 live-smoke -SkipSetup
 ```
 
-Result: succeeded. The command reported `ok: true`, bridge reachable, live state reachable, snapshot reachable, dry-run write confirmed, 4 tracks, 9 scenes, and 1 selected-track device without changing the Ableton set.
-
-```powershell
-wsl.exe bash -lc 'cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp && ./launch.sh live-smoke --skip-setup'
-```
-
-Result: succeeded through the Windows-backed launcher path. The native WSL Node variant reported `BRIDGE_UNREACHABLE` because the Max for Live bridge is bound to the Windows host loopback address.
-
-## Earlier full MCP sweep
-
-The current `npm run sweep:all` MCP client sweep calls every registered tool with safe fixture/default arguments. The current verifier confirms the registered surface is now 151 tools, 3 resources, and 2 prompts.
-
-```powershell
-# MCP client smoke for ableton_bridge_ping, ableton_get_full_snapshot, and typed ableton_duplicate_clip dry-run
-```
-
-Result: succeeded. The read-only live bridge ping and full snapshot returned without MCP errors, and the typed `ableton_duplicate_clip` dry-run returned without contacting a write-gated execution path.
-
-```powershell
-# Real write smoke with ABLETON_MCP_ENABLE_WRITE=1: ableton_create_scene dry_run=false
-```
-
-Result: succeeded. The bridge returned a new Live object id `48`; after the read-cache TTL expired, `ableton_list_scenes` reported 9 scenes, up from 8 before the write. UI control stayed disabled.
-
-```powershell
-# Deep bridge marker smoke: ableton_create_arrangement_marker dry_run=false
-```
-
-Result: reached the running Ableton bridge but returned the old active-device unsupported response, which means the open Max device had not reloaded the newly installed `ableton-mcp-liveapi.js`. Reloading the bridge device in Ableton is required before validating the newest marker/automation handlers live.
-
-Summary:
+Result: completed with structured setup failure, not fake success:
 
 ```text
-Tools: 112
-Resources: 3
-Prompts: 2
-Tool calls with ok result: 91
-Expected missing-bridge results: 18
-Expected optional-auth result: 1
-Expected feature-gate results: 2
-Unexpected failures: 0
+ok: false
+bridgeReachable: false
+dryRunWriteConfirmed: true
 ```
 
-Expected non-OK results:
+Reason: the Max for Live bridge was not loaded/listening on `127.0.0.1:17364` during this run. Next steps are to open Ableton Live, load the Ableton MCP Bridge Max for Live device, then rerun live-smoke.
 
-- 18 LiveAPI bridge tools returned `BRIDGE_UNREACHABLE` because the Max for Live bridge was not loaded/listening on `127.0.0.1:17364`.
-- `ableton_search_freesound` returned `FREESOUND_ERROR` with HTTP 401 because no `FREESOUND_API_KEY` was configured.
-- `ableton_download_sample` and `ableton_import_sample_to_library` returned `FEATURE_DISABLED` because `ABLETON_MCP_ENABLE_DOWNLOADS=0`.
+## Security Notes
 
-## UI driver smoke test
-
-The Ableton UI driver was restarted onto the current rebuilt code on `127.0.0.1:17365`.
-
-Verified:
-
-- `ableton_ui_driver_ping` returned `ok: true`.
-- `ableton_capture_screenshot` with `dry_run=false` returned `ok: true`, captured `816x683`, and saved `diagnostics\screenshots\ableton-ui-2026-06-07T04-00-57-794Z-window.png`.
-- `ableton_capture_region` with `dry_run=false` returned `ok: true`, captured a `320x180` Ableton-window-relative region, and saved `diagnostics\screenshots\ableton-ui-2026-06-07T04-00-59-168Z-region.png`.
-- The full-window PNG was visually checked and correctly framed on `Ableton MCP Bridge Set - Ableton Live 12 Trial`.
-
-The UI driver was left listening on `127.0.0.1:17365` for continued local control.
-
-## Runtime state
-
-- Ableton Live was running during the latest UI-driver smoke test.
-- The Max for Live bridge was not loaded, so LiveAPI bridge runtime calls were not expected to succeed.
-- Downloads/imports were not executed because downloads remain disabled by default.
-- Write-gated Ableton tools were tested with `dry_run=true`.
-
-## Current implementation notes
-
-- All registered MCP tools, resources, and prompts were exercised.
-- Root launchers support regular stdio MCP, Docker/HTTP MCP, bridge install, verifier, check, doctor, test, lint, build, sweep, sweep-all, live-smoke, inspect, bridge-listener, and UI-driver workflows.
-- Launcher flags expose explicit process-local gates for writes, downloads, UI control, and token-required private-network HTTP.
-- Platform-aware config supports Windows defaults, macOS defaults, and Linux/WSL headless MCP operation with environment path overrides.
-- Other-device HTTP mode stays disabled by default and requires explicit remote enablement plus bearer-token auth.
-- FastMCP-inspired runtime middleware wraps every tool with error handling, timing metrics, per-tool rate limiting, short read-only cache, and response-size limits.
-- MCP resources and prompts are registered for environment, runtime, scan status, safe production planning, and security review.
-- File operations enforce explicit allowed roots, realpath checks, and sensitive-path rejection.
-- Remote sample tools reject arbitrary URLs and allow only approved Freesound and Internet Archive hosts.
-- Plugin/package downloader tools are staging-only, require the downloads feature gate for downloads, restrict URL hosts, and never run installers.
-- The Max for Live bridge source includes a Node-for-Max HTTP server and a LiveAPI handler for ping, snapshots, live-state reads, track/return/master/scene/clip-slot/clip/device/parameter/mixer listing, selected objects, tempo/transport, track and scene creation, clip creation/launch/stop/loop/rename, mixer volume/pan, device parameter setting, track arm/mute/solo, and track rename.
-- The Ableton UI driver service includes loopback-only ping, status, Ableton window discovery, focus, Ableton-window-only screenshot capture, bounded region capture, window-relative click, and bounded text input.
-- Named safe UI actions provide reviewed, serialized, Ableton-window-scoped focus and screenshot workflows before agents fall back to raw coordinates.
+- HTTP remains localhost-only by default.
+- HyperNimbus uses the safe tool allowlist.
+- Downloads, writes, and UI/mouse control remain disabled by default.
+- Remote sample metadata and concept sample preview URLs are sanitized or validated against the approved sample URL policy before being returned.
+- Docker/OpenClaw/client docs now treat Ableton MCP as the permission owner for write/download/UI gates.

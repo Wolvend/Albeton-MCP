@@ -424,16 +424,37 @@ function renameTrack(payload) {
   return { track_index: trackIndex, name: name };
 }
 
-function createTrack(kind) {
+function createTrack(kind, payload) {
   var song = liveObject("live_set");
-  if (kind === "audio") return safeCall(song, "create_audio_track", [-1]);
-  if (kind === "midi") return safeCall(song, "create_midi_track", [-1]);
-  if (kind === "return") return safeCall(song, "create_return_track");
-  throw new Error("Unsupported track kind.");
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  var index = parseIndex(payload, "track_index");
+  if (index === null) index = -1;
+  var beforeCount = kind === "return" ? childCount(song, "return_tracks") : childCount(song, "tracks");
+  var result;
+  if (kind === "audio") result = safeCall(song, "create_audio_track", [index]);
+  else if (kind === "midi") result = safeCall(song, "create_midi_track", [index]);
+  else if (kind === "return") result = safeCall(song, "create_return_track");
+  else throw new Error("Unsupported track kind.");
+  if (!callSucceeded(result)) return unsupported("ableton_create_" + kind + "_track", "Track creation is unavailable from this LiveAPI context.", { kind: kind, result: result });
+  var createdIndex = index >= 0 ? index : beforeCount;
+  if (name) {
+    var pathPrefix = kind === "return" ? "live_set return_tracks " : "live_set tracks ";
+    liveObject(pathPrefix + createdIndex).set("name", name);
+  }
+  return { kind: kind, index: createdIndex, name: name || null, result: result };
 }
 
-function createScene() {
-  return safeCall(liveObject("live_set"), "create_scene", [-1]);
+function createScene(payload) {
+  var song = liveObject("live_set");
+  var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
+  var index = parseIndex(payload, "scene_index");
+  if (index === null) index = -1;
+  var beforeCount = childCount(song, "scenes");
+  var result = safeCall(song, "create_scene", [index]);
+  if (!callSucceeded(result)) return unsupported("ableton_create_scene", "Scene creation is unavailable from this LiveAPI context.", { result: result });
+  var createdIndex = index >= 0 ? index : beforeCount;
+  if (name) liveObject("live_set scenes " + createdIndex).set("name", name);
+  return { index: createdIndex, name: name || null, result: result };
 }
 
 function clipSlotFromPayload(payload) {
@@ -518,6 +539,17 @@ function setMixerParameter(payload, parameterName, minValue, maxValue) {
   var parameter = liveObject("live_set tracks " + trackIndex + " mixer_device " + parameterName);
   parameter.set("value", value);
   return { track_index: trackIndex, parameter: parameterName, value: safeGet(parameter, "value", null) };
+}
+
+function setTrackSend(payload) {
+  var trackIndex = parseIndex(payload, "track_id");
+  if (trackIndex === null) trackIndex = selectedTrackIndex();
+  var sendIndex = parseRequiredIndex(payload, "send_index");
+  var value = Number(payload && payload.value);
+  if (!isFinite(value) || value < 0 || value > 1) throw new Error("Send value must be between 0 and 1.");
+  var parameter = liveObject("live_set tracks " + trackIndex + " mixer_device sends " + sendIndex);
+  parameter.set("value", value);
+  return { track_index: trackIndex, send_index: sendIndex, value: safeGet(parameter, "value", null) };
 }
 
 function setDeviceParameter(payload) {
@@ -708,10 +740,10 @@ function dispatch(action, payload) {
   if (action === "selected_device") return listDeviceParameters({ track_id: selectedTrackIndex(), device_id: 0 });
   if (action === "set_tempo" || action === "ableton_set_tempo") return setTempo(payload);
   if (action === "transport_control" || action === "ableton_transport_control") return transportControl(payload);
-  if (action === "ableton_create_audio_track") return createTrack("audio");
-  if (action === "ableton_create_midi_track") return createTrack("midi");
-  if (action === "ableton_create_return_track") return createTrack("return");
-  if (action === "ableton_create_scene") return createScene();
+  if (action === "ableton_create_audio_track") return createTrack("audio", payload);
+  if (action === "ableton_create_midi_track") return createTrack("midi", payload);
+  if (action === "ableton_create_return_track") return createTrack("return", payload);
+  if (action === "ableton_create_scene") return createScene(payload);
   if (action === "ableton_create_clip" || action === "ableton_create_midi_clip") return createClip(payload);
   if (action === "ableton_set_clip_loop") return setClipLoop(payload);
   if (action === "ableton_fire_clip") return fireClip(payload);
@@ -721,6 +753,7 @@ function dispatch(action, payload) {
   if (action === "ableton_solo_track") return setTrackBoolean(payload, "solo");
   if (action === "ableton_set_track_volume") return setMixerParameter(payload, "volume", 0, 1);
   if (action === "ableton_set_track_pan") return setMixerParameter(payload, "panning", -1, 1);
+  if (action === "ableton_set_track_send") return setTrackSend(payload);
   if (action === "ableton_set_device_parameter") return setDeviceParameter(payload);
   if (action === "ableton_rename_track") return renameTrack(payload);
   if (action === "ableton_rename_clip") return renameClip(payload);

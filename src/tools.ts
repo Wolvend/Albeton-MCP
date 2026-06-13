@@ -17,6 +17,15 @@ import { downloadSample, getInternetArchiveMetadata, importSampleToLibrary, norm
 import { downloadPluginPackage, planPluginDownload, pluginInstallInstructions, searchPluginCatalog } from "./plugins.js";
 import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
 import { getUiDriverRuntimeState, pingUiDriver, uiDriverAction } from "./ui-driver.js";
+import { assertAllowedSampleUrl } from "./network.js";
+import {
+  buildLayeredArrangementPlan,
+  executeConceptPlan,
+  planConceptTrack,
+  renderDeliveryPlan,
+  searchConceptSamples,
+  stageConceptSamples
+} from "./concept.js";
 
 const Empty = {};
 const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) };
@@ -38,6 +47,9 @@ const AutomationPoint = {
   time: BeatTime,
   value: z.number()
 };
+const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
+const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
+const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
 const SafeUiActionId = z.enum([
   "focus_window",
   "capture_screenshot",
@@ -337,7 +349,7 @@ const writeToolNames = [
   "ableton_create_return_track", "ableton_create_scene", "ableton_create_clip", "ableton_create_midi_clip",
   "ableton_insert_midi_notes", "ableton_set_clip_loop", "ableton_fire_clip", "ableton_stop_clip",
   "ableton_arm_track", "ableton_mute_track", "ableton_solo_track", "ableton_set_track_volume",
-  "ableton_set_track_pan", "ableton_insert_instrument", "ableton_insert_effect", "ableton_load_preset_or_sample",
+  "ableton_set_track_pan", "ableton_set_track_send", "ableton_insert_instrument", "ableton_insert_effect", "ableton_load_preset_or_sample",
   "ableton_set_device_parameter", "ableton_map_macro", "ableton_rename_track", "ableton_rename_clip",
   "ableton_apply_groove"
 ];
@@ -388,7 +400,7 @@ toolDefs.push(
   { name: "ableton_search_freesound", description: "Search Freesound for licensed sample metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchFreesound(args.query, args.page, args.pageSize) }) },
   { name: "ableton_search_internet_archive_audio", description: "Search Internet Archive public audio metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchInternetArchiveAudio(args.query, args.page, args.pageSize) }) },
   { name: "ableton_get_remote_sample_metadata", description: "Get Internet Archive item metadata by identifier.", inputSchema: { source: z.enum(["internet_archive"]).default("internet_archive"), identifier: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_.-]+$/) }, annotations: webro, handler: async (args) => ({ ok: true, metadata: await getInternetArchiveMetadata(args.identifier) as any }) },
-  { name: "ableton_preview_remote_sample", description: "Return preview metadata only; never downloads.", inputSchema: { url: z.string().url(), license: z.string().optional() }, annotations: webro, handler: async (args) => ({ ok: true, preview: { url: args.url, license: normalizeLicense(args.license), downloadEnabled: FLAGS.downloads } }) },
+  { name: "ableton_preview_remote_sample", description: "Return preview metadata only; never downloads.", inputSchema: { url: z.string().url(), license: z.string().optional() }, annotations: webro, handler: async (args) => ({ ok: true, preview: { url: assertAllowedSampleUrl(args.url), license: normalizeLicense(args.license), downloadEnabled: FLAGS.downloads } }) },
   { name: "ableton_download_sample", description: "Download an allowed licensed sample into staging when downloads are enabled.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, download: await downloadSample(args.url, args.destinationName, args.metadata) }) },
   { name: "ableton_analyze_audio_file", description: "Analyze allowed local audio file with ffprobe.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAudioFile(args.path) }) },
   { name: "ableton_convert_audio_file", description: "Plan safe audio conversion; actual conversion is disabled in v1.", inputSchema: { input: z.string(), output: z.string(), format: z.string().default("wav"), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, dry_run: true, input: redactPath((await resolveSafePath(args.input, { mustExist: true })).real), output: redactPath((await resolveSafePath(args.output, { mustExist: false, forWrite: true })).real), note: "Conversion execution will use ffmpeg after overwrite policy and fixture tests are added." }) },
@@ -431,6 +443,13 @@ toolDefs.push(
   { name: "ableton_browse_live_devices", description: "Return a curated Ableton-native device browser plan without scanning private folders.", inputSchema: { category: z.string().max(80).default("") }, annotations: ro, handler: async (args) => ({ ok: true, browser: productionPlan("live_devices", { category: args.category, devices: ["Instrument Rack", "Drum Rack", "Simpler", "Operator", "Wavetable", "EQ Eight", "Compressor", "Saturator", "Echo", "Hybrid Reverb"] }) }) },
   { name: "ableton_browse_max_devices", description: "Return a Max for Live device browser plan limited to Ableton User Library and project bridge files.", inputSchema: { query: z.string().max(120).default("") }, annotations: ro, handler: async (args) => ({ ok: true, browser: productionPlan("max_for_live_devices", { query: args.query, roots: [redactPath(path.join(LOCAL_PATHS.projectRoot, "bridge", "max-for-live")), redactPath(path.join(LOCAL_PATHS.userLibrary, "Presets", "MIDI Effects", "Max MIDI Effect"))] }) }) },
   { name: "ableton_browse_drum_hits", description: "Search indexed local drum-hit samples with pagination.", inputSchema: { query: z.string().max(120).default("kick OR snare OR hat"), ...Page }, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
+
+  { name: "ableton_plan_concept_track", description: "Turn a mood, place, or liminal concept into a stored staged Ableton production plan.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), sources: ConceptSources, reference_path: z.string().min(1).optional() }, annotations: ro, handler: async (args) => ({ ok: true, concept: await planConceptTrack(args) as any }) },
+  { name: "ableton_search_concept_samples", description: "Search approved sample metadata for a stored concept plan or direct concept without downloading.", inputSchema: { plan_id: ConceptPlanId.optional(), concept: z.string().min(3).max(1000).optional(), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, samples: await searchConceptSamples({ plan_id: args.plan_id, concept: args.concept, page: args.page, pageSize: args.pageSize }) as any }) },
+  { name: "ableton_stage_concept_samples", description: "Stage approved concept samples; dry-run by default and download-gated for real staging.", inputSchema: { samples: z.array(z.object({ url: z.string().url(), destinationName: z.string().min(1).max(160), metadata: z.record(z.unknown()).default({}) })).min(1).max(12), ...DryRun }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, staging: await stageConceptSamples({ samples: args.samples, dry_run: args.dry_run }) as any }) },
+  { name: "ableton_build_layered_arrangement_plan", description: "Convert a stored concept plan into a stored Ableton track/scene/action plan.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, arrangement: await buildLayeredArrangementPlan(args.plan_id) as any }) },
+  { name: "ableton_execute_concept_plan", description: "Execute a stored arrangement plan through the write-gated bridge; dry-run by default.", inputSchema: { arrangement_id: ArrangementPlanId, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, execution: await executeConceptPlan({ arrangement_id: args.arrangement_id, dry_run: args.dry_run }) as any }) },
+  { name: "ableton_render_delivery_plan", description: "Plan final master/stem export settings for a stored concept plan without rendering.", inputSchema: { plan_id: ConceptPlanId }, annotations: ro, handler: async (args) => ({ ok: true, delivery: await renderDeliveryPlan(args.plan_id) as any }) },
 
   { name: "ableton_generate_session_plan", description: "Generate a structured session plan without changing Ableton.", inputSchema: { brief: z.string().min(1).max(2000) }, annotations: ro, handler: async (args) => ({ ok: true, plan: { brief: args.brief, tracks: ["Drums", "Bass", "Harmony", "Lead", "FX"], nextStep: "Review then execute with write-gated tools." } }) },
   { name: "ableton_generate_midi_clip_plan", description: "Generate a MIDI clip plan.", inputSchema: { key: z.string().default("C minor"), bars: z.number().int().min(1).max(64).default(8), style: z.string().default("electronic") }, annotations: ro, handler: async (args) => ({ ok: true, midiClipPlan: args }) },

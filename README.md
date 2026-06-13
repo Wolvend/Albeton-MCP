@@ -32,6 +32,7 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
+| Concept-to-music | Turn a feeling, place, or liminal brief into a staged production plan, sample-search plan, arrangement skeleton, and delivery plan. |
 | Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
 | Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
 | Safety/evals | Run security checks, runtime reports, bridge mock checks, sample license tests, and full MCP verification. |
@@ -227,9 +228,11 @@ Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
 | [Ableton UI driver](docs/ABLETON_UI_DRIVER.md) | ChromeDriver-style foreground UI driver contract and runtime behavior. |
 | [Launch modes](docs/LAUNCH.md) | One-command stdio, Docker MCP HTTP, installer, verifier, and UI-driver workflows. |
 | [Docker MCP](docs/DOCKER_MCP.md) | How to connect Docker MCP to the local Windows Ableton host service. |
+| [HyperNimbus Docker MCP](docs/HYPERNIMBUS_DOCKER_MCP.md) | Safe local-only HyperNimbus Docker MCP profile activation and OpenClaw registry notes. |
+| [Concept to music](docs/CONCEPT_TO_MUSIC.md) | Staged concept, sample, arrangement, execution, and delivery workflow. |
 | [Platform compatibility](docs/PORTABILITY.md) | Windows, WSL, macOS, and Linux support model with environment overrides. |
 | [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |
-| [Config templates](config) | Ready-made starting configs for Codex, Claude Desktop, Cursor, WSL, and remote HTTP clients. |
+| [Config templates](config) | Ready-made starting configs for Codex, Claude Desktop, Cursor, WSL, OpenClaw, and remote HTTP clients. |
 | [Security](SECURITY.md) | Feature gates, path policy, network rules, runtime guardrails, and subprocess policy. |
 | [Tool reference](docs/TOOL_REFERENCE.md) | Tool groups, MCP resources, prompts, and verification commands. |
 | [Sample policy](docs/SAMPLE_POLICY.md) | Licensing, attribution, and import metadata rules. |
@@ -244,15 +247,15 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 18 files, 42 tests passed
+Tests: 20 files, 49 tests passed
 Lint: passed
-Doctor: passed with 0 warnings
+Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
 Release check: passed
 Safe sweep: passed
 Live smoke: passed with bridge reachable, live state, snapshot, tracks, scenes, devices, and dry-run write confirmed
 Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 151 tools, 3 resources, 2 prompts
-All-tool contract sweep: 151 registered tools, 151 safe calls
+MCP verifier: 158 tools, 3 resources, 2 prompts
+All-tool contract sweep: 158 registered tools, 158 safe calls
 Docker-mode HTTP: existing node dist/src/http.js returned MCP initialize 200 on 127.0.0.1:17366
 WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
 Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_connection_profiles
