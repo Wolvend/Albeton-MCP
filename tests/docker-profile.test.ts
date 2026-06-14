@@ -73,6 +73,8 @@ describe("Docker MCP profile plan", () => {
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_render_concept_timeline");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_render_concept_mix_plan");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_render_concept_automation_map");
+    expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_list_free_sample_sources");
+    expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_search_free_sample_sources");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_list_internet_archive_audio_files");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_return_track_mixer");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_bridge_capabilities");
@@ -85,6 +87,7 @@ describe("Docker MCP profile plan", () => {
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_execute_concept_plan");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_begin_concept_device_ui_session");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_stage_concept_samples");
+    expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_plan_free_sample_download");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_download_sample");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_click_coordinates");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).not.toContain("ableton_set_tempo");
@@ -108,6 +111,7 @@ describe("Docker MCP profile plan", () => {
     expect(DOCKER_MCP_RISKY_TOOL_DENYLIST).toContain("ableton_execute_concept_plan");
     expect(DOCKER_MCP_RISKY_TOOL_DENYLIST).toContain("ableton_begin_concept_device_ui_session");
     expect(DOCKER_MCP_RISKY_TOOL_DENYLIST).toContain("ableton_stage_concept_samples");
+    expect(DOCKER_MCP_RISKY_TOOL_DENYLIST).toContain("ableton_plan_free_sample_download");
     expect(DOCKER_MCP_RISKY_TOOL_DENYLIST).toContain("ableton_click_coordinates");
   });
 

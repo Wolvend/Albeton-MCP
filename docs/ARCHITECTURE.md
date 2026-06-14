@@ -9,7 +9,7 @@ Ableton MCP is a local stdio MCP server built with TypeScript, Zod schemas, and 
 - Offline intelligence: safe on-demand scanning, `.als` gzip/XML summary parsing, MIDI parsing, and ffprobe audio metadata.
 - Live bridge: Max for Live/LiveAPI loopback bridge on `127.0.0.1`, using request IDs, heartbeat, timeouts, and snapshot actions.
 - Control modes: background bridge control is the default; foreground UI/mouse control is an explicit fallback through a ChromeDriver-style loopback UI driver that requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
-- Samples: Freesound and Internet Archive metadata/search, with downloads disabled unless `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
+- Samples: universal source policy/search planning, Freesound and Internet Archive direct metadata paths, Openverse discovery, manual-review source plans, and downloads disabled unless `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
 - Runtime middleware: FastMCP-inspired cross-cutting tool pipeline for error handling, timing metrics, per-tool rate limiting, short read-cache TTLs, and response-size limits.
 - MCP context: read-only resources expose environment, runtime metrics, and scan status; prompts provide safe production planning and security review templates.
 

@@ -32,7 +32,7 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, humanization, Arrangement View placement, and export/save workflows. |
 | Mix analysis | Run read-only LUFS, clipping, broad-band spectrum, and reference-comparison checks against allowed local audio files. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
-| Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
+| Samples | Search or plan licensed sources through the universal free-sample registry, including Freesound, Internet Archive, Openverse, manual-review libraries, and YouTube/SoundCloud manual-proof boundaries. Downloads/imports stay gated behind explicit flags. |
 | Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, layer sample curation plan, mix plan, device-chain spec, device catalog match report, arrangement skeleton, execution action matrix, execution manifest, execution runbook, and delivery plan. |
 | Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
 | Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
@@ -253,13 +253,13 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 24 files, 103 tests passed
+Tests: 24 files, 106 tests passed
 Lint: passed
 Doctor: passed with 0 failures and 1 warning for the optional UI driver listener
 Release check: passed
-Safe sweep: passed, 125 safe calls, 0 unexpected failures
-All-tool contract sweep: passed, 241 registered tools, 241 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
-MCP verifier: 241 tools, 3 resources, 2 prompts
+Safe sweep: passed, 129 safe calls, 0 unexpected failures
+All-tool contract sweep: passed, 244 registered tools, 244 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
+MCP verifier: 244 tools, 3 resources, 2 prompts
 Bridge install: updated files copied to the Ableton User Library preset folder
 Live bridge probe: listener was present on 127.0.0.1:17364, but request/response timed out after bridge file reinstall; reload or restart the Max for Live bridge device before live compact-read testing
 WSL native verifier: not rerun in this pass

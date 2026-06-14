@@ -15,7 +15,7 @@ Remote HTTP: disabled
 
 The profile name above is the current local Docker MCP profile target. Ableton MCP itself remains a standalone MCP server and is not branded for that profile.
 
-The Docker profile allowlist enables read, planning, search, diagnostics, and concept-planning tools. It does not enable write execution, sample staging/downloads, raw UI clicks, or tempo/session mutation by default.
+The Docker profile allowlist enables read, planning, search, diagnostics, concept-planning tools, and read-only free-sample source listing/search. It does not enable write execution, sample download planning/staging/imports, raw UI clicks, or tempo/session mutation by default.
 
 ## Start Host HTTP
 
@@ -84,6 +84,8 @@ openclaw mcp doctor ableton-mcp --probe
 After Ableton MCP is reachable, clients can also call `ableton_mcp_get_safe_tool_allowlist` and use `safeToolAllowlist.csv` instead of importing the local TypeScript module.
 
 OpenClaw should remain a consumer of Ableton MCP. Ableton MCP still owns write/download/UI gates, path allowlisting, sample-source policy, and LiveAPI/UI-driver separation.
+
+The safe Docker/OpenClaw allowlist includes `ableton_list_free_sample_sources` and `ableton_search_free_sample_sources` so clients can discover licensed material candidates. It intentionally excludes `ableton_plan_free_sample_download`, `ableton_stage_concept_samples`, `ableton_download_sample`, and `ableton_import_sample_to_library`; those remain explicit user-gated workflows outside the default profile.
 
 ## Security Notes
 

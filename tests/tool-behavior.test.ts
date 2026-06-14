@@ -182,12 +182,15 @@ describe("MCP tool behavior", () => {
         "ableton_render_concept_automation_map",
         "ableton_plan_concept_device_ui_placement",
         "ableton_render_concept_execution_manifest",
+        "ableton_list_free_sample_sources",
+        "ableton_search_free_sample_sources",
         "ableton_mcp_get_objective_readiness_report",
         "ableton_mcp_get_launch_readiness_audit",
         "ableton_mcp_get_safe_tool_allowlist"
       ]));
       expect(tools).not.toContain("ableton_execute_concept_plan");
       expect(tools).not.toContain("ableton_stage_concept_samples");
+      expect(tools).not.toContain("ableton_plan_free_sample_download");
       expect(tools).not.toContain("ableton_download_sample");
       expect(tools).not.toContain("ableton_click_coordinates");
       expect(safeToolAllowlist.csv).toContain("ableton_plan_concept_track");

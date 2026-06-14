@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-241 tools
+244 tools
 3 resources
 2 prompts
 ```
@@ -78,6 +78,9 @@ Control-mode tools:
 - `ableton_reverse_clip_to_sample` and `ableton_crop_clip`: write-gated local ffmpeg transforms for approved source audio into staging/import paths; dry-run by default and never overwrite.
 - `ableton_analyze_lufs`, `ableton_analyze_spectrum`, `ableton_detect_clipping`, and `ableton_compare_reference`: read-only ffmpeg-backed mix checks for rendered masters and references.
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
+- `ableton_list_free_sample_sources`: reports the approved free/sample-source registry, license rules, host boundaries, search modes, and download modes for agent source selection.
+- `ableton_search_free_sample_sources`: searches live API-backed sources where possible and returns manual search plans for sources that require item-page review.
+- `ableton_plan_free_sample_download`: creates a dry-run-first staging plan for a selected source URL or `source_url`; YouTube and SoundCloud remain manual-proof only and are never stream-ripped.
 - `ableton_curate_concept_samples`: maps stored concept layers to licensed sample-search candidates, layer review notes, and dry-run staging templates without downloads.
 - `ableton_render_concept_attribution_bundle`: reports attribution sidecars for one stored concept arrangement without broad scans or path exposure.
 - `ableton_render_concept_production_scorecard`: scores a stored concept arrangement for layer coverage, sample readiness, routing, staged device/automation readiness, execution safety, and delivery readiness.

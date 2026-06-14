@@ -24,7 +24,20 @@ import {
   suggestMixActions,
   validateProductionPlan
 } from "./composition.js";
-import { downloadSample, generateAttributionReport, getInternetArchiveMetadata, importSampleToLibrary, listInternetArchiveAudioFiles, normalizeLicense, searchFreesound, searchInternetArchiveAudio } from "./samples.js";
+import {
+  FREE_SAMPLE_SOURCE_IDS,
+  downloadSample,
+  generateAttributionReport,
+  getInternetArchiveMetadata,
+  importSampleToLibrary,
+  listFreeSampleSources,
+  listInternetArchiveAudioFiles,
+  normalizeLicense,
+  planFreeSampleDownload,
+  searchFreeSampleSources,
+  searchFreesound,
+  searchInternetArchiveAudio
+} from "./samples.js";
 import { downloadPluginPackage, planPluginDownload, pluginInstallInstructions, searchPluginCatalog } from "./plugins.js";
 import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
 import { getUiDriverRuntimeState, pingUiDriver, uiDriverAction } from "./ui-driver.js";
@@ -104,6 +117,7 @@ const BoundedAudioPath = z.string().min(1).max(1000);
 const EffectName = z.string().min(1).max(128);
 const ArrangementClipId = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.:-]+$/);
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
+const FreeSampleSource = z.enum(FREE_SAMPLE_SOURCE_IDS);
 const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
 const PreparedAudioId = z.string().regex(/^prepared-audio-[a-f0-9]{16}$/);
@@ -1751,6 +1765,9 @@ toolDefs.push(
   { name: "ableton_click_coordinates", description: "Click explicit coordinates when UI control is enabled.", inputSchema: { x: z.number(), y: z.number(), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_coordinates", args) },
   { name: "ableton_type_text", description: "Type text into Ableton when UI control is enabled.", inputSchema: { text: z.string().max(500), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("type_text", args) },
 
+  { name: "ableton_list_free_sample_sources", description: "List approved free/sample-library source policies, license rules, and download modes.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, sampleSources: listFreeSampleSources() }) },
+  { name: "ableton_search_free_sample_sources", description: "Search or plan searches across approved free sample sources with license filtering.", inputSchema: { query: z.string().min(1).max(200), sources: z.array(FreeSampleSource).min(1).max(16).optional(), allowed_only: z.boolean().default(true), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, sampleSearch: await searchFreeSampleSources({ query: args.query, sources: args.sources, page: args.page, pageSize: args.pageSize, allowedOnly: args.allowed_only }) }) },
+  { name: "ableton_plan_free_sample_download", description: "Create a dry-run-first staging plan for a free sample source; rejects YouTube/SoundCloud stream ripping.", inputSchema: { source: FreeSampleSource, url: z.string().url().optional(), source_url: z.string().url().optional(), destinationName: z.string().min(1).max(180).optional(), metadata: z.record(z.unknown()).default({}), ...DryRun }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => planFreeSampleDownload({ source: args.source, url: args.url, source_url: args.source_url, destinationName: args.destinationName, metadata: args.metadata, dry_run: args.dry_run }) },
   { name: "ableton_search_freesound", description: "Search Freesound for licensed sample metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchFreesound(args.query, args.page, args.pageSize) }) },
   { name: "ableton_search_internet_archive_audio", description: "Search Internet Archive public audio metadata.", inputSchema: { query: z.string().min(1).max(200), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, remote: await searchInternetArchiveAudio(args.query, args.page, args.pageSize) }) },
   { name: "ableton_get_remote_sample_metadata", description: "Get Internet Archive item metadata by identifier.", inputSchema: { source: z.enum(["internet_archive"]).default("internet_archive"), identifier: z.string().min(1).max(100).regex(/^[a-zA-Z0-9_.-]+$/) }, annotations: webro, handler: async (args) => ({ ok: true, metadata: await getInternetArchiveMetadata(args.identifier) as any }) },

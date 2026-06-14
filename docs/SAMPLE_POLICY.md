@@ -6,7 +6,10 @@ Allowed default sources:
 
 - Freesound API with CC0 or clear CC BY metadata.
 - Internet Archive public-domain or clearly licensed audio.
+- Universal sample-source planning through `ableton_list_free_sample_sources`, `ableton_search_free_sample_sources`, and `ableton_plan_free_sample_download`.
 - Local Ableton User Library content.
+
+Manual-review sources such as Openverse, Wikimedia Commons, Musopen, Pixabay, Mixkit, Sonniss GDC bundles, OpenGameArt, 99Sounds, SampleRadar, Adobe Audition SFX, and Free To Use Sounds can be used only after item-level license proof is captured. YouTube and SoundCloud are manual-proof only: use official download features or user-provided local files with explicit rights proof, never stream ripping.
 
 Every imported sample should have:
 

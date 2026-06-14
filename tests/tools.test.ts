@@ -51,6 +51,9 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_rename_scene");
     expect(registeredToolNames).toContain("ableton_set_master_volume");
     expect(registeredToolNames).toContain("ableton_set_master_pan");
+    expect(registeredToolNames).toContain("ableton_list_free_sample_sources");
+    expect(registeredToolNames).toContain("ableton_search_free_sample_sources");
+    expect(registeredToolNames).toContain("ableton_plan_free_sample_download");
     expect(registeredToolNames).toContain("ableton_search_freesound");
     expect(registeredToolNames).toContain("ableton_list_internet_archive_audio_files");
     expect(registeredToolNames).toContain("ableton_search_plugin_catalog");
@@ -197,6 +200,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_list_concept_execution_journals).toHaveProperty("page");
     expect(registeredToolSchemas.ableton_get_concept_execution_journal).toHaveProperty("execution_id");
     expect(registeredToolSchemas.ableton_plan_full_concept_production).toHaveProperty("include_sample_search");
+    expect(registeredToolSchemas.ableton_search_free_sample_sources).toHaveProperty("sources");
+    expect(registeredToolSchemas.ableton_plan_free_sample_download).toHaveProperty("source");
+    expect(registeredToolSchemas.ableton_plan_free_sample_download).toHaveProperty("source_url");
+    expect(registeredToolSchemas.ableton_plan_free_sample_download).toHaveProperty("dry_run");
     expect(registeredToolSchemas.ableton_curate_concept_samples).toHaveProperty("plan_id");
     expect(registeredToolSchemas.ableton_curate_concept_samples).toHaveProperty("search");
     expect(registeredToolSchemas.ableton_curate_concept_samples).toHaveProperty("allowed_only");
