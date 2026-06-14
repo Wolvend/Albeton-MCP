@@ -184,6 +184,27 @@ These are implementation unlocks, not just planning tools.
 | `ableton_apply_groove_map` | Real groove application once groove-pool mapping is reliable. | `input: { groove_id, track_index, clip_slot_index, amount, dry_run } -> output: { applied }` | Move from generated groove plans to Live clips. |
 | `ableton_get_chunked_snapshot` | Reads huge Live Sets in chunks to avoid Max JSON response truncation. | `input: { chunks: ["tracks","scenes","devices"], page, pageSize } -> output: { chunk, nextPage? }` | Inspect dense projects safely instead of using full snapshots. |
 
+## Patch 10: Taste, Orchestration, And Session Craft
+
+These tools help agents make better producer decisions before adding more tracks or effects.
+
+| Tool | What It Does | Code Contract | Agent Should |
+| --- | --- | --- | --- |
+| `ableton_build_reference_profile` | Summarizes non-copying reference targets for loudness, density, section timing, width, low-end shape, and palette. | `input: { reference_paths[], concept } -> output: { profile, targetRanges, warnings[] }` | Use references as quality guides, not as material to imitate. |
+| `ableton_score_reference_distance` | Scores how far a plan or render is from the approved reference profile. | `input: { renderPath?, arrangementPlan?, referenceProfileId } -> output: { score, deltas[], nextMoves[] }` | Decide what to revise without copying protected expression. |
+| `ableton_generate_genre_rulebook` | Converts a style brief into mandatory, optional, and avoid rules for tempo, rhythm, harmony, sound palette, arrangement, and mix. | `input: { style, concept, strictness } -> output: { rules, avoidList, intentionalBreaks[] }` | Keep genre discipline while preserving the user's concept. |
+| `ableton_check_genre_authenticity` | Checks whether a plan or render follows the intended style and flags generic or conflicting choices. | `input: { concept, style, arrangementPlan?, renderPath? } -> output: { score, findings[], revisions[] }` | Catch style drift before final mix work. |
+| `ableton_plan_instrument_registers` | Assigns instrument and layer registers across sub, bass, body, mid hook, high detail, air, and texture. | `input: { tracksOrLayers[], key?, style } -> output: { registerMap, conflicts[], revisions[] }` | Fix arrangement collisions before reaching for EQ. |
+| `ableton_score_frequency_arrangement` | Scores whether the arrangement itself distributes frequency roles well before mix processing. | `input: { arrangementPlan?, stems? } -> output: { score, crowdedBands[], missingRoles[] }` | Separate writing problems from mixing problems. |
+| `ableton_plan_negative_space` | Plans silence, dropouts, sparse sections, breaks, tails, and reset moments. | `input: { sections[], concept, intensity } -> output: { spaceMap, muteIdeas[], payoffNotes[] }` | Make hooks and impacts land by removing material. |
+| `ableton_score_density_curve` | Scores density over time and finds overfilled or underdeveloped ranges. | `input: { arrangementPlan?, renderPath? } -> output: { densityCurve, fatigueRisk, revisionPlan }` | Keep the listener engaged without constant fullness. |
+| `ableton_generate_ear_candy_map` | Places small details such as throws, fills, reverses, one-shots, micro-pauses, and texture flashes. | `input: { sections[], hookMap, intensity } -> output: { events[], placementRationale }` | Add replay value only after the core idea works. |
+| `ableton_score_replay_value` | Scores whether the track has memorable details, callbacks, surprise, and variation without clutter. | `input: { arrangementPlan?, renderPath?, concept } -> output: { score, strengths[], additions[] }` | Improve repeat listens without distracting from the song. |
+| `ableton_plan_stereo_depth_stage` | Designs center, width, front-back depth, height, dry/wet distance, and mono priorities. | `input: { tracksOrLayers[], concept, playbackTargets[] } -> output: { stageMap, monoCritical[], widthRisks[] }` | Make immersive mixes that still translate. |
+| `ableton_score_depth_image` | Scores width, depth, center strength, reverberant blur, and mono risk. | `input: { renderPath, stems? } -> output: { score, imageFindings[], fixes[] }` | Fix spatial problems before mastering. |
+| `ableton_plan_session_handoff` | Creates a human-readable handoff for track names, roles, stems, versions, attribution, and next revision steps. | `input: { arrangementId?, conceptPlanId?, deliveryTarget } -> output: { handoff, checklist, missing[] }` | Make projects maintainable after the agent session. |
+| `ableton_validate_project_organization` | Checks naming, grouping, markers, journals, attribution sidecars, and export readiness. | `input: { liveSnapshot?, arrangementPlan?, deliveryPlan? } -> output: { ok, issues[], fixes[] }` | Prevent good songs from becoming unmanageable projects. |
+
 ## Agent Workflow Target
 
 The intended professional workflow is:
