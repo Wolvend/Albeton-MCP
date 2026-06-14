@@ -3,7 +3,19 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { analyzeAbletonSet, analyzeAudioFile, analyzeLufs, analyzeSpectrum, compareReferenceAudio, convertAudioFile, detectClipping } from "./analysis.js";
+import {
+  analyzeAbletonSet,
+  analyzeAudioFile,
+  analyzeLufs,
+  analyzeSampleMusicalFeatures,
+  analyzeSpectrum,
+  compareReferenceAudio,
+  convertAudioFile,
+  detectClipping,
+  detectKeyBpmConfidence,
+  findBestLoopPoints,
+  matchSamplesToConcept
+} from "./analysis.js";
 import { openBridgeDevice } from "./bridge-activation.js";
 import { bridgeAction, getBridgeCapabilityMatrix, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
@@ -118,6 +130,29 @@ const EffectName = z.string().min(1).max(128);
 const ArrangementClipId = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.:-]+$/);
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
 const FreeSampleSource = z.enum(FREE_SAMPLE_SOURCE_IDS);
+const BpmRange = z.object({
+  min: z.number().min(30).max(300).optional(),
+  max: z.number().min(30).max(300).optional()
+});
+const SampleIntelligenceWindow = {
+  path: z.string().min(1),
+  start_seconds: z.number().min(0).max(100_000).default(0),
+  duration_seconds: z.number().positive().max(120).default(30)
+};
+const SampleMatchCandidate = z.object({
+  id: z.union([z.string(), z.number()]).optional(),
+  path: z.string().min(1).optional(),
+  source: z.string().max(100).optional(),
+  sourceUrl: z.string().max(1000).optional(),
+  url: z.string().max(1000).optional(),
+  title: z.string().max(300).optional(),
+  name: z.string().max(300).optional(),
+  creator: z.string().max(200).optional(),
+  username: z.string().max(200).optional(),
+  license: z.string().max(300).optional(),
+  tags: z.array(z.string().max(80)).max(48).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
 const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
 const PreparedAudioId = z.string().regex(/^prepared-audio-[a-f0-9]{16}$/);
@@ -1778,6 +1813,10 @@ toolDefs.push(
   { name: "ableton_preview_remote_sample", description: "Return preview metadata only; never downloads.", inputSchema: { url: z.string().url(), license: z.string().optional() }, annotations: webro, handler: async (args) => ({ ok: true, preview: { url: assertAllowedSampleUrl(args.url), license: normalizeLicense(args.license), downloadEnabled: FLAGS.downloads } }) },
   { name: "ableton_download_sample", description: "Download an allowed licensed sample into staging when downloads are enabled.", inputSchema: { url: z.string().url(), destinationName: z.string().min(1), metadata: z.record(z.unknown()).default({}) }, annotations: { ...webro, readOnlyHint: false }, handler: async (args) => ({ ok: true, download: await downloadSample(args.url, args.destinationName, args.metadata) }) },
   { name: "ableton_analyze_audio_file", description: "Analyze allowed local audio file with ffprobe.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, analysis: await analyzeAudioFile(args.path) }) },
+  { name: "ableton_analyze_sample_musical_features", description: "Heuristically analyze an allowed local sample for tempo, key, energy, transients, hiss/noise, vocal likelihood, loopability, and texture tags.", inputSchema: SampleIntelligenceWindow, annotations: ro, handler: async (args) => ({ ok: true, sampleIntelligence: await analyzeSampleMusicalFeatures(args.path, { start_seconds: args.start_seconds, duration_seconds: args.duration_seconds }) as any }) },
+  { name: "ableton_detect_key_bpm_confidence", description: "Return BPM/key candidates with confidence and ambiguity warnings for an allowed local audio file.", inputSchema: { ...SampleIntelligenceWindow, bpm_range: BpmRange.optional(), key_hint: z.string().max(80).optional() }, annotations: ro, handler: async (args) => ({ ok: true, keyBpm: await detectKeyBpmConfidence(args.path, { bpm_range: args.bpm_range, key_hint: args.key_hint, start_seconds: args.start_seconds, duration_seconds: args.duration_seconds }) as any }) },
+  { name: "ableton_find_best_loop_points", description: "Find heuristic zero-crossing loop candidates for an allowed local sample without writing files.", inputSchema: { path: z.string().min(1), target_bars: z.number().min(1).max(64).default(4), bpm: z.number().min(30).max(300).optional(), start_seconds: z.number().min(0).max(100_000).default(0), duration_seconds: z.number().positive().max(120).default(45) }, annotations: ro, handler: async (args) => ({ ok: true, loopPoints: await findBestLoopPoints(args.path, { target_bars: args.target_bars, bpm: args.bpm, start_seconds: args.start_seconds, duration_seconds: args.duration_seconds }) as any }) },
+  { name: "ableton_match_samples_to_concept", description: "Rank local or metadata-only sample candidates against a concept and role list without fetching URLs or writing files.", inputSchema: { concept: z.string().min(1).max(1000), candidates: z.array(SampleMatchCandidate).min(1).max(100), roles: z.array(z.string().min(1).max(80)).min(1).max(16).optional() }, annotations: ro, handler: async (args) => ({ ok: true, sampleMatch: await matchSamplesToConcept({ concept: args.concept, candidates: args.candidates, roles: args.roles }) as any }) },
   { name: "ableton_convert_audio_file", description: "Convert approved local audio into staging/imports with ffmpeg; dry-run by default and never overwrites.", inputSchema: { input: z.string().min(1), output: z.string().min(1), format: z.enum(["wav", "flac", "mp3"]).default("wav"), preset: z.enum(["clean", "liminal_memory", "stretched_ambience", "reversed_fragment"]).default("clean"), start_seconds: z.number().min(0).max(100_000).optional(), duration_seconds: z.number().positive().max(3600).optional(), ...DryRun }, annotations: rw, handler: async (args) => {
     if (args.dry_run === false) requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Audio conversion");
     return { ok: true, audioConversion: await convertAudioFile(args) as any };

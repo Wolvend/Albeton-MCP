@@ -109,6 +109,10 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_analyze_spectrum");
     expect(registeredToolNames).toContain("ableton_detect_clipping");
     expect(registeredToolNames).toContain("ableton_compare_reference");
+    expect(registeredToolNames).toContain("ableton_analyze_sample_musical_features");
+    expect(registeredToolNames).toContain("ableton_detect_key_bpm_confidence");
+    expect(registeredToolNames).toContain("ableton_find_best_loop_points");
+    expect(registeredToolNames).toContain("ableton_match_samples_to_concept");
   });
 
   it("uses typed schemas for newer bridge workflow tools", () => {
@@ -271,5 +275,9 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_analyze_spectrum).toHaveProperty("duration_seconds");
     expect(registeredToolSchemas.ableton_detect_clipping).toHaveProperty("threshold_dbfs");
     expect(registeredToolSchemas.ableton_compare_reference).toHaveProperty("candidate_path");
+    expect(registeredToolSchemas.ableton_analyze_sample_musical_features).toHaveProperty("duration_seconds");
+    expect(registeredToolSchemas.ableton_detect_key_bpm_confidence).toHaveProperty("bpm_range");
+    expect(registeredToolSchemas.ableton_find_best_loop_points).toHaveProperty("target_bars");
+    expect(registeredToolSchemas.ableton_match_samples_to_concept).toHaveProperty("candidates");
   });
 });

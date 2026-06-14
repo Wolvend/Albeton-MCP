@@ -15,11 +15,36 @@ type SweepCall = {
   expected?: "ok" | "any";
 };
 
+function makeSilentWav() {
+  const sampleRate = 44100;
+  const durationSeconds = 0.1;
+  const channels = 1;
+  const bitsPerSample = 16;
+  const samples = Math.floor(sampleRate * durationSeconds);
+  const dataSize = samples * channels * (bitsPerSample / 8);
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write("RIFF", 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write("WAVE", 8);
+  buffer.write("fmt ", 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(channels, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * channels * (bitsPerSample / 8), 28);
+  buffer.writeUInt16LE(channels * (bitsPerSample / 8), 32);
+  buffer.writeUInt16LE(bitsPerSample, 34);
+  buffer.write("data", 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  return buffer;
+}
+
 async function ensureFixtures() {
   const dir = path.join(LOCAL_PATHS.projectRoot, "tests", "fixtures", "sweep");
   await fs.mkdir(dir, { recursive: true });
   const setPath = path.join(dir, "minimal.als");
   const textPath = path.join(dir, "note.txt");
+  const audioPath = path.join(dir, "tone.wav");
   try {
     await fs.access(setPath);
   } catch {
@@ -31,7 +56,12 @@ async function ensureFixtures() {
   } catch {
     await fs.writeFile(textPath, "Ableton MCP safe sweep fixture\n", { flag: "wx" });
   }
-  return { dir, setPath, textPath };
+  try {
+    await fs.access(audioPath);
+  } catch {
+    await fs.writeFile(audioPath, makeSilentWav(), { flag: "wx" });
+  }
+  return { dir, setPath, textPath, audioPath };
 }
 
 const fixtures = await ensureFixtures();
@@ -149,6 +179,10 @@ const calls: SweepCall[] = [
   { name: "ableton_search_free_sample_sources", arguments: { query: "room tone", sources: ["freesound", "internet_archive", "openverse", "youtube_audio_library", "soundcloud_user_provided"], allowed_only: true, page: 1, pageSize: 2 } },
   { name: "ableton_plan_free_sample_download", arguments: { source: "youtube_user_provided", source_url: "https://www.youtube.com/watch?v=example", destinationName: "youtube-example.wav", metadata: { license: "CC BY 4.0", proof: "official download or creator permission required" }, dry_run: true } },
   { name: "ableton_plan_free_sample_download", arguments: { source: "freesound", url: "https://freesound.org/example.wav", destinationName: "safe-sweep.wav", metadata: { license: "CC0" }, dry_run: true } },
+  { name: "ableton_analyze_sample_musical_features", arguments: { path: fixtures.audioPath, start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_detect_key_bpm_confidence", arguments: { path: fixtures.audioPath, bpm_range: { min: 60, max: 140 }, start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_find_best_loop_points", arguments: { path: fixtures.audioPath, target_bars: 1, bpm: 120, start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_match_samples_to_concept", arguments: { concept: "safe sweep liminal room tone", candidates: [{ path: fixtures.audioPath, title: "safe sweep room tone", tags: ["room", "texture"] }], roles: ["texture", "pulse"] } },
   { name: "ableton_list_internet_archive_audio_files", arguments: { identifier: "opensource_audio", page: 1, pageSize: 5 }, expected: "any" },
   { name: "ableton_preview_remote_sample", arguments: { url: "https://archive.org/download/example/file.wav", license: "CC0" } },
   { name: "ableton_generate_session_plan", arguments: { brief: "safe sweep liminal hallway cue", style: "liminal/backrooms/horror", target_duration_seconds: 120, intensity: 7 } },

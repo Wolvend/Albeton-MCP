@@ -362,6 +362,495 @@ export async function analyzeSpectrum(filePath: string, options: { start_seconds
   };
 }
 
+const PitchClassNames = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+const MajorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const MinorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function boundedSampleWindow(options: { start_seconds?: number; duration_seconds?: number; sample_rate?: number }) {
+  return {
+    start_seconds: clamp(options.start_seconds ?? 0, 0, 100_000),
+    duration_seconds: clamp(options.duration_seconds ?? 30, 1, 90),
+    sample_rate: Math.trunc(clamp(options.sample_rate ?? 16_000, 8_000, 24_000))
+  };
+}
+
+function frameEnvelope(samples: Float32Array, frameSize: number, hopSize: number) {
+  const frames = Math.max(0, Math.floor((samples.length - frameSize) / hopSize));
+  const envelope = new Float32Array(frames);
+  let max = 0;
+  for (let frame = 0; frame < frames; frame += 1) {
+    const start = frame * hopSize;
+    let sum = 0;
+    for (let i = 0; i < frameSize; i += 1) {
+      const sample = samples[start + i] ?? 0;
+      sum += sample * sample;
+    }
+    const rms = Math.sqrt(sum / frameSize);
+    envelope[frame] = rms;
+    if (rms > max) max = rms;
+  }
+  if (max > 0) {
+    for (let i = 0; i < envelope.length; i += 1) envelope[i] = envelope[i]! / max;
+  }
+  return envelope;
+}
+
+function onsetEnvelope(envelope: Float32Array) {
+  const onset = new Float32Array(Math.max(0, envelope.length - 1));
+  let max = 0;
+  for (let i = 1; i < envelope.length; i += 1) {
+    const diff = Math.max(0, envelope[i]! - envelope[i - 1]!);
+    onset[i - 1] = diff;
+    if (diff > max) max = diff;
+  }
+  if (max > 0) {
+    for (let i = 0; i < onset.length; i += 1) onset[i] = onset[i]! / max;
+  }
+  return onset;
+}
+
+function countOnsetPeaks(onset: Float32Array, threshold = 0.35) {
+  let peaks = 0;
+  for (let i = 1; i < onset.length - 1; i += 1) {
+    if (onset[i]! > threshold && onset[i]! >= onset[i - 1]! && onset[i]! >= onset[i + 1]!) peaks += 1;
+  }
+  return peaks;
+}
+
+function detectBpmCandidates(samples: Float32Array, sampleRate: number, durationSeconds: number, bpmRange?: { min?: number; max?: number }) {
+  const frameSize = 512;
+  const hopSize = 256;
+  const frameRate = sampleRate / hopSize;
+  const onset = onsetEnvelope(frameEnvelope(samples, frameSize, hopSize));
+  const minBpm = Math.trunc(clamp(bpmRange?.min ?? 45, 30, 260));
+  const maxBpm = Math.trunc(clamp(bpmRange?.max ?? 220, minBpm + 1, 300));
+  const raw: Array<{ bpm: number; score: number }> = [];
+  for (let bpm = minBpm; bpm <= maxBpm; bpm += 1) {
+    const lag = Math.round((60 * frameRate) / bpm);
+    if (lag < 2 || lag >= onset.length) continue;
+    let score = 0;
+    for (let i = lag; i < onset.length; i += 1) score += onset[i]! * onset[i - lag]!;
+    raw.push({ bpm, score: score / Math.max(1, onset.length - lag) });
+  }
+  raw.sort((left, right) => right.score - left.score);
+  const candidates: Array<{ bpm: number; confidence: number; score: number; feel: string }> = [];
+  const maxScore = raw[0]?.score ?? 0;
+  for (const candidate of raw) {
+    if (candidates.some((seen) => Math.abs(seen.bpm - candidate.bpm) < 4 || Math.abs(seen.bpm * 2 - candidate.bpm) < 4 || Math.abs(seen.bpm / 2 - candidate.bpm) < 4)) continue;
+    const normalized = maxScore > 0 ? candidate.score / maxScore : 0;
+    candidates.push({
+      bpm: candidate.bpm,
+      confidence: Number(clamp(normalized * (durationSeconds >= 4 ? 0.9 : 0.55), 0, 0.98).toFixed(3)),
+      score: Number(candidate.score.toFixed(6)),
+      feel: candidate.bpm < 80 ? "slow" : candidate.bpm > 150 ? "fast" : "moderate"
+    });
+    if (candidates.length >= 5) break;
+  }
+  const transientDensity = durationSeconds > 0 ? countOnsetPeaks(onset) / durationSeconds : 0;
+  return {
+    candidates,
+    transientDensity: Number(transientDensity.toFixed(3)),
+    onsetFrames: onset.length,
+    confidence: Number((candidates[0]?.confidence ?? 0).toFixed(3))
+  };
+}
+
+function noteFrequency(midiNote: number) {
+  return 440 * (2 ** ((midiNote - 69) / 12));
+}
+
+function profileScore(chroma: number[], profile: number[], root: number) {
+  let score = 0;
+  let chromaNorm = 0;
+  let profileNorm = 0;
+  for (let i = 0; i < 12; i += 1) {
+    const c = chroma[(i + root) % 12] ?? 0;
+    const p = profile[i] ?? 0;
+    score += c * p;
+    chromaNorm += c * c;
+    profileNorm += p * p;
+  }
+  return chromaNorm > 0 && profileNorm > 0 ? score / Math.sqrt(chromaNorm * profileNorm) : 0;
+}
+
+function detectKeyCandidates(samples: Float32Array, sampleRate: number, keyHint?: string) {
+  const chroma = Array.from({ length: 12 }, () => 0);
+  for (let midi = 36; midi <= 84; midi += 1) {
+    const frequency = noteFrequency(midi);
+    if (frequency >= sampleRate / 2) continue;
+    const pitchClass = midi % 12;
+    chroma[pitchClass] = (chroma[pitchClass] ?? 0) + goertzelPower(samples, sampleRate, frequency);
+  }
+  const chromaMax = Math.max(...chroma, Number.EPSILON);
+  const normalizedChroma = chroma.map((value) => value / chromaMax);
+  const scores: Array<{ key: string; mode: "major" | "minor"; confidence: number; score: number; hintMatch: boolean }> = [];
+  for (let root = 0; root < 12; root += 1) {
+    for (const mode of ["major", "minor"] as const) {
+      const score = profileScore(normalizedChroma, mode === "major" ? MajorProfile : MinorProfile, root);
+      const key = `${PitchClassNames[root]} ${mode}`;
+      const hintMatch = Boolean(keyHint && key.toLowerCase().includes(keyHint.toLowerCase().trim()));
+      scores.push({ key, mode, confidence: 0, score, hintMatch });
+    }
+  }
+  scores.sort((left, right) => right.score - left.score);
+  const top = scores[0]?.score ?? 0;
+  const next = scores[1]?.score ?? 0;
+  const separation = Math.max(0, top - next);
+  const tonalEnergy = chroma.reduce((sum, value) => sum + value, 0);
+  const baseConfidence = tonalEnergy > 0 ? clamp(0.25 + separation * 2.5, 0.05, 0.85) : 0;
+  return scores.slice(0, 5).map((candidate, index) => ({
+    ...candidate,
+    confidence: Number(clamp(baseConfidence - index * 0.08 + (candidate.hintMatch ? 0.05 : 0), 0.01, 0.92).toFixed(3)),
+    score: Number(candidate.score.toFixed(4))
+  }));
+}
+
+function zeroCrossingRate(samples: Float32Array) {
+  if (samples.length < 2) return 0;
+  let crossings = 0;
+  for (let i = 1; i < samples.length; i += 1) {
+    if ((samples[i - 1]! <= 0 && samples[i]! > 0) || (samples[i - 1]! >= 0 && samples[i]! < 0)) crossings += 1;
+  }
+  return crossings / (samples.length - 1);
+}
+
+function boundaryStats(samples: Float32Array, sampleRate: number) {
+  const window = Math.min(samples.length, Math.max(128, Math.floor(sampleRate * 0.05)));
+  if (window <= 0) return { discontinuity: 0, edgeRmsDelta: 0, loopabilityScore: 0 };
+  let startRms = 0;
+  let endRms = 0;
+  for (let i = 0; i < window; i += 1) {
+    startRms += (samples[i] ?? 0) ** 2;
+    endRms += (samples[samples.length - window + i] ?? 0) ** 2;
+  }
+  startRms = Math.sqrt(startRms / window);
+  endRms = Math.sqrt(endRms / window);
+  const discontinuity = Math.abs((samples[0] ?? 0) - (samples[samples.length - 1] ?? 0));
+  const edgeRmsDelta = Math.abs(startRms - endRms);
+  const loopabilityScore = clamp(1 - discontinuity * 8 - edgeRmsDelta * 4, 0, 1);
+  return {
+    discontinuity: Number(discontinuity.toFixed(5)),
+    edgeRmsDelta: Number(edgeRmsDelta.toFixed(5)),
+    loopabilityScore: Number(loopabilityScore.toFixed(3))
+  };
+}
+
+function energySummary(spectrum: Awaited<ReturnType<typeof analyzeSpectrum>>) {
+  const byName = new Map(spectrum.bands.map((band) => [band.name, band.power]));
+  const low = (byName.get("sub") ?? 0) + (byName.get("bass") ?? 0);
+  const mid = (byName.get("low_mid") ?? 0) + (byName.get("mid") ?? 0) + (byName.get("presence") ?? 0);
+  const high = (byName.get("edge") ?? 0) + (byName.get("air") ?? 0);
+  const total = Math.max(low + mid + high, Number.EPSILON);
+  const centroid = spectrum.bands.reduce((sum, band) => sum + band.center_hz * band.power, 0)
+    / Math.max(spectrum.bands.reduce((sum, band) => sum + band.power, 0), Number.EPSILON);
+  return {
+    low: Number((low / total).toFixed(3)),
+    mid: Number((mid / total).toFixed(3)),
+    high: Number((high / total).toFixed(3)),
+    spectralCentroidHz: Number(centroid.toFixed(1))
+  };
+}
+
+function textureTags(metrics: {
+  energy: ReturnType<typeof energySummary>;
+  transientDensity: number;
+  zeroCrossingRate: number;
+  loopabilityScore: number;
+  vocalLikelihood: number;
+  hissEstimate: number;
+}) {
+  const tags: string[] = [];
+  if (metrics.energy.low > 0.45) tags.push("low-heavy", "sub-pressure");
+  if (metrics.energy.mid > 0.55) tags.push("mid-forward");
+  if (metrics.energy.high > 0.32 || metrics.hissEstimate > 0.55) tags.push("hissy", "bright-noise");
+  if (metrics.transientDensity > 3.5) tags.push("percussive", "transient-rich");
+  if (metrics.transientDensity < 0.7) tags.push("sustained", "ambient");
+  if (metrics.loopabilityScore > 0.68) tags.push("loopable");
+  if (metrics.vocalLikelihood > 0.55) tags.push("vocal-like");
+  if (metrics.energy.spectralCentroidHz < 350) tags.push("dark");
+  if (metrics.zeroCrossingRate > 0.18) tags.push("noisy");
+  return [...new Set(tags)].slice(0, 12);
+}
+
+export async function detectKeyBpmConfidence(filePath: string, options: { bpm_range?: { min?: number; max?: number }; key_hint?: string; start_seconds?: number; duration_seconds?: number } = {}) {
+  const window = boundedSampleWindow(options);
+  const preview = await decodeMonoPreview(filePath, window.start_seconds, window.duration_seconds, window.sample_rate);
+  const bpm = detectBpmCandidates(preview.samples, preview.sampleRate, preview.durationSeconds, options.bpm_range);
+  const keyCandidates = detectKeyCandidates(preview.samples, preview.sampleRate, options.key_hint);
+  const ambiguityWarnings: string[] = [];
+  if (bpm.confidence < 0.35) ambiguityWarnings.push("BPM confidence is weak; the sample may be beatless, too short, or have diffuse transients.");
+  if ((keyCandidates[0]?.confidence ?? 0) < 0.35) ambiguityWarnings.push("Key confidence is weak; treat this as harmonic color or use pitch-neutral processing.");
+  if (preview.durationSeconds < 4) ambiguityWarnings.push("Analysis window is short; repeat on a longer section before pitch/tempo-critical placement.");
+  return {
+    path: preview.path,
+    method: "heuristic mono preview onset autocorrelation plus chroma profile scoring",
+    heuristic: true,
+    window,
+    bpmCandidates: bpm.candidates,
+    keyCandidates,
+    confidence: {
+      bpm: bpm.confidence,
+      key: Number((keyCandidates[0]?.confidence ?? 0).toFixed(3)),
+      overall: Number(Math.min(bpm.confidence || 0, keyCandidates[0]?.confidence ?? 0).toFixed(3))
+    },
+    ambiguityWarnings,
+    recommendedUse: ambiguityWarnings.length
+      ? "Use as a creative hint; confirm by ear or analyze a longer section before pitch/tempo-locked arrangement."
+      : "Usable as a first-pass guide for warping, key matching, and sample role selection."
+  };
+}
+
+export async function analyzeSampleMusicalFeatures(filePath: string, options: { start_seconds?: number; duration_seconds?: number } = {}) {
+  const window = boundedSampleWindow(options);
+  const [ffprobe, loudness, spectrum, keyBpm] = await Promise.all([
+    analyzeAudioFile(filePath),
+    analyzeLufs(filePath),
+    analyzeSpectrum(filePath, { ...window, sample_rate: 16_000 }),
+    detectKeyBpmConfidence(filePath, { start_seconds: window.start_seconds, duration_seconds: window.duration_seconds })
+  ]);
+  const preview = await decodeMonoPreview(filePath, window.start_seconds, window.duration_seconds, window.sample_rate);
+  const bpm = detectBpmCandidates(preview.samples, preview.sampleRate, preview.durationSeconds);
+  const energy = energySummary(spectrum);
+  const zcr = zeroCrossingRate(preview.samples);
+  const loopability = boundaryStats(preview.samples, preview.sampleRate);
+  const hissEstimate = clamp(energy.high * 1.25 + zcr * 1.5 - energy.low * 0.25, 0, 1);
+  const vocalLikelihood = clamp((energy.mid * 0.65) + (1 - Math.abs(energy.spectralCentroidHz - 1200) / 2200) * 0.25 + (bpm.transientDensity < 2 ? 0.1 : 0), 0, 1);
+  const tags = textureTags({
+    energy,
+    transientDensity: bpm.transientDensity,
+    zeroCrossingRate: zcr,
+    loopabilityScore: loopability.loopabilityScore,
+    vocalLikelihood,
+    hissEstimate
+  });
+  const duration = Number((ffprobe.ffprobe as any).format?.duration ?? preview.durationSeconds);
+  return {
+    path: preview.path,
+    method: "heuristic ffprobe/ffmpeg preview analysis; verify musical decisions by ear",
+    heuristic: true,
+    confidence: {
+      bpm: keyBpm.confidence.bpm,
+      key: keyBpm.confidence.key,
+      features: Number(clamp(preview.durationSeconds / 12, 0.2, 0.9).toFixed(3))
+    },
+    duration_seconds: Number.isFinite(duration) ? Number(duration.toFixed(3)) : null,
+    window,
+    loudness,
+    peak: {
+      peak_dbfs: db(preview.peak),
+      rms_dbfs: db(preview.rms)
+    },
+    bpmCandidates: keyBpm.bpmCandidates,
+    keyCandidates: keyBpm.keyCandidates,
+    transientDensity: bpm.transientDensity,
+    spectralCentroidHz: energy.spectralCentroidHz,
+    energy,
+    hissNoiseEstimate: Number(hissEstimate.toFixed(3)),
+    vocalLikelihood: Number(vocalLikelihood.toFixed(3)),
+    loopability: {
+      ...loopability,
+      hints: loopability.loopabilityScore > 0.68
+        ? ["Boundary energy is reasonably close; still add a short crossfade when looping."]
+        : ["Loop boundary is likely audible; use a crossfade, different loop endpoint, or one-shot placement."]
+    },
+    moodTextureTags: tags,
+    nextCalls: [
+      { name: "ableton_find_best_loop_points", arguments: { path: filePath, bpm: keyBpm.bpmCandidates[0]?.bpm, start_seconds: window.start_seconds, duration_seconds: window.duration_seconds } },
+      { name: "ableton_match_samples_to_concept", arguments: { concept: "<brief>", candidates: [{ path: filePath, tags }] } }
+    ]
+  };
+}
+
+function nearestZeroCrossing(samples: Float32Array, targetIndex: number, radius: number) {
+  const start = Math.max(1, targetIndex - radius);
+  const end = Math.min(samples.length - 1, targetIndex + radius);
+  let best = clamp(targetIndex, 1, samples.length - 1);
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (let i = start; i <= end; i += 1) {
+    const crosses = (samples[i - 1]! <= 0 && samples[i]! >= 0) || (samples[i - 1]! >= 0 && samples[i]! <= 0);
+    const score = Math.abs(samples[i] ?? 0) + (crosses ? 0 : 0.25) + Math.abs(i - targetIndex) / Math.max(1, radius);
+    if (score < bestScore) {
+      bestScore = score;
+      best = i;
+    }
+  }
+  return { index: Math.trunc(best), sample: samples[Math.trunc(best)] ?? 0, zeroCrossing: Math.abs(samples[Math.trunc(best)] ?? 0) < 0.01 };
+}
+
+export async function findBestLoopPoints(filePath: string, options: { target_bars?: number; bpm?: number; start_seconds?: number; duration_seconds?: number } = {}) {
+  const window = boundedSampleWindow({ start_seconds: options.start_seconds ?? 0, duration_seconds: options.duration_seconds ?? 45, sample_rate: 22_050 });
+  const preview = await decodeMonoPreview(filePath, window.start_seconds, window.duration_seconds, window.sample_rate);
+  const inferredBpm = options.bpm ?? detectBpmCandidates(preview.samples, preview.sampleRate, preview.durationSeconds).candidates[0]?.bpm;
+  const bars = clamp(options.target_bars ?? 4, 1, 64);
+  const targetLength = inferredBpm ? (bars * 4 * 60) / inferredBpm : Math.min(preview.durationSeconds, 8);
+  const lengths = [targetLength, targetLength * 0.5, targetLength * 2]
+    .filter((value) => value > 0.25 && value < preview.durationSeconds)
+    .slice(0, 3);
+  const radius = Math.max(64, Math.floor(preview.sampleRate * 0.075));
+  const start = nearestZeroCrossing(preview.samples, 0, radius);
+  const candidates = lengths.map((length, index) => {
+    const end = nearestZeroCrossing(preview.samples, Math.min(preview.samples.length - 1, Math.floor(length * preview.sampleRate)), radius);
+    const startSample = preview.samples[start.index] ?? 0;
+    const endSample = preview.samples[end.index] ?? 0;
+    const discontinuity = Math.abs(startSample - endSample);
+    const score = clamp(1 - discontinuity * 10 - Math.abs((end.index - start.index) / preview.sampleRate - length) / Math.max(length, 0.001), 0, 1);
+    return {
+      rank: index + 1,
+      start_seconds: Number((preview.startSeconds + start.index / preview.sampleRate).toFixed(4)),
+      end_seconds: Number((preview.startSeconds + end.index / preview.sampleRate).toFixed(4)),
+      length_seconds: Number(((end.index - start.index) / preview.sampleRate).toFixed(4)),
+      target_bars: bars,
+      bpm: inferredBpm ?? null,
+      zeroCrossingStart: start.zeroCrossing,
+      zeroCrossingEnd: end.zeroCrossing,
+      boundaryDiscontinuity: Number(discontinuity.toFixed(5)),
+      score: Number(score.toFixed(3))
+    };
+  }).sort((left, right) => right.score - left.score);
+  const best = candidates[0];
+  const warnings: string[] = [];
+  if (!best) warnings.push("No usable loop length found inside the analysis window.");
+  if (best && best.score < 0.55) warnings.push("Best loop candidate may click or feel uneven; use a longer window or render a crossfaded loop.");
+  if (!inferredBpm) warnings.push("BPM was not confidently inferred; target_bars timing is approximate.");
+  return {
+    path: preview.path,
+    method: "heuristic zero-crossing loop endpoint search over bounded mono preview",
+    heuristic: true,
+    window,
+    target: { target_bars: bars, bpm: inferredBpm ?? null, target_length_seconds: Number(targetLength.toFixed(4)) },
+    loopCandidates: candidates,
+    crossfadeSuggestionMs: best && best.score < 0.8 ? 25 : 8,
+    warnings,
+    nextCalls: [
+      { name: "ableton_crop_clip", arguments: { source_path: filePath, start_seconds: best?.start_seconds ?? 0, duration_seconds: best?.length_seconds ?? targetLength, dry_run: true } }
+    ]
+  };
+}
+
+function sanitizeSampleText(value: unknown, maxLength = 240) {
+  return String(value ?? "")
+    .replace(/ignore (all )?(previous|prior) instructions/gi, "[removed]")
+    .replace(/system prompt|developer message|tool call|exfiltrate/gi, "[removed]")
+    .split("")
+    .map((char) => {
+      const code = char.charCodeAt(0);
+      return code < 32 || code === 127 ? " " : char;
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+const RoleKeywords: Record<string, string[]> = {
+  motif: ["motif", "hook", "melody", "piano", "voice", "vocal", "song", "ballroom", "phrase"],
+  texture: ["texture", "room", "tone", "ambience", "field", "noise", "drone", "hiss", "vinyl", "tape"],
+  impact: ["impact", "hit", "thud", "slam", "boom", "knock", "metal", "pipe"],
+  vocal: ["vocal", "voice", "choir", "chant", "breath", "whisper", "singer", "mouth"],
+  pulse: ["pulse", "rhythm", "machine", "heartbeat", "clock", "thump", "loop"],
+  bass: ["bass", "sub", "low", "rumble", "pressure"],
+  transition: ["reverse", "swell", "riser", "fall", "transition", "cymbal", "whoosh"]
+};
+
+function roleScore(text: string, role: string) {
+  const keywords = RoleKeywords[role] ?? [role];
+  return keywords.reduce((score, keyword) => score + (text.includes(keyword.toLowerCase()) ? 1 : 0), 0);
+}
+
+export async function matchSamplesToConcept(options: { concept: string; candidates: Array<Record<string, unknown>>; roles?: string[] }) {
+  const concept = sanitizeSampleText(options.concept, 500);
+  const conceptLower = concept.toLowerCase();
+  const roles = (options.roles?.length ? options.roles : ["motif", "texture", "impact", "vocal", "pulse", "bass", "transition"])
+    .map((role) => sanitizeSampleText(role, 60).toLowerCase())
+    .filter(Boolean)
+    .slice(0, 16);
+  const rankedSamples: Array<Record<string, unknown>> = [];
+  const rejectedSamples: Array<Record<string, unknown>> = [];
+
+  for (const [index, candidate] of options.candidates.slice(0, 100).entries()) {
+    const pathValue = typeof candidate.path === "string" ? candidate.path : "";
+    const tags = Array.isArray(candidate.tags) ? candidate.tags.map((tag) => sanitizeSampleText(tag, 60)).filter(Boolean).slice(0, 24) : [];
+    const summary = {
+      index,
+      id: sanitizeSampleText(candidate.id ?? index, 100),
+      source: sanitizeSampleText(candidate.source, 80) || null,
+      title: sanitizeSampleText(candidate.title ?? candidate.name, 180) || null,
+      creator: sanitizeSampleText(candidate.creator ?? candidate.username, 120) || null,
+      sourceUrl: sanitizeSampleText(candidate.sourceUrl ?? candidate.url, 300) || null,
+      license: sanitizeSampleText(candidate.license ?? (candidate.licensePolicy as any)?.license, 120) || null,
+      tags
+    };
+    let localAnalysis: Awaited<ReturnType<typeof analyzeSampleMusicalFeatures>> | null = null;
+    if (pathValue) {
+      try {
+        localAnalysis = await analyzeSampleMusicalFeatures(pathValue, { duration_seconds: 12 });
+      } catch (error) {
+        rejectedSamples.push({ ...summary, rejected: true, reason: error instanceof Error ? error.message : String(error) });
+        continue;
+      }
+    }
+    const text = [
+      conceptLower,
+      summary.title,
+      summary.source,
+      summary.creator,
+      summary.license,
+      tags.join(" "),
+      localAnalysis?.moodTextureTags.join(" ") ?? ""
+    ].join(" ").toLowerCase();
+    const roleScores = roles.map((role) => ({ role, score: roleScore(text, role) + (conceptLower.includes(role) ? 0.5 : 0) }));
+    const bestRole = roleScores.sort((left, right) => right.score - left.score)[0] ?? { role: "texture", score: 0 };
+    const analysisBoost = localAnalysis
+      ? (localAnalysis.loopability.loopabilityScore * 0.2) + (localAnalysis.vocalLikelihood > 0.5 && bestRole.role === "vocal" ? 0.2 : 0) + (localAnalysis.transientDensity > 2 && ["impact", "pulse"].includes(bestRole.role) ? 0.15 : 0)
+      : 0;
+    const textScore = Math.min(0.7, bestRole.score * 0.18);
+    const score = Number(clamp(0.15 + textScore + analysisBoost, 0, 0.98).toFixed(3));
+    if (score < 0.22) {
+      rejectedSamples.push({ ...summary, rejected: true, reason: "Low concept/role match.", score });
+      continue;
+    }
+    rankedSamples.push({
+      ...summary,
+      path: pathValue ? redactPath(pathValue) : null,
+      score,
+      matchedRole: bestRole.role,
+      roleScores,
+      localAnalysis: localAnalysis ? {
+        confidence: localAnalysis.confidence,
+        bpmCandidates: localAnalysis.bpmCandidates.slice(0, 2),
+        keyCandidates: localAnalysis.keyCandidates.slice(0, 2),
+        moodTextureTags: localAnalysis.moodTextureTags,
+        loopability: localAnalysis.loopability,
+        vocalLikelihood: localAnalysis.vocalLikelihood,
+        transientDensity: localAnalysis.transientDensity
+      } : null,
+      nextCalls: pathValue
+        ? [{ name: "ableton_find_best_loop_points", arguments: { path: pathValue, bpm: localAnalysis?.bpmCandidates[0]?.bpm, duration_seconds: 30 } }]
+        : [{ name: "ableton_plan_free_sample_download", arguments: { source: summary.source ?? "<source>", source_url: summary.sourceUrl ?? "<source_url>", metadata: { license: summary.license }, dry_run: true } }]
+    });
+  }
+
+  rankedSamples.sort((left, right) => Number(right.score) - Number(left.score));
+  const coveredRoles = new Set(rankedSamples.map((sample) => String(sample.matchedRole)));
+  const missingRoles = roles.filter((role) => !coveredRoles.has(role));
+  return {
+    concept,
+    heuristic: true,
+    rankedSamples,
+    rejectedSamples,
+    roleCoverage: roles.map((role) => ({ role, covered: coveredRoles.has(role), count: rankedSamples.filter((sample) => sample.matchedRole === role).length })),
+    missingRoles,
+    exactNextCalls: [
+      { name: "ableton_analyze_sample_musical_features", arguments: { path: "<approved local sample path>" } },
+      { name: "ableton_curate_concept_samples", arguments: { plan_id: "<concept plan id>", search: false, allowed_only: true } }
+    ]
+  };
+}
+
 export async function compareReferenceAudio(candidatePath: string, referencePath: string, options: { start_seconds?: number; duration_seconds?: number } = {}) {
   const candidateLufs = await analyzeLufs(candidatePath);
   const referenceLufs = await analyzeLufs(referencePath);

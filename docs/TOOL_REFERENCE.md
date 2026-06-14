@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-244 tools
+248 tools
 3 resources
 2 prompts
 ```
@@ -32,7 +32,7 @@ Primary groups:
 - Write-gated Live control
 - Automation, groove, and arrangement workflows
 - Professional arrangement/effect/automation/export dry-run tools
-- Offline LUFS, clipping, spectrum, and reference checks
+- Offline LUFS, clipping, spectrum, reference checks, and sample musical intelligence
 - Bridge capability reporting plus discovery for arrangement markers, clip notes, envelopes, and device parameter maps
 - User-choice UI control consent and production readiness checks
 - Named safe UI actions and dry-run action sequences
@@ -77,6 +77,10 @@ Control-mode tools:
 - `ableton_insert_stock_audio_effect`, `ableton_apply_effect_chain_preset`, and `ableton_create_return_effect_bus`: professional device-chain/bus planning tools that avoid partial side effects while named device insertion remains unsupported.
 - `ableton_reverse_clip_to_sample` and `ableton_crop_clip`: write-gated local ffmpeg transforms for approved source audio into staging/import paths; dry-run by default and never overwrite.
 - `ableton_analyze_lufs`, `ableton_analyze_spectrum`, `ableton_detect_clipping`, and `ableton_compare_reference`: read-only ffmpeg-backed mix checks for rendered masters and references.
+- `ableton_analyze_sample_musical_features`: reads an allowed local sample and returns heuristic BPM/key candidates, loudness, transient density, energy balance, hiss/noise estimate, vocal likelihood, loopability, and texture tags.
+- `ableton_detect_key_bpm_confidence`: returns BPM/key candidates with confidence and ambiguity warnings instead of a single overconfident answer.
+- `ableton_find_best_loop_points`: finds zero-crossing loop candidates with crossfade suggestions and warnings without writing files.
+- `ableton_match_samples_to_concept`: ranks local or metadata-only candidates against a concept and role list, sanitizing remote text and avoiding URL fetches.
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
 - `ableton_list_free_sample_sources`: reports the approved free/sample-source registry, license rules, host boundaries, search modes, and download modes for agent source selection.
 - `ableton_search_free_sample_sources`: searches live API-backed sources where possible and returns manual search plans for sources that require item-page review.

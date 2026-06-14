@@ -76,6 +76,10 @@ describe("Docker MCP profile plan", () => {
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_list_free_sample_sources");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_search_free_sample_sources");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_list_internet_archive_audio_files");
+    expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_analyze_sample_musical_features");
+    expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_detect_key_bpm_confidence");
+    expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_find_best_loop_points");
+    expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_match_samples_to_concept");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_return_track_mixer");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_get_bridge_capabilities");
     expect(DOCKER_MCP_SAFE_TOOL_ALLOWLIST).toContain("ableton_bridge_setup_status");

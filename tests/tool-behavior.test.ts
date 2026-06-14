@@ -184,6 +184,10 @@ describe("MCP tool behavior", () => {
         "ableton_render_concept_execution_manifest",
         "ableton_list_free_sample_sources",
         "ableton_search_free_sample_sources",
+        "ableton_analyze_sample_musical_features",
+        "ableton_detect_key_bpm_confidence",
+        "ableton_find_best_loop_points",
+        "ableton_match_samples_to_concept",
         "ableton_mcp_get_objective_readiness_report",
         "ableton_mcp_get_launch_readiness_audit",
         "ableton_mcp_get_safe_tool_allowlist"

@@ -52,12 +52,14 @@ Recommended handler shape:
 
 ## Patch 1: Musical Feature Intelligence
 
+Core status: implemented as read-only heuristic tools. Future work should deepen the DSP and scoring models rather than re-add these names.
+
 | Tool | What It Does | Code Contract | Agent Should |
 | --- | --- | --- | --- |
-| `ableton_analyze_sample_musical_features` | Reads an allowed local audio file and estimates BPM, key, transient density, loopability, loudness, spectral centroid, mood tags, and vocal/instrument likelihood. | `input: { path, start_seconds?, duration_seconds? } -> output: { bpm, key, confidence, transientDensity, loopability, tags }` | Use before placing samples; reject weak or mismatched samples early. |
-| `ableton_detect_key_bpm_confidence` | Produces BPM/key candidates with confidence and ambiguity notes instead of one brittle guess. | `input: { path, bpm_range?, key_hint? } -> output: { bpmCandidates[], keyCandidates[], confidence, warnings[] }` | Ask for confirmation or use harmonic-neutral processing when confidence is low. |
-| `ableton_find_best_loop_points` | Finds clean loop starts, downbeats, zero crossings, decay tails, and ambient loop candidates. | `input: { path, target_bars?, bpm? } -> output: { loopCandidates[], crossfadeMs, warnings[] }` | Build loopable beds and motifs without obvious clicks or bad seams. |
-| `ableton_match_samples_to_concept` | Ranks local/indexed/metadata sample candidates by emotional role and concept fit. | `input: { concept, candidates[], roles? } -> output: { rankedSamples[], rejected[], roleCoverage }` | Choose samples for motif, texture, impact, vocal ghost, room tone, pulse, and transition roles. |
+| `ableton_analyze_sample_musical_features` | Implemented. Reads an allowed local audio file and estimates BPM, key, transient density, loopability, loudness, spectral centroid, energy balance, hiss/noise, mood tags, and vocal likelihood. | `input: { path, start_seconds?, duration_seconds? } -> output: { bpmCandidates[], keyCandidates[], confidence, transientDensity, loopability, moodTextureTags[] }` | Use before placing samples; reject weak or mismatched samples early. |
+| `ableton_detect_key_bpm_confidence` | Implemented. Produces BPM/key candidates with confidence and ambiguity notes instead of one brittle guess. | `input: { path, bpm_range?, key_hint?, start_seconds?, duration_seconds? } -> output: { bpmCandidates[], keyCandidates[], confidence, ambiguityWarnings[] }` | Ask for confirmation or use harmonic-neutral processing when confidence is low. |
+| `ableton_find_best_loop_points` | Implemented. Finds zero-crossing loop candidates and crossfade suggestions from a bounded local preview. | `input: { path, target_bars?, bpm?, start_seconds?, duration_seconds? } -> output: { loopCandidates[], crossfadeSuggestionMs, warnings[] }` | Build loopable beds and motifs without obvious clicks. |
+| `ableton_match_samples_to_concept` | Implemented. Ranks local or metadata-only sample candidates by emotional role and concept fit while sanitizing untrusted text. | `input: { concept, candidates[], roles? } -> output: { rankedSamples[], rejectedSamples[], roleCoverage, missingRoles }` | Choose samples for motif, texture, impact, vocal ghost, room tone, pulse, and transition roles. |
 | `ableton_plan_sample_slicing` | Turns one sample into chops, reverse tails, one-shots, motifs, pads, impacts, and rhythmic cells. | `input: { path, concept, bpm?, key? } -> output: { slices[], renderPlans[], nextToolCalls[] }` | Reuse strong source material in multiple musical roles without sounding like a static loop. |
 
 ## Patch 2: Tempo, Timing, Groove, And Pocket
@@ -239,12 +241,11 @@ Agents should not try to do every tool at once. A good production loop uses smal
 
 Implement these first:
 
-1. `ableton_analyze_sample_musical_features`
-2. `ableton_plan_tempo_grid`
-3. `ableton_generate_harmonic_palette`
-4. `ableton_generate_motif_system`
-5. `ableton_design_synth_patch`
-6. `ableton_score_track_professionalism`
-7. `ableton_generate_revision_pass`
+1. `ableton_plan_tempo_grid`
+2. `ableton_generate_harmonic_palette`
+3. `ableton_generate_motif_system`
+4. `ableton_design_synth_patch`
+5. `ableton_score_track_professionalism`
+6. `ableton_generate_revision_pass`
 
 These give Ableton MCP the highest leverage: taste, timing, synthesis, and iteration.

@@ -30,9 +30,9 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Live session view | Read tracks, scenes, clips, devices, transport, tempo, mixer, and snapshots when the Max for Live bridge is loaded. |
 | Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing, including track/scene/clip creation, scene launch and tempo/signature setup, mixer/master moves, clip naming/looping, audio clip gain, transpose, warp, and marker shaping. |
 | Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, humanization, Arrangement View placement, and export/save workflows. |
-| Mix analysis | Run read-only LUFS, clipping, broad-band spectrum, and reference-comparison checks against allowed local audio files. |
+| Mix and sample analysis | Run read-only LUFS, clipping, broad-band spectrum, reference comparison, sample musical-feature, key/BPM confidence, loop-point, and concept-match checks against allowed local audio files. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
-| Samples | Search or plan licensed sources through the universal free-sample registry, including Freesound, Internet Archive, Openverse, manual-review libraries, and YouTube/SoundCloud manual-proof boundaries. Downloads/imports stay gated behind explicit flags. |
+| Samples | Search or plan licensed sources through the universal free-sample registry, then judge candidates by role, loopability, texture, and confidence before staging. Downloads/imports stay gated behind explicit flags. |
 | Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, layer sample curation plan, mix plan, device-chain spec, device catalog match report, arrangement skeleton, execution action matrix, execution manifest, execution runbook, and delivery plan. |
 | Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
 | Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
@@ -253,13 +253,13 @@ Latest local verification:
 
 ```text
 Build: passed
-Tests: 24 files, 106 tests passed
+Tests: 24 files, 111 tests passed
 Lint: passed
 Doctor: passed with 0 failures and 1 warning for the optional UI driver listener
 Release check: passed
-Safe sweep: passed, 129 safe calls, 0 unexpected failures
-All-tool contract sweep: passed, 244 registered tools, 244 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
-MCP verifier: 244 tools, 3 resources, 2 prompts
+Safe sweep: passed, 133 safe calls, 0 unexpected failures
+All-tool contract sweep: passed, 248 registered tools, 248 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
+MCP verifier: 248 tools, 3 resources, 2 prompts
 Bridge install: updated files copied to the Ableton User Library preset folder
 Live bridge probe: listener was present on 127.0.0.1:17364, but request/response timed out after bridge file reinstall; reload or restart the Max for Live bridge device before live compact-read testing
 WSL native verifier: not rerun in this pass
