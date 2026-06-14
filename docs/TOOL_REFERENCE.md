@@ -99,4 +99,6 @@ Write-capable tools require `ABLETON_MCP_ENABLE_WRITE=1` and should be called wi
 
 Use [Music production skills](MUSIC_PRODUCTION_SKILLS.md) when an agent needs to choose tools by musical job instead of reading the raw tool list.
 
+Use [Natural language to music](NATURAL_LANGUAGE_TO_MUSIC.md) when Codex needs to translate a user's plain-language brief into a careful tool sequence.
+
 Planned professional music, synthesis, timing, mix, and revision-loop tools are tracked in [Future patches](FUTURE_PATCHES.md). They are roadmap items until they are implemented and reported by `npm run verify:mcp`.

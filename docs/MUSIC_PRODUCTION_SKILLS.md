@@ -1,6 +1,6 @@
 # Music Production Skills
 
-This guide maps music-production skills to Ableton MCP tools. It is written for agents that need to turn a musical brief into a finished Ableton production without guessing, overclaiming, or skipping safety gates.
+This guide maps music-production skills to Ableton MCP tools. It is written for agents that need to turn a musical brief into a finished Ableton production without guessing, overclaiming, or skipping safety gates. For the step-by-step language interpretation workflow, start with [Natural language to music](NATURAL_LANGUAGE_TO_MUSIC.md).
 
 Current tools are implemented by the MCP server today. Future tools are roadmap items from [Future patches](FUTURE_PATCHES.md) and must not be reported as available until `npm run verify:mcp` lists them.
 
