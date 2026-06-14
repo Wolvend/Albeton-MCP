@@ -5,7 +5,8 @@ import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
 const downloads = path.join(process.env.USERPROFILE || process.env.HOME || root, "Downloads");
-const renderRoot = path.join(root, "samples", "staging", "occult-liminal-backrooms-v4");
+const renderSlug = safeRenderSlug(process.env.ABLETON_MCP_RENDER_SLUG || "occult-liminal-backrooms-v4");
+const renderRoot = path.join(root, "samples", "staging", renderSlug);
 const stemDir = path.join(renderRoot, "stems");
 fs.mkdirSync(stemDir, { recursive: true });
 
@@ -15,10 +16,10 @@ const DURATION = 168;
 const N = DURATION * SR;
 const SECTION = 28;
 
-const masterWavOut = path.join(downloads, "occult-liminal-backrooms-v4-master.wav");
-const masterMp3Out = path.join(downloads, "occult-liminal-backrooms-v4-master.mp3");
-const attrOut = path.join(downloads, "occult-liminal-backrooms-v4-attribution.txt");
-const stagingMaster = path.join(renderRoot, "occult-liminal-backrooms-v4-master.wav");
+const masterWavOut = path.join(downloads, `${renderSlug}-master.wav`);
+const masterMp3Out = path.join(downloads, `${renderSlug}-master.mp3`);
+const attrOut = path.join(downloads, `${renderSlug}-attribution.txt`);
+const stagingMaster = path.join(renderRoot, `${renderSlug}-master.wav`);
 
 const stems = {
   ballroom: makeBus("ballroom-memory"),
@@ -40,6 +41,14 @@ let seed = 0x9e3779b9;
 function rand() {
   seed = (seed * 1664525 + 1013904223) >>> 0;
   return seed / 0x100000000;
+}
+
+function safeRenderSlug(value) {
+  const slug = String(value).trim();
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,80}$/.test(slug) || slug.includes("..")) {
+    throw new Error("ABLETON_MCP_RENDER_SLUG must be a safe filename slug.");
+  }
+  return slug;
 }
 
 function makeBus(name) {
