@@ -25,6 +25,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Sample policy](SAMPLE_POLICY.md) | Reviewing licensing and attribution rules. |
 | [Sample sources](SAMPLE_SOURCES.md) | Checking approved sample sources and import paths. |
 | [Concept to music](CONCEPT_TO_MUSIC.md) | Using staged concept, sample, arrangement, execution, and delivery tools. |
+| [Future patches](FUTURE_PATCHES.md) | Planning professional music, synthesis, groove, mix, and revision-loop tools. |
 | [Plugin policy](PLUGIN_POLICY.md) | Checking plugin/package download staging and no-install safety rules. |
 
 Security controls are documented in [SECURITY](../SECURITY.md).
