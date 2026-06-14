@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
 const downloads = path.join(process.env.USERPROFILE || process.env.HOME || root, "Downloads");
-const renderRoot = path.join(root, "samples", "staging", "occult-liminal-backrooms");
+const renderRoot = path.join(root, "samples", "staging", "occult-liminal-backrooms-v2");
 const stemDir = path.join(renderRoot, "stems");
 fs.mkdirSync(stemDir, { recursive: true });
 
@@ -15,10 +15,10 @@ const DURATION = 168;
 const N = DURATION * SR;
 const SECTION = 28;
 
-const masterWavOut = path.join(downloads, "occult-liminal-backrooms-master.wav");
-const masterMp3Out = path.join(downloads, "occult-liminal-backrooms-master.mp3");
-const attrOut = path.join(downloads, "occult-liminal-backrooms-attribution.txt");
-const stagingMaster = path.join(renderRoot, "occult-liminal-backrooms-master.wav");
+const masterWavOut = path.join(downloads, "occult-liminal-backrooms-v2-master.wav");
+const masterMp3Out = path.join(downloads, "occult-liminal-backrooms-v2-master.mp3");
+const attrOut = path.join(downloads, "occult-liminal-backrooms-v2-attribution.txt");
+const stagingMaster = path.join(renderRoot, "occult-liminal-backrooms-v2-master.wav");
 
 const stems = {
   ballroom: makeBus("ballroom-memory"),
@@ -26,6 +26,7 @@ const stems = {
   sub: makeBus("sub-pressure"),
   tape: makeBus("tape-artifacts"),
   occult: makeBus("occult-smear"),
+  vocals: makeBus("haunted-vocals"),
   impacts: makeBus("impacts"),
 };
 
@@ -216,6 +217,49 @@ function addImpact(time, gain, tone = 58) {
   addNoise(stems.impacts, { time, length: 2.3, gain: gain * 0.35, lowpass: 0.035, attack: 0.002, release: 1.8, pan: 0.12, crackleThreshold: 0.996, crackle: 0.35 });
 }
 
+function addHauntedVowel(bus, opt) {
+  const start = Math.floor(opt.time * SR);
+  const len = Math.floor(opt.length * SR);
+  const [pl, pr] = panGains(opt.pan ?? 0);
+  const base = opt.freq;
+  const gain = opt.gain ?? 0.05;
+  const vowel = opt.vowel ?? 0;
+  const formants = [
+    [310, 870, 2240],
+    [430, 1030, 2460],
+    [610, 1180, 2680],
+    [760, 1370, 2810],
+  ][vowel % 4];
+  let breathL = 0;
+  let breathR = 0;
+  for (let i = 0; i < len; i++) {
+    const di = start + i;
+    if (di < 0 || di >= N) continue;
+    const t = i / SR;
+    const p = i / Math.max(1, len - 1);
+    const vibrato = 1 + Math.sin(2 * Math.PI * (0.12 + vowel * 0.013) * (opt.time + t)) * 0.012;
+    const fall = 1 - p * 0.08;
+    let voiced = 0;
+    for (let h = 1; h <= 7; h += 1) {
+      voiced += Math.sin(2 * Math.PI * base * h * vibrato * fall * t + h * 0.41) * (1 / (h * 1.5));
+    }
+    let body = 0;
+    for (let f = 0; f < formants.length; f += 1) {
+      body += Math.sin(2 * Math.PI * formants[f] * (1 + Math.sin(t * 0.31 + f) * 0.002) * t) * [0.24, 0.12, 0.055][f];
+    }
+    breathL += ((rand() * 2 - 1) - breathL) * 0.018;
+    breathR += ((rand() * 2 - 1) - breathR) * 0.014;
+    const entry = smoothstep(i / ((opt.attack ?? 4) * SR));
+    const exit = smoothstep((len - i) / ((opt.release ?? 5) * SR));
+    const panic = 0.78 + 0.22 * Math.sin(2 * Math.PI * 0.43 * t + vowel);
+    const env = entry * exit * panic;
+    const vL = (voiced * 0.54 + body + breathL * 0.06) * gain * env;
+    const vR = (voiced * 0.5 + body * 1.08 + breathR * 0.05) * gain * env;
+    bus.l[di] += vL * pl;
+    bus.r[di] += vR * pr;
+  }
+}
+
 function onePoleLowpass(arr, cutoff) {
   const rc = 1 / (2 * Math.PI * cutoff);
   const dt = 1 / SR;
@@ -248,6 +292,25 @@ function addCrossDelay(bus, delaySec, wet, feedback) {
     const dr = bus.l[i - d] * wet;
     bus.l[i] += dl + bus.l[i - d] * feedback * 0.025;
     bus.r[i] += dr + bus.r[i - d] * feedback * 0.025;
+  }
+}
+
+function addRoomBloom(bus, wet = 0.05) {
+  const taps = [
+    { d: 0.233, l: 0.72, r: -0.48 },
+    { d: 0.377, l: -0.42, r: 0.68 },
+    { d: 0.619, l: 0.38, r: 0.5 },
+    { d: 0.983, l: -0.3, r: -0.52 },
+    { d: 1.571, l: 0.24, r: 0.34 },
+    { d: 2.337, l: -0.18, r: 0.22 },
+  ];
+  for (const tap of taps) {
+    const delay = Math.floor(tap.d * SR);
+    const gain = wet / Math.sqrt(tap.d + 0.25);
+    for (let i = delay; i < N; i++) {
+      bus.l[i] += bus.r[i - delay] * gain * tap.l;
+      bus.r[i] += bus.l[i - delay] * gain * tap.r;
+    }
   }
 }
 
@@ -343,12 +406,12 @@ function arrangeBallroom() {
 }
 
 function arrangeConcreteRoom() {
-  addNoise(stems.concrete, { time: 0, length: DURATION, gain: 0.13, lowpass: 0.0017, band: 0.28, attack: 6, release: 8, crackleThreshold: 0.99984, crackle: 0.12 });
+  addNoise(stems.concrete, { time: 0, length: DURATION, gain: 0.072, lowpass: 0.0009, band: 0.07, attack: 8, release: 9, crackleThreshold: 0.99995, crackle: 0.045 });
   for (const hum of [49.7, 59.8, 99.4, 119.6, 183.5]) {
-    addTone(stems.concrete, { time: 0, length: DURATION, freq: hum, freqEnd: hum * (0.998 + rand() * 0.006), gain: hum < 70 ? 0.016 : 0.007, attack: 8, release: 9, pan: rand() * 0.8 - 0.4 });
+    addTone(stems.concrete, { time: 0, length: DURATION, freq: hum, freqEnd: hum * (0.998 + rand() * 0.006), gain: hum < 70 ? 0.021 : 0.0085, attack: 8, release: 9, pan: rand() * 0.8 - 0.4 });
   }
   for (let t = 37; t < 150; t += 13.7) {
-    addNoise(stems.concrete, { time: t, length: 5.5, gain: 0.07, lowpass: 0.004, band: 0.4, attack: 1.7, release: 3.5, pan: rand() * 1.2 - 0.6, crackleThreshold: 0.999, crackle: 0.18 });
+    addNoise(stems.concrete, { time: t, length: 5.5, gain: 0.043, lowpass: 0.0025, band: 0.13, attack: 1.7, release: 3.5, pan: rand() * 1.2 - 0.6, crackleThreshold: 0.99975, crackle: 0.075 });
   }
 }
 
@@ -363,10 +426,10 @@ function arrangeSubPressure() {
 }
 
 function arrangeTapeArtifacts() {
-  addNoise(stems.tape, { time: 0, length: DURATION, gain: 0.08, lowpass: 0.012, band: 0.62, attack: 2, release: 2, crackleThreshold: 0.9993, crackle: 0.45 });
+  addNoise(stems.tape, { time: 0, length: DURATION, gain: 0.026, lowpass: 0.0035, band: 0.11, attack: 2, release: 2, crackleThreshold: 0.99908, crackle: 0.62 });
   for (let t = 2; t < DURATION; t += 1.85 + rand() * 2.4) {
-    if (rand() < 0.58) {
-      addNoise(stems.tape, { time: t, length: 0.08 + rand() * 0.24, gain: 0.16 + rand() * 0.14, lowpass: 0.08, band: 0.15, attack: 0.005, release: 0.08, pan: rand() * 1.6 - 0.8, crackleThreshold: 0.98, crackle: 0.3 });
+    if (rand() < 0.38) {
+      addNoise(stems.tape, { time: t, length: 0.06 + rand() * 0.18, gain: 0.075 + rand() * 0.06, lowpass: 0.025, band: 0.03, attack: 0.004, release: 0.1, pan: rand() * 1.6 - 0.8, crackleThreshold: 0.973, crackle: 0.22 });
     }
   }
   for (const t of [55.5, 56.8, 58.1, 89.2, 90.4, 91.6, 126.8, 128.1, 129.4]) {
@@ -397,6 +460,38 @@ function arrangeOccultSmear() {
   }
 }
 
+function arrangeHauntedVocals() {
+  const vocalSource = ballroom[2];
+  for (let i = 0; i < 11; i++) {
+    const t = 41 + i * 9.1 + (i % 2) * 1.7;
+    addHauntedVowel(stems.vocals, {
+      time: t,
+      length: 12 + (i % 3) * 4,
+      freq: [82.41, 73.42, 65.41, 55][i % 4],
+      gain: 0.044 + i * 0.004,
+      pan: ((i % 5) - 2) * 0.18,
+      vowel: i % 4,
+      attack: 4.5,
+      release: 6.5,
+    });
+  }
+  for (const t of [58, 76, 94, 111, 128]) {
+    addSample(stems.vocals, vocalSource, {
+      time: t,
+      src: 18 + (t % 11),
+      length: 10.5,
+      rate: 0.18,
+      gain: 0.155,
+      pan: (rand() - 0.5) * 0.55,
+      fade: 2.2,
+      reverse: true,
+      wow: 0.032,
+      crush: 0.18,
+      tremolo: 0.24,
+    });
+  }
+}
+
 function arrangeImpacts() {
   for (const [t, gain, tone] of [[28, 0.17, 54], [56, 0.13, 49], [84, 0.15, 58], [112, 0.2, 46], [140, 0.1, 42]]) addImpact(t, gain, tone);
   if (cymbal) {
@@ -416,6 +511,7 @@ arrangeConcreteRoom();
 arrangeSubPressure();
 arrangeTapeArtifacts();
 arrangeOccultSmear();
+arrangeHauntedVocals();
 arrangeImpacts();
 
 highpass(stems.ballroom.l, 75);
@@ -425,21 +521,30 @@ onePoleLowpass(stems.ballroom.r, 3900);
 
 highpass(stems.concrete.l, 28);
 highpass(stems.concrete.r, 28);
-onePoleLowpass(stems.concrete.l, 8500);
-onePoleLowpass(stems.concrete.r, 7800);
+onePoleLowpass(stems.concrete.l, 5200);
+onePoleLowpass(stems.concrete.r, 4900);
 
 highpass(stems.tape.l, 140);
 highpass(stems.tape.r, 140);
-onePoleLowpass(stems.tape.l, 9700);
-onePoleLowpass(stems.tape.r, 9100);
+onePoleLowpass(stems.tape.l, 5600);
+onePoleLowpass(stems.tape.r, 5200);
 
 highpass(stems.occult.l, 95);
 highpass(stems.occult.r, 95);
 onePoleLowpass(stems.occult.l, 3200);
 onePoleLowpass(stems.occult.r, 3000);
+highpass(stems.vocals.l, 110);
+highpass(stems.vocals.r, 110);
+onePoleLowpass(stems.vocals.l, 3600);
+onePoleLowpass(stems.vocals.r, 3400);
 addCrossDelay(stems.ballroom, 0.86, 0.045, 0.38);
 addCrossDelay(stems.occult, 1.72, 0.08, 0.5);
 addCrossDelay(stems.impacts, 1.18, 0.035, 0.3);
+addRoomBloom(stems.ballroom, 0.055);
+addRoomBloom(stems.concrete, 0.035);
+addRoomBloom(stems.occult, 0.11);
+addRoomBloom(stems.vocals, 0.18);
+addRoomBloom(stems.impacts, 0.04);
 
 const masterL = new Float32Array(N);
 const masterR = new Float32Array(N);
@@ -513,8 +618,9 @@ fs.writeFileSync(attrOut, [
   "",
   "Process:",
   "- 78rpm ballroom recordings slowed, detuned, reversed, filtered, granularly layered, and smeared into a decayed-memory motif.",
-  "- Concrete room tone, fluorescent hum, tape artifacts, low sub pressure, reverse swells, and sparse impacts create the horror environment.",
-  "- Stems were exported for Ableton editing: ballroom memory, concrete room, sub pressure, tape artifacts, occult smear, impacts.",
+  "- Concrete room tone, fluorescent hum, restrained tape artifacts, low sub pressure, reverse swells, sparse impacts, and deep stereo room bloom create the horror environment.",
+  "- Haunted vocals are nonverbal vowel shadows and reversed ballroom fragments only; no words, commands, or intelligible subliminal phrases are present.",
+  "- Stems were exported for Ableton editing: ballroom memory, concrete room, sub pressure, tape artifacts, occult smear, haunted vocals, impacts.",
 ].join("\n"));
 
 function roundMetrics(value) {
