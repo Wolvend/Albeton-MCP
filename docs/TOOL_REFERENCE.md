@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-217 tools
+241 tools
 3 resources
 2 prompts
 ```
@@ -28,8 +28,11 @@ Primary groups:
 - Library and cache
 - Live Set analysis
 - Fast live session view
+- Compact large-set bridge reads
 - Write-gated Live control
 - Automation, groove, and arrangement workflows
+- Professional arrangement/effect/automation/export dry-run tools
+- Offline LUFS, clipping, spectrum, and reference checks
 - Bridge capability reporting plus discovery for arrangement markers, clip notes, envelopes, and device parameter maps
 - User-choice UI control consent and production readiness checks
 - Named safe UI actions and dry-run action sequences
@@ -54,6 +57,7 @@ Control-mode tools:
 - `ableton_bridge_setup_status`: reports installed bridge file freshness using SHA-256 source/target comparisons, Ableton process state, and optional listener reachability when `check_bridge=true`.
 - `ableton_open_bridge_device`: dry-runs or, when explicitly write-gated, opens the installed `Ableton MCP Bridge.amxd` preset through the host OS/Ableton association so the bridge can be loaded without mouse driving.
 - `ableton_get_bridge_capabilities`: reports read-only, write-gated, unsupported, and diagnostic bridge actions; `check_bridge=true` compares against the loaded Max for Live bridge when available.
+- `ableton_list_tracks_compact`, `ableton_get_track_detail`, and `ableton_get_clip_detail`: inspect large Live Sets through bounded targeted reads instead of requesting the full snapshot.
 - `ableton_list_track_sends`: reads selected or indexed track send parameters and return-track names so agents can route layers before using write-gated send changes.
 - `ableton_get_routing_overview`: reads tracks, returns, master state, and the send matrix in one call so agents can plan layered reverb/delay/texture routing quickly.
 - `ableton_plan_concept_routing_readiness`: maps a stored concept arrangement's planned sends to routing-overview discovery calls and exact dry-run send templates.
@@ -68,6 +72,11 @@ Control-mode tools:
 - `ableton_render_concept_execution_action_matrix`: renders each stored arrangement action with bridge capability status, write gates, placeholder dependencies, staged-only notes, and direct dry-run availability.
 - `ableton_render_concept_execution_runbook`: renders a read-only execution rehearsal with ordered phases, gates, dependencies, expected postconditions, and inspection calls before approval or real writes.
 - `ableton_extract_automation_summary`: reads live mixer/device automation target candidates with bounded parameter output; breakpoint writes remain unsupported unless a bridge reports support.
+- `ableton_write_track_volume_automation`, `ableton_write_send_automation`, and `ableton_write_device_parameter_automation`: create explicit dry-run automation lane plans and return unsupported for real breakpoint writes until the bridge can prove support.
+- `ableton_place_sample_on_arrangement`, `ableton_create_arrangement_audio_clip`, `ableton_move_arrangement_clip`, and `ableton_set_arrangement_loop`: typed Arrangement View planning tools; real Arrangement View placement/edit/export calls remain unsupported by the current background bridge.
+- `ableton_insert_stock_audio_effect`, `ableton_apply_effect_chain_preset`, and `ableton_create_return_effect_bus`: professional device-chain/bus planning tools that avoid partial side effects while named device insertion remains unsupported.
+- `ableton_reverse_clip_to_sample` and `ableton_crop_clip`: write-gated local ffmpeg transforms for approved source audio into staging/import paths; dry-run by default and never overwrite.
+- `ableton_analyze_lufs`, `ableton_analyze_spectrum`, `ableton_detect_clipping`, and `ableton_compare_reference`: read-only ffmpeg-backed mix checks for rendered masters and references.
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
 - `ableton_curate_concept_samples`: maps stored concept layers to licensed sample-search candidates, layer review notes, and dry-run staging templates without downloads.
 - `ableton_render_concept_attribution_bundle`: reports attribution sidecars for one stored concept arrangement without broad scans or path exposure.

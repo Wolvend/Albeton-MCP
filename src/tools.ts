@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { analyzeAbletonSet, analyzeAudioFile, convertAudioFile } from "./analysis.js";
+import { analyzeAbletonSet, analyzeAudioFile, analyzeLufs, analyzeSpectrum, compareReferenceAudio, convertAudioFile, detectClipping } from "./analysis.js";
 import { openBridgeDevice } from "./bridge-activation.js";
 import { bridgeAction, getBridgeCapabilityMatrix, getBridgeRuntimeState, getBridgeSnapshot, pingBridge } from "./bridge.js";
 import { getBridgeInstallPlan, installBridgeFiles } from "./bridge-install.js";
@@ -71,6 +71,7 @@ import {
 
 const Empty = {};
 const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) };
+const CompactPage = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(64).default(32) };
 const Query = { query: z.string().max(200).default(""), ...Page };
 const PathArg = { path: z.string().min(1) };
 const DryRun = { dry_run: z.boolean().default(true) };
@@ -95,6 +96,13 @@ const AutomationPoint = {
   time: BeatTime,
   value: z.number()
 };
+const AutomationBreakpoint = z.object({
+  time: BeatTime,
+  value: z.number()
+});
+const BoundedAudioPath = z.string().min(1).max(1000);
+const EffectName = z.string().min(1).max(128);
+const ArrangementClipId = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.:-]+$/);
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
 const ConceptPlanId = z.string().regex(/^concept-[a-f0-9]{16}$/);
 const ArrangementPlanId = z.string().regex(/^arrangement-[a-f0-9]{16}$/);
@@ -269,6 +277,98 @@ async function unsupportedLiveApiWrite(action: string, args: any, plan: Record<s
   }
   requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
   return { ok: true, bridge: await bridgeAction(action, args) as Record<string, unknown>, plan, expectedUnsupported: true };
+}
+
+async function unsupportedProfessionalWrite(action: string, args: any, plan: Record<string, unknown>, reason: string) {
+  const planned = {
+    ...plan,
+    support: {
+      currentBridge: "unsupported_or_not_verified",
+      safety: "dry-run plan first; real execution requires the write gate and a bridge that reports support"
+    }
+  };
+  const nextSteps = [
+    "Use compact read tools and bridge capability reports to inspect the target first.",
+    "Use the user-enabled UI driver fallback only when foreground control is intentional.",
+    "Do not treat this as executed until the bridge reports a verified implementation for this action."
+  ];
+  if (args.dry_run !== false) {
+    return {
+      ok: true,
+      dry_run: true,
+      unsupported: true,
+      action,
+      plan: planned,
+      reason,
+      nextSteps
+    };
+  }
+  requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", action);
+  return {
+    ok: true,
+    dry_run: false,
+    unsupported: true,
+    action,
+    plan: planned,
+    reason,
+    nextSteps,
+    bridgeContacted: false
+  };
+}
+
+async function approvedArrangementSamplePlan(args: any) {
+  const sample = await resolveApprovedLocalSamplePath(args.path);
+  return {
+    path: sample.redacted,
+    extension: sample.extension,
+    track_index: args.track_index,
+    start_time: args.start_time,
+    duration: args.duration ?? null,
+    name: args.name ?? null
+  };
+}
+
+async function optionalSafePresetPathPlan(presetPath?: string) {
+  if (!presetPath) return null;
+  const safe = await resolveSafePath(presetPath, { mustExist: true });
+  const extension = path.extname(safe.real).toLowerCase();
+  return {
+    path: redactPath(safe.real),
+    extension,
+    allowed_preset_type: [".adg", ".adv", ".amxd", ".alp", ".vstpreset"].includes(extension)
+  };
+}
+
+async function reverseClipToSample(args: any) {
+  if (args.dry_run === false) requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Reverse clip/source audio to sample");
+  return {
+    ok: true,
+    reverse: await convertAudioFile({
+      input: args.source_path,
+      output: args.output,
+      format: "wav",
+      preset: "reversed_fragment",
+      start_seconds: args.start_seconds,
+      duration_seconds: args.duration_seconds,
+      dry_run: args.dry_run
+    }) as Record<string, unknown>
+  };
+}
+
+async function cropClipToSample(args: any) {
+  if (args.dry_run === false) requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Crop clip/source audio to sample");
+  return {
+    ok: true,
+    crop: await convertAudioFile({
+      input: args.source_path,
+      output: args.output,
+      format: args.format,
+      preset: "clean",
+      start_seconds: args.start_seconds,
+      duration_seconds: args.duration_seconds,
+      dry_run: args.dry_run
+    }) as Record<string, unknown>
+  };
 }
 
 function isPathWithin(candidate: string, root: string) {
@@ -1532,6 +1632,9 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_get_snapshot_diff", description: "Get live session diff snapshot from bridge.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, diff: await getBridgeSnapshot(true) as any }) },
   { name: "ableton_get_live_state", description: "Get compact live session state.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("live_state") },
   { name: "ableton_list_tracks", description: "List live tracks via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_tracks") },
+  { name: "ableton_list_tracks_compact", description: "List a bounded compact page of live tracks for large Ableton sets.", inputSchema: CompactPage, annotations: ro, handler: async (args) => bridgeRead("list_tracks_compact", { page: args.page, pageSize: args.pageSize }) },
+  { name: "ableton_get_track_detail", description: "Get targeted track detail with optional devices, mixer, and a bounded clip-slot page.", inputSchema: { ...TrackSelector, include_mixer: z.boolean().default(true), include_devices: z.boolean().default(false), include_clip_slots: z.boolean().default(false), ...CompactPage }, annotations: ro, handler: async (args) => bridgeRead("track_detail", { ...trackSelectorPayload(args), include_mixer: args.include_mixer, include_devices: args.include_devices, include_clip_slots: args.include_clip_slots, page: args.page, pageSize: args.pageSize }) },
+  { name: "ableton_get_clip_detail", description: "Get one Session View clip-slot detail without returning a full set snapshot.", inputSchema: { ...TrackClipRef }, annotations: ro, handler: async (args) => bridgeRead("clip_detail", args) },
   { name: "ableton_list_return_tracks", description: "List live return tracks via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_return_tracks") },
   { name: "ableton_get_master_track", description: "Get the master track summary and mixer state via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("master_track") },
   { name: "ableton_get_track_mixer", description: "Get selected or indexed track mixer volume and pan parameters via bridge.", inputSchema: TrackSelector, annotations: ro, handler: async (args) => bridgeRead("track_mixer", trackSelectorPayload(args)) },
@@ -1540,8 +1643,8 @@ const toolDefs: ToolDef[] = [
   { name: "ableton_get_return_track_mixer", description: "Get indexed return-track mixer volume and pan parameters via bridge.", inputSchema: { return_track_index: ReturnTrackIndex.default(0) }, annotations: ro, handler: async (args) => bridgeRead("return_track_mixer", args) },
   { name: "ableton_list_scenes", description: "List live scenes via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_scenes") },
   { name: "ableton_list_clips", description: "List live clips via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("list_clips") },
-  { name: "ableton_list_clip_slots", description: "List clip slots on selected or indexed track via bridge.", inputSchema: { ...TrackSelector, ...Page }, annotations: ro, handler: async (args) => bridgeRead("list_clip_slots", trackSelectorPayload(args)) },
-  { name: "ableton_list_devices", description: "List live devices via bridge.", inputSchema: { ...TrackSelector, ...Page }, annotations: ro, handler: async (args) => bridgeRead("list_devices", trackSelectorPayload(args)) },
+  { name: "ableton_list_clip_slots", description: "List a bounded page of clip slots on selected or indexed track via bridge.", inputSchema: { ...TrackSelector, ...CompactPage }, annotations: ro, handler: async (args) => bridgeRead("list_clip_slots", { ...trackSelectorPayload(args), page: args.page, pageSize: args.pageSize }) },
+  { name: "ableton_list_devices", description: "List a bounded page of live devices via bridge.", inputSchema: { ...TrackSelector, ...CompactPage }, annotations: ro, handler: async (args) => bridgeRead("list_devices", { ...trackSelectorPayload(args), page: args.page, pageSize: args.pageSize }) },
   { name: "ableton_list_device_parameters", description: "List automatable device parameters via bridge.", inputSchema: DeviceSelector, annotations: ro, handler: async (args) => bridgeRead("list_device_parameters", deviceSelectorPayload(args)) },
   { name: "ableton_get_selected_track", description: "Get selected track via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_track") },
   { name: "ableton_get_selected_device", description: "Get selected device via bridge.", inputSchema: Empty, annotations: ro, handler: async () => bridgeRead("selected_device") },
@@ -1606,6 +1709,23 @@ toolDefs.push(
   { name: "ableton_move_clip", description: "Move a Session View clip to another clip slot through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, destination_track_index: TrackIndex, destination_clip_slot_index: ClipSlotIndex, ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_move_clip", args, { source: { track_index: args.track_index, clip_slot_index: args.clip_slot_index }, destination: { track_index: args.destination_track_index, clip_slot_index: args.destination_clip_slot_index } }) },
   { name: "ableton_quantize_clip", description: "Quantize a MIDI clip through the gated LiveAPI bridge when supported.", inputSchema: { ...TrackClipRef, grid: z.enum(["1_bar", "1/2", "1/4", "1/8", "1/16", "1/32"]).default("1/16"), amount: z.number().min(0).max(1).default(1), ...DryRun }, annotations: rw, handler: async (args) => unsupportedLiveApiWrite("ableton_quantize_clip", args, { target: "clip_quantize", grid: args.grid, amount: args.amount }, "LiveAPI quantization enum values vary by context; this bridge refuses to guess without verified support.") },
   { name: "ableton_humanize_midi_clip", description: "Apply deterministic bounded MIDI timing/velocity humanization through the gated LiveAPI bridge.", inputSchema: { ...TrackClipRef, timing_amount: z.number().min(0).max(0.25).default(0.02), velocity_amount: z.number().min(0).max(32).default(5), seed: z.number().int().min(0).max(2147483646).optional(), ...DryRun }, annotations: rw, handler: async (args) => typedBridgeWrite("ableton_humanize_midi_clip", args, { target: "clip_humanize", track_index: args.track_index, clip_slot_index: args.clip_slot_index, timing_amount: args.timing_amount, velocity_amount: args.velocity_amount, seed: args.seed ?? "deterministic" }) },
+  { name: "ableton_place_sample_on_arrangement", description: "Plan placing an approved local sample on the Arrangement timeline; real placement stays unsupported until verified.", inputSchema: { path: BoundedAudioPath, track_index: TrackIndex, start_time: BeatTime, duration: z.number().positive().max(100_000).optional(), name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_place_sample_on_arrangement", args, await approvedArrangementSamplePlan(args), "Arrangement View sample placement is not exposed reliably through the current LiveAPI bridge.") },
+  { name: "ableton_create_arrangement_audio_clip", description: "Plan creating an Arrangement View audio clip from an approved sample; returns unsupported for real bridge execution.", inputSchema: { path: BoundedAudioPath, track_index: TrackIndex, start_time: BeatTime, duration: z.number().positive().max(100_000).optional(), name: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_create_arrangement_audio_clip", args, await approvedArrangementSamplePlan(args), "Session audio clip creation is implemented, but Arrangement audio clip creation is not proven reliable in this bridge.") },
+  { name: "ableton_move_arrangement_clip", description: "Plan moving an Arrangement View clip by id or named handle; real execution is unsupported until verified.", inputSchema: { clip_id: ArrangementClipId, track_index: TrackIndex.optional(), start_time: BeatTime.optional(), duration: z.number().positive().max(100_000).optional(), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_move_arrangement_clip", args, { clip_id: args.clip_id, track_index: args.track_index ?? null, start_time: args.start_time ?? null, duration: args.duration ?? null }, "Arrangement clip move/edit LiveAPI calls are not verified for this bridge context.") },
+  { name: "ableton_set_arrangement_loop", description: "Plan setting Ableton Arrangement loop brace; real execution is unsupported until verified.", inputSchema: { start_time: BeatTime, length: z.number().positive().max(100_000), enabled: z.boolean().default(true), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_set_arrangement_loop", args, { start_time: args.start_time, length: args.length, enabled: args.enabled }, "Arrangement loop-brace writes need reviewed LiveAPI property support before enabling.") },
+  { name: "ableton_insert_stock_audio_effect", description: "Plan inserting a stock Ableton audio effect; uses explicit target fields and reports unsupported for real LiveAPI insertion.", inputSchema: { track_index: TrackIndex, device: EffectName, position: z.number().int().min(0).optional(), preset: z.string().min(1).max(128).optional(), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_insert_stock_audio_effect", args, { track_index: args.track_index, device: args.device, position: args.position ?? "append", preset: args.preset ?? null }, "Named stock effect insertion still needs a verified Browser/hot-swap target for this Ableton version.") },
+  { name: "ableton_apply_effect_chain_preset", description: "Plan applying an approved Ableton effect-chain preset path; real preset loading remains unsupported by the bridge.", inputSchema: { track_index: TrackIndex, preset_path: BoundedAudioPath.optional(), preset_name: z.string().min(1).max(128).optional(), position: z.number().int().min(0).optional(), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_apply_effect_chain_preset", args, { track_index: args.track_index, preset: await optionalSafePresetPathPlan(args.preset_path), preset_name: args.preset_name ?? null, position: args.position ?? "append" }, "Preset/device loading through LiveAPI is not proven reliable; use read/catalog tools and user-gated UI fallback when required.") },
+  { name: "ableton_create_return_effect_bus", description: "Plan a return bus with named effects and sends without partial bridge side effects.", inputSchema: { name: z.string().min(1).max(128), effects: z.array(EffectName).max(12).default([]), initial_volume: z.number().min(0).max(1).default(0.75), color: RgbColor.optional(), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_create_return_effect_bus", args, { name: args.name, effects: args.effects, initial_volume: args.initial_volume, color: args.color ?? null, atomicity: "return creation plus effect insertion is not atomic in the current bridge" }, "Creating a return track is supported, but named effect insertion is not, so the combined bus tool stays plan-only.") },
+  { name: "ableton_write_track_volume_automation", description: "Plan track volume breakpoint automation; real breakpoint writes are unsupported until LiveAPI support is verified.", inputSchema: { track_index: TrackIndex, points: z.array(AutomationBreakpoint).min(1).max(512), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_write_track_volume_automation", args, { target: "track_volume", track_index: args.track_index, point_count: args.points.length, points: args.points }, "LiveAPI automation breakpoint writing is not exposed reliably from this bridge context.") },
+  { name: "ableton_write_send_automation", description: "Plan send automation breakpoint writes; real breakpoint writes are unsupported until verified.", inputSchema: { track_index: TrackIndex, send_index: z.number().int().min(0), points: z.array(AutomationBreakpoint).min(1).max(512), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_write_send_automation", args, { target: "track_send", track_index: args.track_index, send_index: args.send_index, point_count: args.points.length, points: args.points }, "LiveAPI send automation breakpoint writing is not exposed reliably from this bridge context.") },
+  { name: "ableton_write_device_parameter_automation", description: "Plan device-parameter automation breakpoint writes; real breakpoint writes are unsupported until verified.", inputSchema: { track_index: TrackIndex, device_index: DeviceIndex, parameter_index: ParameterIndex, points: z.array(AutomationBreakpoint).min(1).max(512), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_write_device_parameter_automation", args, { target: "device_parameter", track_index: args.track_index, device_index: args.device_index, parameter_index: args.parameter_index, point_count: args.points.length, points: args.points }, "LiveAPI device-parameter automation breakpoint writing is not exposed reliably from this bridge context.") },
+  { name: "ableton_reverse_clip_to_sample", description: "Render an approved local clip/source audio segment into a reversed WAV sample under staging/imports; dry-run by default.", inputSchema: { source_path: BoundedAudioPath, output: BoundedAudioPath, start_seconds: z.number().min(0).max(100_000).optional(), duration_seconds: z.number().positive().max(3600).optional(), ...DryRun }, annotations: rw, handler: async (args) => reverseClipToSample(args) },
+  { name: "ableton_crop_clip", description: "Render an approved local clip/source audio segment into a cropped sample under staging/imports; dry-run by default.", inputSchema: { source_path: BoundedAudioPath, output: BoundedAudioPath, start_seconds: z.number().min(0).max(100_000), duration_seconds: z.number().positive().max(3600), format: z.enum(["wav", "flac", "mp3"]).default("wav"), ...DryRun }, annotations: rw, handler: async (args) => cropClipToSample(args) },
+  { name: "ableton_set_clip_fades", description: "Plan audio clip fades; real LiveAPI fade writes stay unsupported until verified.", inputSchema: { ...TrackClipRef, fade_in_seconds: z.number().min(0).max(3600).default(0), fade_out_seconds: z.number().min(0).max(3600).default(0), curve: z.enum(["linear", "slow", "fast", "s-curve"]).default("linear"), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_set_clip_fades", args, { track_index: args.track_index, clip_slot_index: args.clip_slot_index, fade_in_seconds: args.fade_in_seconds, fade_out_seconds: args.fade_out_seconds, curve: args.curve }, "Clip fade property writes need verified audio-clip API support before enabling.") },
+  { name: "ableton_warp_clip_to_tempo", description: "Plan warping a clip to a target tempo; real warp-marker mapping stays unsupported until verified.", inputSchema: { ...TrackClipRef, source_bpm: z.number().min(20).max(999).optional(), target_bpm: z.number().min(20).max(999), warp_mode: WarpMode.default("texture"), preserve_pitch: z.boolean().default(true), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_warp_clip_to_tempo", args, { track_index: args.track_index, clip_slot_index: args.clip_slot_index, source_bpm: args.source_bpm ?? null, target_bpm: args.target_bpm, warp_mode: args.warp_mode, preserve_pitch: args.preserve_pitch }, "Warp-marker tempo mapping needs a verified clip API path; basic clip warp on/off remains available through ableton_set_clip_warp.") },
+  { name: "ableton_export_master", description: "Plan master export settings; real Ableton export is unsupported by the current background bridge.", inputSchema: { output: BoundedAudioPath, start_time: BeatTime.default(0), duration: z.number().positive().max(100_000), sample_rate: z.number().int().min(44100).max(192000).default(48000), bit_depth: z.enum(["16", "24", "32"]).default("24"), normalize: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_export_master", args, { output: redactPath(args.output), start_time: args.start_time, duration: args.duration, sample_rate: args.sample_rate, bit_depth: args.bit_depth, normalize: args.normalize }, "Ableton audio export is not exposed through the background LiveAPI bridge yet.") },
+  { name: "ableton_export_stems", description: "Plan stem export settings; real Ableton stem export is unsupported by the current background bridge.", inputSchema: { output_directory: BoundedAudioPath, groups: z.array(z.string().min(1).max(80)).min(1).max(64), start_time: BeatTime.default(0), duration: z.number().positive().max(100_000), sample_rate: z.number().int().min(44100).max(192000).default(48000), bit_depth: z.enum(["16", "24", "32"]).default("24"), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_export_stems", args, { output_directory: redactPath(args.output_directory), groups: args.groups, start_time: args.start_time, duration: args.duration, sample_rate: args.sample_rate, bit_depth: args.bit_depth }, "Ableton stem export is not exposed through the background LiveAPI bridge yet.") },
+  { name: "ableton_save_set_as", description: "Plan saving the current Live Set to an approved .als path; real save-as is unsupported until verified.", inputSchema: { output: BoundedAudioPath, collect_and_save: z.boolean().default(false), ...DryRun }, annotations: rw, handler: async (args) => unsupportedProfessionalWrite("ableton_save_set_as", args, { output: redactPath(args.output), collect_and_save: args.collect_and_save, required_extension: ".als" }, "Save-as needs a verified non-destructive LiveAPI path and approved output policy before enabling.") },
   { name: "ableton_window_status", description: "Report Ableton window status from the ChromeDriver-style UI driver.", inputSchema: Empty, annotations: ro, handler: async () => {
     if (!FLAGS.uiControl) return { ok: true, uiDriverStatus: getUiDriverRuntimeState(), note: "Set ABLETON_MCP_ENABLE_UI_CONTROL=1 and start the UI driver to query live Ableton windows." };
     return { ok: true, uiDriver: await uiDriverAction("window_status") as Record<string, unknown> };
@@ -1645,6 +1765,10 @@ toolDefs.push(
     if (args.dry_run === false) requireFlag(FLAGS.write, "ABLETON_MCP_ENABLE_WRITE", "Audio conversion");
     return { ok: true, audioConversion: await convertAudioFile(args) as any };
   } },
+  { name: "ableton_analyze_lufs", description: "Measure integrated loudness for an allowed local audio file with ffmpeg ebur128.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, loudness: await analyzeLufs(args.path) as any }) },
+  { name: "ableton_analyze_spectrum", description: "Estimate broad-band mix balance for an allowed local audio file without writing output.", inputSchema: { path: z.string().min(1), start_seconds: z.number().min(0).max(100_000).default(0), duration_seconds: z.number().positive().max(120).default(30), sample_rate: z.number().int().min(8000).max(48000).default(22050) }, annotations: ro, handler: async (args) => ({ ok: true, spectrum: await analyzeSpectrum(args.path, { start_seconds: args.start_seconds, duration_seconds: args.duration_seconds, sample_rate: args.sample_rate }) as any }) },
+  { name: "ableton_detect_clipping", description: "Detect likely clipping/headroom risk for an allowed local audio file with ffmpeg volumedetect.", inputSchema: { path: z.string().min(1), threshold_dbfs: z.number().min(-6).max(0).default(-0.1) }, annotations: ro, handler: async (args) => ({ ok: true, clipping: await detectClipping(args.path, args.threshold_dbfs) as any }) },
+  { name: "ableton_compare_reference", description: "Compare a candidate render against an allowed local reference using LUFS, clipping, and broad-band balance.", inputSchema: { candidate_path: z.string().min(1), reference_path: z.string().min(1), start_seconds: z.number().min(0).max(100_000).default(0), duration_seconds: z.number().positive().max(120).default(30) }, annotations: ro, handler: async (args) => ({ ok: true, referenceComparison: await compareReferenceAudio(args.candidate_path, args.reference_path, { start_seconds: args.start_seconds, duration_seconds: args.duration_seconds }) as any }) },
   { name: "ableton_normalize_sample_metadata", description: "Normalize sample metadata and license policy.", inputSchema: { metadata: z.record(z.unknown()).default({}) }, annotations: ro, handler: async (args) => ({ ok: true, normalized: { ...args.metadata, licensePolicy: normalizeLicense(String(args.metadata.license ?? args.metadata.licenseurl ?? "")) } }) },
   { name: "ableton_import_sample_to_library", description: "Import staged sample to Ableton User Library Codex Imports when downloads are enabled.", inputSchema: { stagedPath: z.string(), attribution: z.record(z.unknown()).default({}) }, annotations: rw, handler: async (args) => ({ ok: true, import: await importSampleToLibrary(args.stagedPath, args.attribution) }) },
   { name: "ableton_find_local_samples", description: "Search indexed local samples.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "sample") },

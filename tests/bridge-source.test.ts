@@ -42,6 +42,12 @@ describe("Max for Live bridge source", () => {
     const source = await fs.readFile(liveApiScript, "utf8");
     for (const action of [
       "list_return_tracks",
+      "listTracksCompact",
+      "list_tracks_compact",
+      "trackDetail",
+      "track_detail",
+      "clipDetail",
+      "clip_detail",
       "bridge_capabilities",
       "bridgeCapabilities",
       "master_track",
@@ -106,7 +112,13 @@ describe("Max for Live bridge source", () => {
       "ableton_quantize_clip",
       "ableton_humanize_midi_clip",
       "humanizeMidiNotes",
-      "nextSeededRandom"
+      "nextSeededRandom",
+      "ableton_place_sample_on_arrangement",
+      "ableton_create_arrangement_audio_clip",
+      "ableton_insert_stock_audio_effect",
+      "ableton_write_device_parameter_automation",
+      "ableton_export_master",
+      "ableton_save_set_as"
     ]) {
       expect(source).toContain(action);
     }

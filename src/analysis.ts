@@ -185,6 +185,212 @@ export async function analyzeAudioFile(filePath: string) {
   return { path: redactPath(safe.real), ffprobe: JSON.parse(stdout) };
 }
 
+function assertCommonAudioPath(filePath: string) {
+  if (!AudioFileExtensions.has(path.extname(filePath).toLowerCase())) {
+    throw new AbletonMcpError("Only common local audio files may be analyzed.", "UNSUPPORTED_SAMPLE_TYPE", ["Use WAV, AIFF, FLAC, MP3, M4A, or OGG files."]);
+  }
+}
+
+function lastNumber(text: string, pattern: RegExp) {
+  let match: RegExpExecArray | null;
+  let value: number | null = null;
+  while ((match = pattern.exec(text)) !== null) {
+    const parsed = Number(match[1]);
+    if (Number.isFinite(parsed)) value = parsed;
+  }
+  return value;
+}
+
+export async function analyzeLufs(filePath: string) {
+  const safe = await resolveSafePath(filePath, { mustExist: true });
+  assertCommonAudioPath(safe.real);
+  const result = await execFileAsync(TOOL_PATHS.ffmpeg, [
+    "-hide_banner",
+    "-nostdin",
+    "-nostats",
+    "-i", safe.real,
+    "-filter_complex", "ebur128=peak=true",
+    "-f", "null",
+    "-"
+  ], { timeout: 180_000, maxBuffer: 4_000_000, env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
+  const log = `${result.stdout}\n${result.stderr}`;
+  return {
+    path: redactPath(safe.real),
+    integrated_lufs: lastNumber(log, /\bI:\s*(-?\d+(?:\.\d+)?)\s*LUFS/g),
+    loudness_range_lu: lastNumber(log, /\bLRA:\s*(-?\d+(?:\.\d+)?)\s*LU/g),
+    true_peak_dbfs: lastNumber(log, /\bPeak:\s*(-?\d+(?:\.\d+)?)\s*dBFS/g),
+    method: "ffmpeg ebur128",
+    notes: [
+      "Integrated LUFS is useful for release-level checks, not arrangement quality by itself.",
+      "Keep cinematic horror/ambient masters with headroom; do not chase loudness at the cost of dynamics."
+    ]
+  };
+}
+
+export async function detectClipping(filePath: string, thresholdDbfs = -0.1) {
+  const safe = await resolveSafePath(filePath, { mustExist: true });
+  assertCommonAudioPath(safe.real);
+  const result = await execFileAsync(TOOL_PATHS.ffmpeg, [
+    "-hide_banner",
+    "-nostdin",
+    "-nostats",
+    "-i", safe.real,
+    "-af", "volumedetect",
+    "-f", "null",
+    "-"
+  ], { timeout: 180_000, maxBuffer: 4_000_000, env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH } });
+  const log = `${result.stdout}\n${result.stderr}`;
+  const maxVolumeDbfs = lastNumber(log, /\bmax_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/g);
+  const meanVolumeDbfs = lastNumber(log, /\bmean_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/g);
+  return {
+    path: redactPath(safe.real),
+    threshold_dbfs: thresholdDbfs,
+    mean_volume_dbfs: meanVolumeDbfs,
+    max_volume_dbfs: maxVolumeDbfs,
+    clipping_likely: maxVolumeDbfs !== null ? maxVolumeDbfs >= thresholdDbfs : null,
+    method: "ffmpeg volumedetect",
+    nextSteps: maxVolumeDbfs !== null && maxVolumeDbfs >= thresholdDbfs
+      ? ["Lower final gain or add a true-peak limiter before export.", "Recheck after rendering a new master."]
+      : ["Check LUFS, spectrum, and reference balance before final delivery."]
+  };
+}
+
+async function decodeMonoPreview(filePath: string, startSeconds: number, durationSeconds: number, sampleRate: number) {
+  const safe = await resolveSafePath(filePath, { mustExist: true });
+  assertCommonAudioPath(safe.real);
+  const boundedDuration = Math.max(1, Math.min(120, durationSeconds));
+  const boundedSampleRate = Math.max(8000, Math.min(48000, Math.floor(sampleRate)));
+  const args = [
+    "-hide_banner",
+    "-nostdin",
+    "-v", "error",
+    "-ss", String(Math.max(0, startSeconds)),
+    "-t", String(boundedDuration),
+    "-i", safe.real,
+    "-map", "0:a:0",
+    "-ac", "1",
+    "-ar", String(boundedSampleRate),
+    "-f", "f32le",
+    "-"
+  ];
+  const maxBuffer = Math.ceil(boundedDuration * boundedSampleRate * 4 + 1024);
+  const result = await execFileAsync(TOOL_PATHS.ffmpeg, args, {
+    timeout: 90_000,
+    maxBuffer,
+    encoding: "buffer",
+    env: { SystemRoot: process.env.SystemRoot, PATH: process.env.PATH }
+  } as any);
+  const buffer = Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout);
+  const sampleCount = Math.floor(buffer.length / 4);
+  const samples = new Float32Array(sampleCount);
+  let peak = 0;
+  let sumSquares = 0;
+  for (let i = 0; i < sampleCount; i += 1) {
+    const sample = buffer.readFloatLE(i * 4);
+    samples[i] = sample;
+    const abs = Math.abs(sample);
+    if (abs > peak) peak = abs;
+    sumSquares += sample * sample;
+  }
+  return {
+    path: redactPath(safe.real),
+    samples,
+    sampleRate: boundedSampleRate,
+    startSeconds: Math.max(0, startSeconds),
+    durationSeconds: sampleCount / boundedSampleRate,
+    peak,
+    rms: sampleCount > 0 ? Math.sqrt(sumSquares / sampleCount) : 0
+  };
+}
+
+function goertzelPower(samples: Float32Array, sampleRate: number, frequency: number) {
+  const omega = (2 * Math.PI * frequency) / sampleRate;
+  const coeff = 2 * Math.cos(omega);
+  let s0 = 0;
+  let s1 = 0;
+  let s2 = 0;
+  for (let i = 0; i < samples.length; i += 1) {
+    s0 = samples[i]! + coeff * s1 - s2;
+    s2 = s1;
+    s1 = s0;
+  }
+  return Math.max(0, s1 * s1 + s2 * s2 - coeff * s1 * s2) / Math.max(1, samples.length);
+}
+
+function db(value: number) {
+  return value > 0 ? 20 * Math.log10(value) : -Infinity;
+}
+
+export async function analyzeSpectrum(filePath: string, options: { start_seconds?: number; duration_seconds?: number; sample_rate?: number } = {}) {
+  const preview = await decodeMonoPreview(
+    filePath,
+    options.start_seconds ?? 0,
+    options.duration_seconds ?? 30,
+    options.sample_rate ?? 22050
+  );
+  const bands = [
+    { name: "sub", center_hz: 40 },
+    { name: "bass", center_hz: 80 },
+    { name: "low_mid", center_hz: 180 },
+    { name: "mid", center_hz: 500 },
+    { name: "presence", center_hz: 1500 },
+    { name: "edge", center_hz: 3500 },
+    { name: "air", center_hz: 8000 }
+  ].filter((band) => band.center_hz < preview.sampleRate / 2);
+  const powers = bands.map((band) => ({ ...band, power: goertzelPower(preview.samples, preview.sampleRate, band.center_hz) }));
+  const maxPower = Math.max(...powers.map((band) => band.power), Number.EPSILON);
+  return {
+    path: preview.path,
+    method: "ffmpeg mono preview plus Goertzel broad-band probes",
+    preview: {
+      start_seconds: preview.startSeconds,
+      duration_seconds: preview.durationSeconds,
+      sample_rate: preview.sampleRate,
+      peak_dbfs: db(preview.peak),
+      rms_dbfs: db(preview.rms)
+    },
+    bands: powers.map((band) => ({
+      name: band.name,
+      center_hz: band.center_hz,
+      relative_db: 10 * Math.log10(Math.max(band.power, Number.EPSILON) / maxPower),
+      power: band.power
+    })),
+    notes: [
+      "Broad-band probes are fast mix-balance indicators, not a mastering-grade FFT analyzer.",
+      "Use this to catch obvious sub buildup, harsh presence, or missing air before opening Ableton."
+    ]
+  };
+}
+
+export async function compareReferenceAudio(candidatePath: string, referencePath: string, options: { start_seconds?: number; duration_seconds?: number } = {}) {
+  const candidateLufs = await analyzeLufs(candidatePath);
+  const referenceLufs = await analyzeLufs(referencePath);
+  const candidateSpectrum = await analyzeSpectrum(candidatePath, options);
+  const referenceSpectrum = await analyzeSpectrum(referencePath, options);
+  const candidateClip = await detectClipping(candidatePath);
+  const referenceClip = await detectClipping(referencePath);
+  const candidateLufsValue = candidateLufs.integrated_lufs;
+  const referenceLufsValue = referenceLufs.integrated_lufs;
+  return {
+    candidate: { lufs: candidateLufs, spectrum: candidateSpectrum, clipping: candidateClip },
+    reference: { lufs: referenceLufs, spectrum: referenceSpectrum, clipping: referenceClip },
+    deltas: {
+      integrated_lufs: candidateLufsValue !== null && referenceLufsValue !== null ? candidateLufsValue - referenceLufsValue : null,
+      band_relative_db: candidateSpectrum.bands.map((candidateBand) => {
+        const referenceBand = referenceSpectrum.bands.find((band) => band.name === candidateBand.name);
+        return {
+          name: candidateBand.name,
+          delta_db: referenceBand ? candidateBand.relative_db - referenceBand.relative_db : null
+        };
+      })
+    },
+    nextSteps: [
+      "Use deltas as mix guidance only; do not copy the reference.",
+      "Check whether the candidate has too much sub, not enough low-mid body, or harsh presence against the intended mood."
+    ]
+  };
+}
+
 export async function analyzeMidiFile(filePath: string) {
   const safe = await resolveSafePath(filePath, { mustExist: true });
   const data = await fs.readFile(safe.real);

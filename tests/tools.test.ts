@@ -25,6 +25,9 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_plan_agent_music_session");
     expect(registeredToolNames).toContain("ableton_mcp_run_path_security_test");
     expect(registeredToolNames).toContain("ableton_set_tempo");
+    expect(registeredToolNames).toContain("ableton_list_tracks_compact");
+    expect(registeredToolNames).toContain("ableton_get_track_detail");
+    expect(registeredToolNames).toContain("ableton_get_clip_detail");
     expect(registeredToolNames).toContain("ableton_fire_scene");
     expect(registeredToolNames).toContain("ableton_set_scene_tempo");
     expect(registeredToolNames).toContain("ableton_set_scene_time_signature");
@@ -93,6 +96,16 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_list_concept_execution_journals");
     expect(registeredToolNames).toContain("ableton_get_concept_execution_journal");
     expect(registeredToolNames).toContain("ableton_plan_full_concept_production");
+    expect(registeredToolNames).toContain("ableton_place_sample_on_arrangement");
+    expect(registeredToolNames).toContain("ableton_insert_stock_audio_effect");
+    expect(registeredToolNames).toContain("ableton_create_return_effect_bus");
+    expect(registeredToolNames).toContain("ableton_write_device_parameter_automation");
+    expect(registeredToolNames).toContain("ableton_reverse_clip_to_sample");
+    expect(registeredToolNames).toContain("ableton_export_master");
+    expect(registeredToolNames).toContain("ableton_analyze_lufs");
+    expect(registeredToolNames).toContain("ableton_analyze_spectrum");
+    expect(registeredToolNames).toContain("ableton_detect_clipping");
+    expect(registeredToolNames).toContain("ableton_compare_reference");
   });
 
   it("uses typed schemas for newer bridge workflow tools", () => {
@@ -105,6 +118,9 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_plan_agent_music_session).toHaveProperty("concept");
     expect(registeredToolSchemas.ableton_plan_agent_music_session).toHaveProperty("client");
     expect(registeredToolSchemas.ableton_plan_agent_music_session).toHaveProperty("include_sample_search");
+    expect(registeredToolSchemas.ableton_list_tracks_compact).toHaveProperty("pageSize");
+    expect(registeredToolSchemas.ableton_get_track_detail).toHaveProperty("include_clip_slots");
+    expect(registeredToolSchemas.ableton_get_clip_detail).toHaveProperty("clip_slot_index");
     expect(registeredToolSchemas.ableton_mcp_get_safe_tool_allowlist).toEqual({});
     expect(registeredToolSchemas.ableton_set_tempo).toHaveProperty("tempo");
     expect(registeredToolSchemas.ableton_create_audio_track).not.toHaveProperty("payload");
@@ -229,5 +245,24 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_suggest_effect_chain).toHaveProperty("intensity");
     expect(registeredToolSchemas.ableton_suggest_arrangement).toHaveProperty("target_duration_seconds");
     expect(registeredToolSchemas.ableton_suggest_mix_actions).toHaveProperty("context");
+    expect(registeredToolSchemas.ableton_place_sample_on_arrangement).toHaveProperty("start_time");
+    expect(registeredToolSchemas.ableton_place_sample_on_arrangement).toHaveProperty("dry_run");
+    expect(registeredToolSchemas.ableton_insert_stock_audio_effect).toHaveProperty("device");
+    expect(registeredToolSchemas.ableton_apply_effect_chain_preset).toHaveProperty("preset_path");
+    expect(registeredToolSchemas.ableton_create_return_effect_bus).toHaveProperty("effects");
+    expect(registeredToolSchemas.ableton_write_track_volume_automation).toHaveProperty("points");
+    expect(registeredToolSchemas.ableton_write_send_automation).toHaveProperty("send_index");
+    expect(registeredToolSchemas.ableton_write_device_parameter_automation).toHaveProperty("parameter_index");
+    expect(registeredToolSchemas.ableton_reverse_clip_to_sample).toHaveProperty("source_path");
+    expect(registeredToolSchemas.ableton_crop_clip).toHaveProperty("duration_seconds");
+    expect(registeredToolSchemas.ableton_set_clip_fades).toHaveProperty("fade_out_seconds");
+    expect(registeredToolSchemas.ableton_warp_clip_to_tempo).toHaveProperty("target_bpm");
+    expect(registeredToolSchemas.ableton_export_master).toHaveProperty("sample_rate");
+    expect(registeredToolSchemas.ableton_export_stems).toHaveProperty("groups");
+    expect(registeredToolSchemas.ableton_save_set_as).toHaveProperty("output");
+    expect(registeredToolSchemas.ableton_analyze_lufs).toHaveProperty("path");
+    expect(registeredToolSchemas.ableton_analyze_spectrum).toHaveProperty("duration_seconds");
+    expect(registeredToolSchemas.ableton_detect_clipping).toHaveProperty("threshold_dbfs");
+    expect(registeredToolSchemas.ableton_compare_reference).toHaveProperty("candidate_path");
   });
 });

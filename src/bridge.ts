@@ -36,6 +36,8 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "full_snapshot", tool: "ableton_get_full_snapshot", status: "read_only", domain: "set" },
   { action: "snapshot_diff", tool: "ableton_get_snapshot_diff", status: "read_only", domain: "set" },
   { action: "list_tracks", tool: "ableton_list_tracks", status: "read_only", domain: "tracks" },
+  { action: "list_tracks_compact", tool: "ableton_list_tracks_compact", status: "read_only", domain: "tracks", notes: "Bounded track list for large Live sets; avoids full snapshot response-size overflow." },
+  { action: "track_detail", tool: "ableton_get_track_detail", status: "read_only", domain: "tracks", notes: "Targeted track detail with optional bounded clip-slot page." },
   { action: "list_return_tracks", tool: "ableton_list_return_tracks", status: "read_only", domain: "returns" },
   { action: "master_track", tool: "ableton_get_master_track", status: "read_only", domain: "master" },
   { action: "track_mixer", tool: "ableton_get_track_mixer", status: "read_only", domain: "mixer" },
@@ -43,6 +45,7 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "list_scenes", tool: "ableton_list_scenes", status: "read_only", domain: "scenes" },
   { action: "list_clips", tool: "ableton_list_clips", status: "read_only", domain: "clips" },
   { action: "list_clip_slots", tool: "ableton_list_clip_slots", status: "read_only", domain: "clips" },
+  { action: "clip_detail", tool: "ableton_get_clip_detail", status: "read_only", domain: "clips", notes: "Single clip-slot detail read for agent inspection before writes." },
   { action: "list_devices", tool: "ableton_list_devices", status: "read_only", domain: "devices" },
   { action: "list_device_parameters", tool: "ableton_list_device_parameters", status: "read_only", domain: "devices" },
   { action: "browser_device_tree", tool: "ableton_browse_live_devices", status: "read_only", domain: "browser", notes: "Reads bounded Ableton Browser categories from the loaded Max for Live bridge when requested." },
@@ -107,7 +110,23 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "ableton_set_automation_point", tool: "ableton_set_automation_point", status: "unsupported", domain: "automation", notes: "LiveAPI breakpoint writing is not exposed reliably from this bridge context." },
   { action: "ableton_simplify_automation", tool: "ableton_simplify_automation", status: "unsupported", domain: "automation", notes: "LiveAPI automation simplification is not exposed reliably from this bridge context." },
   { action: "ableton_quantize_clip", tool: "ableton_quantize_clip", status: "unsupported", domain: "midi", notes: "Quantization enum values vary by context." },
-  { action: "ableton_humanize_midi_clip", tool: "ableton_humanize_midi_clip", status: "write_gated", domain: "midi", requiresWriteGate: true, dryRunFirst: true, notes: "Uses get_notes_extended, remove_notes_extended, and add_new_notes when the loaded bridge exposes the modern note API." }
+  { action: "ableton_humanize_midi_clip", tool: "ableton_humanize_midi_clip", status: "write_gated", domain: "midi", requiresWriteGate: true, dryRunFirst: true, notes: "Uses get_notes_extended, remove_notes_extended, and add_new_notes when the loaded bridge exposes the modern note API." },
+  { action: "ableton_place_sample_on_arrangement", tool: "ableton_place_sample_on_arrangement", status: "unsupported", domain: "arrangement", notes: "Arrangement audio placement needs a verified LiveAPI Arrangement View clip creation path." },
+  { action: "ableton_create_arrangement_audio_clip", tool: "ableton_create_arrangement_audio_clip", status: "unsupported", domain: "arrangement", notes: "LiveAPI Session clip creation is available; Arrangement clip creation is not proven reliable." },
+  { action: "ableton_move_arrangement_clip", tool: "ableton_move_arrangement_clip", status: "unsupported", domain: "arrangement", notes: "Arrangement clip move/edit APIs are not proven reliable in this bridge context." },
+  { action: "ableton_set_arrangement_loop", tool: "ableton_set_arrangement_loop", status: "unsupported", domain: "arrangement", notes: "Loop brace writes need reviewed LiveAPI property support before enabling." },
+  { action: "ableton_insert_stock_audio_effect", tool: "ableton_insert_stock_audio_effect", status: "unsupported", domain: "devices", notes: "Named stock effect insertion still requires a verified Browser/hot-swap path." },
+  { action: "ableton_apply_effect_chain_preset", tool: "ableton_apply_effect_chain_preset", status: "unsupported", domain: "devices", notes: "Preset/device loading through LiveAPI is not proven reliable." },
+  { action: "ableton_create_return_effect_bus", tool: "ableton_create_return_effect_bus", status: "unsupported", domain: "returns", notes: "Creating the return is possible, but effect insertion is not atomic or proven; stays plan-only." },
+  { action: "ableton_write_track_volume_automation", tool: "ableton_write_track_volume_automation", status: "unsupported", domain: "automation", notes: "Breakpoint automation writes are not exposed reliably from this bridge context." },
+  { action: "ableton_write_send_automation", tool: "ableton_write_send_automation", status: "unsupported", domain: "automation", notes: "Breakpoint automation writes are not exposed reliably from this bridge context." },
+  { action: "ableton_write_device_parameter_automation", tool: "ableton_write_device_parameter_automation", status: "unsupported", domain: "automation", notes: "Breakpoint automation writes are not exposed reliably from this bridge context." },
+  { action: "ableton_crop_clip", tool: "ableton_crop_clip", status: "unsupported", domain: "clips", notes: "Clip crop/destructive edits need verified clip API support." },
+  { action: "ableton_set_clip_fades", tool: "ableton_set_clip_fades", status: "unsupported", domain: "clips", notes: "Clip fade property writes need verified audio-clip API support." },
+  { action: "ableton_warp_clip_to_tempo", tool: "ableton_warp_clip_to_tempo", status: "unsupported", domain: "clips", notes: "Warp-marker tempo mapping needs a verified API path." },
+  { action: "ableton_export_master", tool: "ableton_export_master", status: "unsupported", domain: "export", notes: "Live export is not exposed through this background bridge yet." },
+  { action: "ableton_export_stems", tool: "ableton_export_stems", status: "unsupported", domain: "export", notes: "Live stem export is not exposed through this background bridge yet." },
+  { action: "ableton_save_set_as", tool: "ableton_save_set_as", status: "unsupported", domain: "set", notes: "Save-as needs a verified non-destructive LiveAPI path and approved output policy." }
 ];
 
 export function getBridgeCapabilityMatrix() {

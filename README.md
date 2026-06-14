@@ -29,7 +29,8 @@ Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_a
 | Set analysis | Read `.als` files as gzip/XML summaries without modifying the original file. |
 | Live session view | Read tracks, scenes, clips, devices, transport, tempo, mixer, and snapshots when the Max for Live bridge is loaded. |
 | Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing, including track/scene/clip creation, scene launch and tempo/signature setup, mixer/master moves, clip naming/looping, audio clip gain, transpose, warp, and marker shaping. |
-| Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, and humanization. |
+| Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, humanization, Arrangement View placement, and export/save workflows. |
+| Mix analysis | Run read-only LUFS, clipping, broad-band spectrum, and reference-comparison checks against allowed local audio files. |
 | UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
 | Samples | Search Internet Archive and Freesound metadata, normalize license data, and gate downloads/imports behind explicit flags. |
 | Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, layer sample curation plan, mix plan, device-chain spec, device catalog match report, arrangement skeleton, execution action matrix, execution manifest, execution runbook, and delivery plan. |
@@ -251,15 +252,14 @@ Latest local verification:
 Build: passed
 Tests: 24 files, 103 tests passed
 Lint: passed
-Doctor: passed with 0 failures; runtime listener checks may warn when bridge/UI/HTTP services are not currently loaded
+Doctor: passed with 0 failures and 1 warning for the optional UI driver listener
 Release check: passed
-Safe sweep: passed
-Live smoke: reports launch readiness and LiveAPI coverage; returns structured setup failure when the Max for Live bridge is not loaded; dry-run write confirmed
-Launcher install: launch.ps1, launch.cmd, and launch.sh passed
-MCP verifier: 216 tools, 3 resources, 2 prompts
-All-tool contract sweep: 216 registered tools, 216 safe calls
-Docker-mode HTTP: restarted node dist/src/http.js on 127.0.0.1:17366; direct Streamable HTTP probe reports 216 tools
-WSL native verifier: passed with ABLETON_MCP_USE_BASH_NODE=1 and ABLETON_MCP_SKIP_SETUP=1
+Safe sweep: passed, 125 safe calls, 0 unexpected failures
+All-tool contract sweep: passed, 241 registered tools, 241 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
+MCP verifier: 241 tools, 3 resources, 2 prompts
+Bridge install: updated files copied to the Ableton User Library preset folder
+Live bridge probe: listener was present on 127.0.0.1:17364, but request/response timed out after bridge file reinstall; reload or restart the Max for Live bridge device before live compact-read testing
+WSL native verifier: not rerun in this pass
 Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; objective readiness available through ableton_mcp_get_objective_readiness_report; safe Docker/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; bridge setup status available through ableton_bridge_setup_status; launch readiness audit available through ableton_mcp_get_launch_readiness_audit; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake and source-audio transformation planning available through ableton_plan_reference_audio_intake and ableton_plan_source_audio_transformation; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; indexed device catalog matching available through ableton_render_concept_device_catalog_matches; user-gated UI placement planning available through ableton_plan_concept_device_ui_placement; execution action review available through ableton_render_concept_execution_action_matrix; execution rehearsal available through ableton_render_concept_execution_runbook; full safe client workflow demo available through .\launch.ps1 concept-demo
 Audit: 0 vulnerabilities
 ```

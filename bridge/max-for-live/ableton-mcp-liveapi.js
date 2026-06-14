@@ -336,6 +336,64 @@ function listTracks(includeDevices, includeClips) {
   return tracks;
 }
 
+function parseBoundedInteger(payload, keyName, defaultValue, minValue, maxValue) {
+  var value = payload && payload[keyName] !== undefined ? Number(payload[keyName]) : defaultValue;
+  if (!isFinite(value)) value = defaultValue;
+  value = Math.floor(value);
+  if (value < minValue) value = minValue;
+  if (value > maxValue) value = maxValue;
+  return value;
+}
+
+function pageBounds(payload, defaultLimit, maxLimit) {
+  var limit = parseBoundedInteger(payload, "limit", defaultLimit, 1, maxLimit);
+  if (payload && payload.pageSize !== undefined) {
+    limit = parseBoundedInteger(payload, "pageSize", limit, 1, maxLimit);
+  }
+  var offset = parseBoundedInteger(payload, "offset", 0, 0, 100000);
+  if (payload && payload.page !== undefined && payload.offset === undefined) {
+    offset = (parseBoundedInteger(payload, "page", 1, 1, 100000) - 1) * limit;
+  }
+  return { offset: offset, limit: limit };
+}
+
+function summarizeTrackCompact(trackIndex) {
+  var trackApi = liveObject("live_set tracks " + trackIndex);
+  return {
+    id: objectId(trackApi),
+    index: trackIndex,
+    name: safeGet(trackApi, "name", ""),
+    color: safeGet(trackApi, "color", null),
+    mute: safeGet(trackApi, "mute", null),
+    solo: safeGet(trackApi, "solo", null),
+    arm: safeGet(trackApi, "arm", null),
+    can_be_armed: safeGet(trackApi, "can_be_armed", null),
+    is_foldable: safeGet(trackApi, "is_foldable", null),
+    playing_slot_index: safeGet(trackApi, "playing_slot_index", null),
+    fired_slot_index: safeGet(trackApi, "fired_slot_index", null),
+    device_count: childCount(trackApi, "devices"),
+    clip_slot_count: childCount(trackApi, "clip_slots")
+  };
+}
+
+function listTracksCompact(payload) {
+  var song = liveObject("live_set");
+  var count = childCount(song, "tracks");
+  var bounds = pageBounds(payload, 32, 64);
+  var end = Math.min(count, bounds.offset + bounds.limit);
+  var tracks = [];
+  for (var i = bounds.offset; i < end; i += 1) {
+    tracks.push(summarizeTrackCompact(i));
+  }
+  return {
+    track_count: count,
+    offset: bounds.offset,
+    limit: bounds.limit,
+    returned: tracks.length,
+    tracks: tracks
+  };
+}
+
 function listReturnTracks(includeDevices) {
   var song = liveObject("live_set");
   var count = childCount(song, "return_tracks");
@@ -394,6 +452,49 @@ function parseClipSlotIndex(payload) {
   return parsed;
 }
 
+function trackDetail(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var includeDevices = Boolean(payload && payload.include_devices);
+  var includeMixer = !(payload && payload.include_mixer === false);
+  var includeClipSlots = Boolean(payload && payload.include_clip_slots);
+  var track = summarizeTrack(trackIndex, includeDevices, false);
+  if (!includeMixer) track.mixer = null;
+  var clipSlots = null;
+  var clipSlotPagination = null;
+  if (includeClipSlots) {
+    var trackApi = liveObject("live_set tracks " + trackIndex);
+    var count = childCount(trackApi, "clip_slots");
+    var bounds = pageBounds(payload, 16, 64);
+    var end = Math.min(count, bounds.offset + bounds.limit);
+    clipSlots = [];
+    for (var i = bounds.offset; i < end; i += 1) {
+      clipSlots.push(summarizeClipSlot(trackIndex, i));
+    }
+    clipSlotPagination = {
+      clip_slot_count: count,
+      offset: bounds.offset,
+      limit: bounds.limit,
+      returned: clipSlots.length
+    };
+  }
+  return {
+    track_index: trackIndex,
+    track: track,
+    clip_slots: clipSlots,
+    clip_slot_pagination: clipSlotPagination
+  };
+}
+
+function clipDetail(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var slotIndex = parseClipSlotIndex(payload);
+  return {
+    track_index: trackIndex,
+    clip_slot_index: slotIndex,
+    clip_slot: summarizeClipSlot(trackIndex, slotIndex)
+  };
+}
+
 function selectedTrackIndex() {
   var selected = liveObject("live_set view selected_track");
   var selectedId = objectId(selected);
@@ -408,11 +509,13 @@ function listDevices(payload) {
   var trackIndex = parseTrackIndex(payload);
   var trackApi = liveObject("live_set tracks " + trackIndex);
   var count = childCount(trackApi, "devices");
+  var bounds = pageBounds(payload, 32, 64);
+  var end = Math.min(count, bounds.offset + bounds.limit);
   var devices = [];
-  for (var i = 0; i < count; i += 1) {
+  for (var i = bounds.offset; i < end; i += 1) {
     devices.push(summarizeDevice(liveObject("live_set tracks " + trackIndex + " devices " + i), i));
   }
-  return { track_index: trackIndex, devices: devices };
+  return { track_index: trackIndex, device_count: count, offset: bounds.offset, limit: bounds.limit, returned: devices.length, devices: devices };
 }
 
 function listDeviceParameters(payload) {
@@ -556,11 +659,13 @@ function listClipSlots(payload) {
   var trackIndex = parseTrackIndex(payload);
   var trackApi = liveObject("live_set tracks " + trackIndex);
   var count = childCount(trackApi, "clip_slots");
+  var bounds = pageBounds(payload, 32, 64);
+  var end = Math.min(count, bounds.offset + bounds.limit);
   var slots = [];
-  for (var i = 0; i < count; i += 1) {
+  for (var i = bounds.offset; i < end; i += 1) {
     slots.push(summarizeClipSlot(trackIndex, i));
   }
-  return { track_index: trackIndex, clip_slots: slots };
+  return { track_index: trackIndex, clip_slot_count: count, offset: bounds.offset, limit: bounds.limit, returned: slots.length, clip_slots: slots };
 }
 
 function getTrackMixer(payload) {
@@ -1562,6 +1667,8 @@ function bridgeCapabilities() {
     ["full_snapshot", "read_only", "set"],
     ["snapshot_diff", "read_only", "set"],
     ["list_tracks", "read_only", "tracks"],
+    ["list_tracks_compact", "read_only", "tracks"],
+    ["track_detail", "read_only", "tracks"],
     ["list_return_tracks", "read_only", "returns"],
     ["master_track", "read_only", "master"],
     ["track_mixer", "read_only", "mixer"],
@@ -1570,6 +1677,7 @@ function bridgeCapabilities() {
     ["list_scenes", "read_only", "scenes"],
     ["list_clips", "read_only", "clips"],
     ["list_clip_slots", "read_only", "clips"],
+    ["clip_detail", "read_only", "clips"],
     ["list_devices", "read_only", "devices"],
     ["list_device_parameters", "read_only", "devices"],
     ["browser_device_tree", "read_only", "browser"],
@@ -1634,7 +1742,23 @@ function bridgeCapabilities() {
     ["ableton_set_automation_point", "unsupported", "automation"],
     ["ableton_simplify_automation", "unsupported", "automation"],
     ["ableton_quantize_clip", "unsupported", "midi"],
-    ["ableton_humanize_midi_clip", "write_gated", "midi"]
+    ["ableton_humanize_midi_clip", "write_gated", "midi"],
+    ["ableton_place_sample_on_arrangement", "unsupported", "arrangement"],
+    ["ableton_create_arrangement_audio_clip", "unsupported", "arrangement"],
+    ["ableton_move_arrangement_clip", "unsupported", "arrangement"],
+    ["ableton_set_arrangement_loop", "unsupported", "arrangement"],
+    ["ableton_insert_stock_audio_effect", "unsupported", "devices"],
+    ["ableton_apply_effect_chain_preset", "unsupported", "devices"],
+    ["ableton_create_return_effect_bus", "unsupported", "returns"],
+    ["ableton_write_track_volume_automation", "unsupported", "automation"],
+    ["ableton_write_send_automation", "unsupported", "automation"],
+    ["ableton_write_device_parameter_automation", "unsupported", "automation"],
+    ["ableton_crop_clip", "unsupported", "clips"],
+    ["ableton_set_clip_fades", "unsupported", "clips"],
+    ["ableton_warp_clip_to_tempo", "unsupported", "clips"],
+    ["ableton_export_master", "unsupported", "export"],
+    ["ableton_export_stems", "unsupported", "export"],
+    ["ableton_save_set_as", "unsupported", "set"]
   ];
   var summary = {};
   for (var i = 0; i < actions.length; i += 1) {
@@ -1670,6 +1794,8 @@ function dispatch(action, payload) {
   if (action === "full_snapshot") return fullSnapshot();
   if (action === "snapshot_diff") return snapshotDiff();
   if (action === "list_tracks") return { tracks: listTracks(false, false) };
+  if (action === "list_tracks_compact") return listTracksCompact(payload);
+  if (action === "track_detail") return trackDetail(payload);
   if (action === "list_return_tracks") return { return_tracks: listReturnTracks(false) };
   if (action === "master_track") return { master_track: summarizeMasterTrack(false) };
   if (action === "track_mixer") return getTrackMixer(payload);
@@ -1679,6 +1805,7 @@ function dispatch(action, payload) {
   if (action === "arrangement_markers") return listArrangementMarkers();
   if (action === "list_clips") return { clips: listClips() };
   if (action === "list_clip_slots") return listClipSlots(payload);
+  if (action === "clip_detail") return clipDetail(payload);
   if (action === "clip_notes") return getClipNotes(payload);
   if (action === "clip_envelopes") return getClipEnvelopes(payload);
   if (action === "list_devices") return listDevices(payload);
