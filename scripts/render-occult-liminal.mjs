@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
 const downloads = path.join(process.env.USERPROFILE || process.env.HOME || root, "Downloads");
-const renderRoot = path.join(root, "samples", "staging", "occult-liminal-backrooms-v2");
+const renderRoot = path.join(root, "samples", "staging", "occult-liminal-backrooms-v3");
 const stemDir = path.join(renderRoot, "stems");
 fs.mkdirSync(stemDir, { recursive: true });
 
@@ -15,10 +15,10 @@ const DURATION = 168;
 const N = DURATION * SR;
 const SECTION = 28;
 
-const masterWavOut = path.join(downloads, "occult-liminal-backrooms-v2-master.wav");
-const masterMp3Out = path.join(downloads, "occult-liminal-backrooms-v2-master.mp3");
-const attrOut = path.join(downloads, "occult-liminal-backrooms-v2-attribution.txt");
-const stagingMaster = path.join(renderRoot, "occult-liminal-backrooms-v2-master.wav");
+const masterWavOut = path.join(downloads, "occult-liminal-backrooms-v3-master.wav");
+const masterMp3Out = path.join(downloads, "occult-liminal-backrooms-v3-master.mp3");
+const attrOut = path.join(downloads, "occult-liminal-backrooms-v3-attribution.txt");
+const stagingMaster = path.join(renderRoot, "occult-liminal-backrooms-v3-master.wav");
 
 const stems = {
   ballroom: makeBus("ballroom-memory"),
@@ -27,6 +27,7 @@ const stems = {
   tape: makeBus("tape-artifacts"),
   occult: makeBus("occult-smear"),
   vocals: makeBus("haunted-vocals"),
+  siren: makeBus("siren-song-hook"),
   impacts: makeBus("impacts"),
 };
 
@@ -356,6 +357,12 @@ const ballroom = [
   "07 Oriental Nights.wav",
 ].map((f) => readWav(path.join(ballroomDir, f)));
 
+const sirenDir = path.join(root, "samples", "staging", "occult-liminal-vocals");
+const sirens = [
+  "02HappyDaysAreHereAgain.wav",
+  "03ImAJazzVampire.wav",
+].map((f) => readWav(path.join(sirenDir, f)));
+
 const drumDir = path.join(root, "samples", "staging", "online-realistic-liminal", "drumshots-44k");
 const cymbalPath = path.join(drumDir, "JBK_Cymbal_18.wav");
 const rimPath = path.join(drumDir, "JBK_Rim_10b.wav");
@@ -492,6 +499,78 @@ function arrangeHauntedVocals() {
   }
 }
 
+function arrangeSirenSongHook() {
+  const happy = sirens[0];
+  const vampire = sirens[1];
+  const hookStarts = [12.2, 20.4, 29.6, 38.1, 47.8, 61.2];
+  const arrivals = [18.5, 42.8, 67.1, 91.6, 116.4, 139.8];
+  for (let i = 0; i < arrivals.length; i += 1) {
+    const t = arrivals[i];
+    const src = i < 3 ? happy : vampire;
+    const srcStart = hookStarts[i % hookStarts.length];
+    const baseGain = i < 2 ? 0.13 : i < 4 ? 0.17 : 0.145;
+    addSample(stems.siren, src, {
+      time: t,
+      src: srcStart,
+      length: 5.2,
+      rate: 1.12 + (i % 3) * 0.05,
+      gain: baseGain,
+      pan: ((i % 5) - 2) * 0.14,
+      fade: 0.65,
+      wow: 0.018,
+      crush: 0.09,
+      tremolo: 0.1 + i * 0.018,
+    });
+    addSample(stems.siren, src, {
+      time: t + 2.8,
+      src: srcStart + 1.4,
+      length: 6.8,
+      rate: 0.54 + (i % 2) * 0.04,
+      gain: baseGain * 0.58,
+      pan: -((i % 5) - 2) * 0.18,
+      fade: 1.4,
+      reverse: i >= 2,
+      wow: 0.034,
+      crush: 0.2,
+      tremolo: 0.26,
+    });
+  }
+
+  // A catchy phrase trapped in a bad-trip loop: shorter, stranger repeats that never land on a normal grid.
+  const loopTimes = [78.2, 82.05, 85.3, 88.1, 93.7, 99.4, 105.2, 111.05];
+  for (let i = 0; i < loopTimes.length; i += 1) {
+    addSample(stems.siren, vampire, {
+      time: loopTimes[i],
+      src: 25.4 + (i % 4) * 0.7,
+      length: 2.65 - (i % 3) * 0.32,
+      rate: 1.22 - i * 0.025,
+      gain: 0.125 + i * 0.006,
+      pan: ((i % 4) - 1.5) * 0.24,
+      fade: 0.18,
+      reverse: i % 4 === 3,
+      wow: 0.026,
+      crush: 0.17,
+      tremolo: 0.34,
+    });
+  }
+
+  for (const t of [53.4, 106.8, 132.6, 151.1]) {
+    addSample(stems.siren, happy, {
+      time: t,
+      src: 34.6,
+      length: 9.5,
+      rate: 0.38,
+      gain: 0.07,
+      pan: rand() * 1.1 - 0.55,
+      fade: 2.8,
+      reverse: true,
+      wow: 0.04,
+      crush: 0.25,
+      tremolo: 0.32,
+    });
+  }
+}
+
 function arrangeImpacts() {
   for (const [t, gain, tone] of [[28, 0.17, 54], [56, 0.13, 49], [84, 0.15, 58], [112, 0.2, 46], [140, 0.1, 42]]) addImpact(t, gain, tone);
   if (cymbal) {
@@ -512,6 +591,7 @@ arrangeSubPressure();
 arrangeTapeArtifacts();
 arrangeOccultSmear();
 arrangeHauntedVocals();
+arrangeSirenSongHook();
 arrangeImpacts();
 
 highpass(stems.ballroom.l, 75);
@@ -537,13 +617,20 @@ highpass(stems.vocals.l, 110);
 highpass(stems.vocals.r, 110);
 onePoleLowpass(stems.vocals.l, 3600);
 onePoleLowpass(stems.vocals.r, 3400);
+highpass(stems.siren.l, 155);
+highpass(stems.siren.r, 155);
+onePoleLowpass(stems.siren.l, 5100);
+onePoleLowpass(stems.siren.r, 4800);
 addCrossDelay(stems.ballroom, 0.86, 0.045, 0.38);
 addCrossDelay(stems.occult, 1.72, 0.08, 0.5);
+addCrossDelay(stems.siren, 0.43, 0.07, 0.42);
+addCrossDelay(stems.siren, 1.31, 0.045, 0.5);
 addCrossDelay(stems.impacts, 1.18, 0.035, 0.3);
 addRoomBloom(stems.ballroom, 0.055);
 addRoomBloom(stems.concrete, 0.035);
 addRoomBloom(stems.occult, 0.11);
 addRoomBloom(stems.vocals, 0.18);
+addRoomBloom(stems.siren, 0.13);
 addRoomBloom(stems.impacts, 0.04);
 
 const masterL = new Float32Array(N);
@@ -612,6 +699,7 @@ fs.writeFileSync(attrOut, [
   "No breakcore, EDM drops, trap drums, bright pads, clean synth leads, or intelligible hidden/subliminal commands were used.",
   "",
   "Sources:",
+  "- Internet Archive: Sirens of Song, Public Domain Mark 1.0, https://archive.org/details/SirensOfSong",
   "- Internet Archive: Cole McElroy Spanish Ballroom Orchestra 78rpm Collection, Public Domain Mark 1.0, https://archive.org/details/ColeMcElroySpanishBallroomOrchestra78rpmCollection",
   "- Internet Archive: Nathan Glantz Orchestra 78rpm Collection, Public Domain Mark 1.0, https://archive.org/details/NathanGlantzOrchestra78rpmCollection",
   "- Optional sparse transition impacts from staged Original Jungle Breaks one-shots, Public Domain Mark 1.0, https://archive.org/details/back03st",
@@ -620,7 +708,8 @@ fs.writeFileSync(attrOut, [
   "- 78rpm ballroom recordings slowed, detuned, reversed, filtered, granularly layered, and smeared into a decayed-memory motif.",
   "- Concrete room tone, fluorescent hum, restrained tape artifacts, low sub pressure, reverse swells, sparse impacts, and deep stereo room bloom create the horror environment.",
   "- Haunted vocals are nonverbal vowel shadows and reversed ballroom fragments only; no words, commands, or intelligible subliminal phrases are present.",
-  "- Stems were exported for Ableton editing: ballroom memory, concrete room, sub pressure, tape artifacts, occult smear, haunted vocals, impacts.",
+  "- Siren song hook uses public-domain female vocal 78rpm fragments, pitched, looped, reversed, smeared, and spatialized into a cursed catchy refrain.",
+  "- Stems were exported for Ableton editing: ballroom memory, concrete room, sub pressure, tape artifacts, occult smear, haunted vocals, siren song hook, impacts.",
 ].join("\n"));
 
 function roundMetrics(value) {
