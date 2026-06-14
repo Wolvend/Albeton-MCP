@@ -59,9 +59,16 @@ describe("live smoke workflow", () => {
     expect(liveSmokeCalls.find((call) => call.name === "ableton_bridge_setup_status")?.arguments)
       .toMatchObject({ check_bridge: true });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_live_state");
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_list_tracks_compact");
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_list_tracks_compact")?.arguments)
+      .toMatchObject({ page: 1, pageSize: 16 });
+    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_track_detail");
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_get_track_detail")?.arguments)
+      .toMatchObject({ track_index: 0, include_devices: false, include_clip_slots: false });
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_routing_overview");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_get_routing_overview")?.arguments)
       .toMatchObject({ include_devices: false });
+    expect(liveSmokeCalls.find((call) => call.name === "ableton_get_routing_overview")?.required).toBe(false);
   });
 
   it("builds a compact success report from mocked MCP results", () => {
@@ -69,6 +76,7 @@ describe("live smoke workflow", () => {
       name: call.name,
       ok: true,
       isError: false,
+      required: call.required,
       structuredContent: call.name === "ableton_mcp_get_objective_readiness_report"
         ? {
             objectiveReadiness: {
@@ -100,8 +108,12 @@ describe("live smoke workflow", () => {
           ? { capabilities: { summary: { read_only: 10, write_gated: 20, unsupported: 4, diagnostic: 2 } } }
         : call.name === "ableton_bridge_setup_status"
           ? { bridgeSetup: { status: "ready", install: { ready: true }, live: { running: true }, bridge: { checked: true, reachable: true } } }
-        : call.name === "ableton_get_full_snapshot"
-        ? { snapshot: { data: { state: { track_count: 4, scene_count: 9 }, tracks: [{}, {}], scenes: [{}, {}, {}] } } }
+        : call.name === "ableton_get_live_state"
+        ? { bridge: { data: { track_count: 4, scene_count: 9 } } }
+        : call.name === "ableton_list_tracks_compact"
+        ? { bridge: { data: { track_count: 4, tracks: [{}, {}] } } }
+        : call.name === "ableton_list_scenes"
+        ? { bridge: { data: { scenes: [{}, {}, {}] } } }
         : call.name === "ableton_duplicate_clip"
           ? { ok: true, dry_run: true }
           : call.name === "ableton_get_routing_overview"
@@ -155,6 +167,7 @@ describe("live smoke workflow", () => {
       name: call.name,
       ok: call.name !== "ableton_bridge_ping",
       isError: call.name === "ableton_bridge_ping",
+      required: call.required,
       structuredContent: call.name === "ableton_duplicate_clip"
         ? { ok: true, dry_run: true }
         : call.name === "ableton_bridge_setup_status"

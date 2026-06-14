@@ -22,6 +22,9 @@ const bridgePort = Number.isInteger(configuredBridgePort) && configuredBridgePor
   ? configuredBridgePort
   : 17364;
 const MAX_BRIDGE_RESPONSE_BYTES = 128_000;
+const DEFAULT_BRIDGE_TIMEOUT_MS = 2_500;
+const MEDIUM_BRIDGE_TIMEOUT_MS = 10_000;
+const HEAVY_BRIDGE_TIMEOUT_MS = 30_000;
 const allowedActionPattern = /^[a-z][a-z0-9_]{0,63}$/;
 const BRIDGE_QUEUE_TIMEOUT_MS = 30_000;
 let queuedBridgeWork: Promise<unknown> = Promise.resolve();
@@ -156,7 +159,33 @@ function assertSafeBridgeAction(action: string) {
   }
 }
 
-function bridgeCall<T>(request: BridgeRequest, timeoutMs = 2_500): Promise<T> {
+function bridgeTimeoutForAction(action: string) {
+  if ([
+    "full_snapshot",
+    "snapshot_diff",
+    "list_clips",
+    "routing_overview",
+    "automation_summary",
+    "browser_device_tree"
+  ].includes(action)) return HEAVY_BRIDGE_TIMEOUT_MS;
+  if ([
+    "list_tracks",
+    "list_tracks_compact",
+    "track_detail",
+    "list_scenes",
+    "list_clip_slots",
+    "list_devices",
+    "list_device_parameters",
+    "device_parameter_map",
+    "list_return_tracks",
+    "master_track",
+    "track_mixer",
+    "return_track_mixer"
+  ].includes(action)) return MEDIUM_BRIDGE_TIMEOUT_MS;
+  return DEFAULT_BRIDGE_TIMEOUT_MS;
+}
+
+function bridgeCall<T>(request: BridgeRequest, timeoutMs = DEFAULT_BRIDGE_TIMEOUT_MS): Promise<T> {
   assertSafeBridgeAction(request.action);
   const body = JSON.stringify({ id: crypto.randomUUID(), ...request });
   return new Promise((resolve, reject) => {
@@ -233,7 +262,7 @@ async function enqueueBridgeCall<T>(request: BridgeRequest, timeoutMs?: number):
     }
     const actionStartedAt = Date.now();
     try {
-      const result = await bridgeCall<T>(request, timeoutMs);
+      const result = await bridgeCall<T>(request, timeoutMs ?? bridgeTimeoutForAction(request.action));
       lastBridgeAction = { action: request.action, at: new Date().toISOString(), durationMs: Date.now() - actionStartedAt, ok: true };
       return result;
     } catch (error) {

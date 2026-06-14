@@ -75,7 +75,7 @@ Use these launch modes:
 | Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
 | Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
-| Live smoke | `.\launch.ps1 live-smoke` | Confirms objective readiness, launch readiness, LiveAPI coverage, bridge reachability, routing readiness, and one dry-run write probe. |
+| Live smoke | `.\launch.ps1 live-smoke` | Confirms objective readiness, launch readiness, LiveAPI coverage, bridge reachability, bounded live reads, optional routing probe, and one dry-run write probe. |
 | Concept demo | `.\launch.ps1 concept-demo` | Runs a no-write MCP client workflow from a liminal brief through concept, arrangement, action matrix, approval dry-run, and delivery plan. |
 | UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
 

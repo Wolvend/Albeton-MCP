@@ -6,7 +6,10 @@ const path = require("path");
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.ABLETON_MCP_BRIDGE_PORT || 17364);
 const MAX_REQUEST_BYTES = 64_000;
-const REQUEST_TIMEOUT_MS = 2500;
+const configuredRequestTimeoutMs = Number(process.env.ABLETON_MCP_BRIDGE_REQUEST_TIMEOUT_MS || 30000);
+const REQUEST_TIMEOUT_MS = Number.isFinite(configuredRequestTimeoutMs) && configuredRequestTimeoutMs >= 2500 && configuredRequestTimeoutMs <= 60000
+  ? configuredRequestTimeoutMs
+  : 30000;
 const pending = new Map();
 const DIAGNOSTICS_DIR = path.resolve(__dirname, "..", "..", "diagnostics", "runtime");
 const STARTUP_LOG = path.join(DIAGNOSTICS_DIR, "node-for-max-http-start.log");

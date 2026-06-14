@@ -18,6 +18,7 @@ type SmokeResult = {
   name: string;
   ok: boolean;
   isError: boolean;
+  required: boolean;
   structuredContent?: unknown;
   error?: string;
 };
@@ -26,6 +27,7 @@ type PublicSmokeResult = {
   name: string;
   ok: boolean;
   isError: boolean;
+  required: boolean;
   error?: string;
 };
 
@@ -79,11 +81,11 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_bridge_setup_status", arguments: { check_bridge: true }, required: true },
   { name: "ableton_bridge_ping", arguments: {}, required: true },
   { name: "ableton_get_live_state", arguments: {}, required: true },
-  { name: "ableton_get_full_snapshot", arguments: {}, required: true },
-  { name: "ableton_list_tracks", arguments: {}, required: true },
+  { name: "ableton_list_tracks_compact", arguments: { page: 1, pageSize: 16 }, required: true },
+  { name: "ableton_get_track_detail", arguments: { track_index: 0, include_mixer: true, include_devices: false, include_clip_slots: false, page: 1, pageSize: 8 }, required: true },
   { name: "ableton_list_scenes", arguments: {}, required: true },
-  { name: "ableton_list_devices", arguments: {}, required: true },
-  { name: "ableton_get_routing_overview", arguments: { include_devices: false }, required: true },
+  { name: "ableton_list_devices", arguments: { track_index: 0, page: 1, pageSize: 16 }, required: true },
+  { name: "ableton_get_routing_overview", arguments: { include_devices: false }, required: false },
   {
     name: "ableton_duplicate_clip",
     arguments: { track_index: 0, clip_slot_index: 0, destination_clip_slot_index: 1, dry_run: true },
@@ -187,7 +189,7 @@ function collectSetupHints(results: SmokeResult[]) {
         for (const hint of setupHints) if (typeof hint === "string") addHint(hint);
       }
     }
-    if (result.ok) continue;
+    if (result.ok || result.required === false) continue;
     const directHints = structured?.nextSteps ?? structured?.nextStep;
     if (Array.isArray(directHints)) {
       for (const hint of directHints) if (typeof hint === "string") addHint(hint);
@@ -207,22 +209,22 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
   const launchReadiness = resultByName(results, "ableton_mcp_get_launch_readiness_audit")?.structuredContent;
   const bridgeCapabilities = resultByName(results, "ableton_get_bridge_capabilities")?.structuredContent;
   const bridgeSetup = resultByName(results, "ableton_bridge_setup_status")?.structuredContent;
-  const snapshot = resultByName(results, "ableton_get_full_snapshot")?.structuredContent;
-  const tracks = resultByName(results, "ableton_list_tracks")?.structuredContent;
+  const liveState = resultByName(results, "ableton_get_live_state")?.structuredContent;
+  const tracks = resultByName(results, "ableton_list_tracks_compact")?.structuredContent;
   const scenes = resultByName(results, "ableton_list_scenes")?.structuredContent;
   const devices = resultByName(results, "ableton_list_devices")?.structuredContent;
   const routing = resultByName(results, "ableton_get_routing_overview")?.structuredContent;
   const dryRun = resultByName(results, "ableton_duplicate_clip")?.structuredContent;
 
   const counts = {
-    tracks: arrayLengthAt(tracks, [["tracks", "data"], ["tracks"], ["data", "tracks"]])
-      ?? arrayLengthAt(snapshot, [["snapshot", "data", "tracks"]])
-      ?? numberAt(snapshot, [["snapshot", "data", "state", "track_count"]]),
+    tracks: arrayLengthAt(tracks, [["bridge", "data", "tracks"], ["tracks", "data"], ["tracks"], ["data", "tracks"]])
+      ?? numberAt(tracks, [["bridge", "data", "track_count"], ["track_count"]])
+      ?? numberAt(liveState, [["bridge", "data", "track_count"]]),
     scenes: arrayLengthAt(scenes, [["scenes", "data"], ["scenes"], ["data", "scenes"]])
-      ?? arrayLengthAt(snapshot, [["snapshot", "data", "scenes"]])
-      ?? numberAt(snapshot, [["snapshot", "data", "state", "scene_count"]]),
+      ?? arrayLengthAt(scenes, [["bridge", "data", "scenes"]])
+      ?? numberAt(liveState, [["bridge", "data", "scene_count"]]),
     devices: arrayLengthAt(devices, [["bridge", "data", "devices"], ["devices", "data"], ["devices"], ["data", "devices"]])
-      ?? numberAt(snapshot, [["snapshot", "data", "state", "device_count"]]),
+      ?? numberAt(devices, [["bridge", "data", "device_count"]]),
     routingRows: arrayLengthAt(routing, [["bridge", "data", "send_matrix"], ["bridge", "send_matrix"], ["data", "send_matrix"], ["send_matrix"]])
   };
 
@@ -230,7 +232,7 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
   const bridgeReachable = Boolean(bridgePing?.ok);
   const dryRunWriteConfirmed = getNested(dryRun, ["dry_run"]) === true
     || getNested(dryRun, ["runtime", "tool"]) === "ableton_duplicate_clip";
-  const requiredFailures = results.filter((result) => !result.ok).map((result) => result.name);
+  const requiredFailures = results.filter((result) => result.required !== false && !result.ok).map((result) => result.name);
 
   return {
     ok: requiredFailures.length === 0 && bridgeReachable && dryRunWriteConfirmed,
@@ -269,6 +271,7 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
       name: result.name,
       ok: result.ok,
       isError: result.isError,
+      required: result.required,
       ...(result.error ? { error: result.error } : {})
     }))
   };
@@ -282,6 +285,7 @@ async function callTool(client: Client, call: SmokeCall): Promise<SmokeResult> {
       name: call.name,
       ok: !isError,
       isError,
+      required: call.required,
       structuredContent: result.structuredContent
     };
   } catch (error) {
@@ -289,6 +293,7 @@ async function callTool(client: Client, call: SmokeCall): Promise<SmokeResult> {
       name: call.name,
       ok: false,
       isError: true,
+      required: call.required,
       error: error instanceof Error ? error.message : String(error)
     };
   }

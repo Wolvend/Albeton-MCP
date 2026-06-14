@@ -100,14 +100,15 @@ Then call:
 ableton_bridge_ping
 ableton_bridge_setup_status
 ableton_get_live_state
-ableton_get_full_snapshot
+ableton_list_tracks_compact
+ableton_get_track_detail
 ```
 
 If the bridge is not loaded, these tools should return `BRIDGE_UNREACHABLE` with setup steps.
 
 The live-ready workflow can optionally call `ableton_open_bridge_device` behavior through `-OpenBridge` / `--open-bridge`. This opens the installed `.amxd` preset through the host OS/Ableton association and then re-checks `127.0.0.1:17364`; it does not move the mouse or enable MCP write tools, but Ableton may still prompt or alter the current set by loading the bridge device.
 
-The live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_setup_status` with `check_bridge=true`, `ableton_bridge_ping`, `ableton_get_live_state`, `ableton_get_full_snapshot`, track/scene/device listing, `ableton_get_routing_overview`, `ableton_control_mode_status`, and one `dry_run=true` write probe. It reports objective status, launch mode, safe tool count, bridge setup status, LiveAPI control coverage, bridge capability summary, track/scene/device counts, and send-matrix row counts when the bridge is loaded. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
+The live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_setup_status` with `check_bridge=true`, `ableton_bridge_ping`, `ableton_get_live_state`, bounded track/detail/scene/device reads, `ableton_control_mode_status`, and one `dry_run=true` write probe. It also attempts `ableton_get_routing_overview` as an optional deep routing probe because very dense Live Sets can make full routing enumeration slow. It reports objective status, launch mode, safe tool count, bridge setup status, LiveAPI control coverage, bridge capability summary, track/scene/device counts, and optional send-matrix row counts when available. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
 
 ## Check the UI driver
 
