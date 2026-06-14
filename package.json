@@ -33,6 +33,7 @@
     "live-ready": "node dist/scripts/live-ready.js",
     "live-smoke": "node dist/scripts/live-smoke.js",
     "demo:concept": "node dist/scripts/agent-music-dry-run.js",
+    "render:occult-liminal": "node scripts/render-occult-liminal.mjs",
     "self-test": "node dist/scripts/self-test.js",
     "verify:mcp": "node dist/scripts/verify-mcp.js"
   },
