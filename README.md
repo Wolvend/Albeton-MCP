@@ -233,6 +233,7 @@ Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
 | [Docker MCP](docs/DOCKER_MCP.md) | How to connect Docker MCP to the local Windows Ableton host service. |
 | [Docker MCP profile](docs/DOCKER_MCP_PROFILE.md) | Safe local-only Docker MCP profile activation and OpenClaw registry notes. |
 | [Concept to music](docs/CONCEPT_TO_MUSIC.md) | Staged concept, sample, arrangement, execution, and delivery workflow. |
+| [Music production skills](docs/MUSIC_PRODUCTION_SKILLS.md) | Agent-facing skill map from musical intent to current tools and future gaps. |
 | [Future patches](docs/FUTURE_PATCHES.md) | Planned professional music, synthesis, groove, mix, and revision-loop tool roadmap. |
 | [Platform compatibility](docs/PORTABILITY.md) | Windows, WSL, macOS, and Linux support model with environment overrides. |
 | [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |

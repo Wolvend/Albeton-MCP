@@ -97,4 +97,6 @@ All file tools enforce allowed roots and reject broad or sensitive paths.
 
 Write-capable tools require `ABLETON_MCP_ENABLE_WRITE=1` and should be called with `dry_run=true` first. `ableton_execute_concept_plan` also requires the matching approval bundle `approval_id`, `approval_confirmed=true`, and a successful bridge preflight before real writes. Real stored-plan execution writes a redacted diagnostic journal under `diagnostics\runtime\concept-executions`. If the bridge returns `unsupported: true` during stored-plan execution, the executor stops with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` instead of reporting a successful run. LiveAPI operations that are not proven reliable for the current Ableton bridge return `unsupported: true` in dry-run mode with setup hints. UI-driver tools require `ABLETON_MCP_ENABLE_UI_CONTROL=1`. Download/import tools require `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
 
+Use [Music production skills](MUSIC_PRODUCTION_SKILLS.md) when an agent needs to choose tools by musical job instead of reading the raw tool list.
+
 Planned professional music, synthesis, timing, mix, and revision-loop tools are tracked in [Future patches](FUTURE_PATCHES.md). They are roadmap items until they are implemented and reported by `npm run verify:mcp`.

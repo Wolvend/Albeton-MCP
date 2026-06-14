@@ -4,6 +4,8 @@ This roadmap captures the next professional music-production tools for Ableton M
 
 The goal is to make Ableton MCP better at creating, judging, revising, and finishing music. Future tools should follow the existing safety model:
 
+For the producer-skill view of why these tools matter and how agents should sequence them, see [Music production skills](MUSIC_PRODUCTION_SKILLS.md).
+
 - Read-only or dry-run by default.
 - Real Ableton writes require `ABLETON_MCP_ENABLE_WRITE=1` and `dry_run=false`.
 - UI/mouse fallback requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
