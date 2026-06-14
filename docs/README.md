@@ -27,6 +27,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Concept to music](CONCEPT_TO_MUSIC.md) | Using staged concept, sample, arrangement, execution, and delivery tools. |
 | [Natural language to music](NATURAL_LANGUAGE_TO_MUSIC.md) | Teaching Codex how to translate user briefs into safe MCP music workflows. |
 | [Music production skills](MUSIC_PRODUCTION_SKILLS.md) | Mapping producer skills to current Ableton MCP tools and planned gaps. |
+| [Occult liminal Backrooms track](OCCULT_LIMINAL_BACKROOMS_TRACK.md) | A full song thesis and Codex production goal for the haunted Backrooms piece. |
 | [Future patches](FUTURE_PATCHES.md) | Planning professional music, synthesis, groove, mix, and revision-loop tools. |
 | [Plugin policy](PLUGIN_POLICY.md) | Checking plugin/package download staging and no-install safety rules. |
 

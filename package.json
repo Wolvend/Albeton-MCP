@@ -34,6 +34,10 @@
     "live-smoke": "node dist/scripts/live-smoke.js",
     "demo:concept": "node dist/scripts/agent-music-dry-run.js",
     "render:occult-liminal": "node scripts/render-occult-liminal.mjs",
+    "render:there-was-never-a-door": "node scripts/render-there-was-never-a-door.mjs",
+    "render:bad-memory-backrooms": "node scripts/render-bad-memory-backrooms.mjs",
+    "render:bad-memory-backrooms:v2": "node scripts/render-bad-memory-backrooms-v2.mjs",
+    "render:wallpaper-knows-your-name": "node scripts/render-wallpaper-knows-your-name.mjs",
     "self-test": "node dist/scripts/self-test.js",
     "verify:mcp": "node dist/scripts/verify-mcp.js"
   },
