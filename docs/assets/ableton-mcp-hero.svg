@@ -1,82 +1,171 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
   <title id="title">Ableton MCP README hero</title>
-  <desc id="desc">A bright Ableton-inspired README banner with the Ableton-style mark, hard color blocks, and a Live-like session grid.</desc>
+  <desc id="desc">A dense Ableton-inspired README hero with the Ableton-style mark, session grid, browser, transport, mixer meters, device rack, and MCP bridge routing.</desc>
   <defs>
-    <pattern id="fineGrid" width="24" height="24" patternUnits="userSpaceOnUse">
-      <path d="M24 0H0V24" fill="none" stroke="#000" stroke-opacity="0.05" stroke-width="1"/>
+    <pattern id="pageGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M24 0H0V24" fill="none" stroke="#000" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
+    <pattern id="panelGrid" width="18" height="18" patternUnits="userSpaceOnUse">
+      <path d="M18 0H0V18" fill="none" stroke="#000" stroke-opacity="0.08" stroke-width="1"/>
     </pattern>
   </defs>
 
-  <rect width="1280" height="420" rx="0" fill="#f7f4ec"/>
-  <rect width="1280" height="420" fill="url(#fineGrid)"/>
+  <rect width="1280" height="420" fill="#f7f4ec"/>
+  <rect width="1280" height="420" fill="url(#pageGrid)"/>
   <rect x="0" y="0" width="1280" height="18" fill="#000"/>
   <rect x="0" y="402" width="1280" height="18" fill="#000"/>
 
-  <rect x="42" y="42" width="226" height="226" fill="#ff764d"/>
-  <rect x="968" y="30" width="270" height="154" fill="#b6ffc0"/>
-  <rect x="790" y="226" width="406" height="122" fill="#d5b3ff"/>
-  <rect x="616" y="68" width="176" height="112" fill="#b1c5ff"/>
-  <rect x="500" y="286" width="164" height="78" fill="#fbffa7"/>
+  <rect x="42" y="38" width="236" height="236" fill="#ff764d"/>
+  <rect x="72" y="68" width="176" height="176" fill="#f7f4ec" stroke="#000" stroke-width="5"/>
+  <g fill="#000">
+    <rect x="104" y="98" width="13" height="106"/>
+    <rect x="126" y="98" width="13" height="106"/>
+    <rect x="148" y="98" width="13" height="106"/>
+    <rect x="170" y="98" width="13" height="106"/>
+    <rect x="198" y="106" width="16" height="13"/>
+    <rect x="198" y="136" width="16" height="13"/>
+    <rect x="198" y="166" width="16" height="13"/>
+  </g>
+  <rect x="42" y="292" width="236" height="72" fill="#000"/>
+  <text x="62" y="318" fill="#fff" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="20" font-weight="900">ABLETON MCP</text>
+  <text x="62" y="342" fill="#b6ffc0" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="900">local Live control</text>
+  <text x="62" y="360" fill="#fbffa7" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="800">read-only first / gated writes</text>
 
-  <g transform="translate(83 76)">
-    <rect x="0" y="0" width="144" height="144" fill="#f7f4ec" stroke="#000" stroke-width="5"/>
-    <g fill="#000">
-      <rect x="24" y="24" width="12" height="96"/>
-      <rect x="44" y="24" width="12" height="96"/>
-      <rect x="64" y="24" width="12" height="96"/>
-      <rect x="84" y="24" width="12" height="96"/>
-      <rect x="112" y="32" width="16" height="12"/>
-      <rect x="112" y="60" width="16" height="12"/>
-      <rect x="112" y="88" width="16" height="12"/>
+  <rect x="300" y="38" width="914" height="326" fill="#111" stroke="#000" stroke-width="5"/>
+  <rect x="300" y="38" width="914" height="32" fill="#d8d3c8" stroke="#000" stroke-width="2"/>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="12">
+    <rect x="318" y="48" width="52" height="12" fill="#000"/>
+    <text x="382" y="59" fill="#000">120.00</text>
+    <rect x="434" y="47" width="18" height="14" fill="#00c781" stroke="#000" stroke-width="1"/>
+    <rect x="460" y="47" width="18" height="14" fill="#0000ff" stroke="#000" stroke-width="1"/>
+    <rect x="486" y="47" width="18" height="14" fill="#ff764d" stroke="#000" stroke-width="1"/>
+    <text x="532" y="59" fill="#000">ABLETON MCP  /  LIVEAPI BRIDGE  /  127.0.0.1</text>
+    <text x="1008" y="59" fill="#000">SAFE</text>
+    <rect x="1054" y="46" width="144" height="16" fill="#b6ffc0" stroke="#000" stroke-width="1"/>
+    <text x="1064" y="59" fill="#000">248 MCP TOOLS</text>
+  </g>
+
+  <g transform="translate(312 84)" font-family="Arial, Helvetica, sans-serif">
+    <rect x="0" y="0" width="156" height="196" fill="#ece8df" stroke="#000" stroke-width="3"/>
+    <text x="14" y="24" fill="#000" font-size="15" font-weight="900">BROWSER</text>
+    <rect x="12" y="38" width="132" height="22" fill="#000"/>
+    <text x="22" y="54" fill="#fff" font-size="11" font-weight="800">Client Profiles</text>
+    <rect x="12" y="68" width="132" height="18" fill="#b6ffc0" stroke="#000" stroke-width="1"/>
+    <text x="22" y="81" fill="#000" font-size="10" font-weight="800">Codex stdio</text>
+    <rect x="12" y="92" width="132" height="18" fill="#b1c5ff" stroke="#000" stroke-width="1"/>
+    <text x="22" y="105" fill="#000" font-size="10" font-weight="800">Docker HTTP</text>
+    <rect x="12" y="116" width="132" height="18" fill="#fbffa7" stroke="#000" stroke-width="1"/>
+    <text x="22" y="129" fill="#000" font-size="10" font-weight="800">Bridge Status</text>
+    <rect x="12" y="140" width="132" height="18" fill="#d5b3ff" stroke="#000" stroke-width="1"/>
+    <text x="22" y="153" fill="#000" font-size="10" font-weight="800">Sample Policy</text>
+    <rect x="12" y="164" width="132" height="18" fill="#ff764d" stroke="#000" stroke-width="1"/>
+    <text x="22" y="177" fill="#000" font-size="10" font-weight="800">Live Smoke</text>
+  </g>
+
+  <g transform="translate(480 84)">
+    <rect x="0" y="0" width="516" height="196" fill="#1b1b1b" stroke="#000" stroke-width="3"/>
+    <rect x="0" y="0" width="516" height="28" fill="#2d2d2d"/>
+    <g font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="900" fill="#fff">
+      <text x="16" y="19">BRIDGE</text>
+      <text x="92" y="19">TRACKS</text>
+      <text x="174" y="19">SCENES</text>
+      <text x="258" y="19">CLIPS</text>
+      <text x="340" y="19">MIX</text>
+      <text x="420" y="19">EXPORT</text>
     </g>
-  </g>
-
-  <g transform="translate(312 70)">
-    <text x="0" y="46" fill="#000" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="52" font-weight="900" letter-spacing="0">Ableton MCP</text>
-    <text x="0" y="82" fill="#000" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700">Local AI control for Ableton Live, built read-only first.</text>
-    <text x="0" y="122" fill="#000" font-family="Arial, Helvetica, sans-serif" font-size="18">MCP clients -> TypeScript server -> Max for Live bridge -> LiveAPI</text>
-  </g>
-
-  <g transform="translate(314 234)" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="800">
-    <rect x="0" y="0" width="154" height="34" fill="#000"/>
-    <text x="18" y="23" fill="#fff">READ-ONLY FIRST</text>
-    <rect x="166" y="0" width="134" height="34" fill="#0000ff"/>
-    <text x="184" y="23" fill="#fff">WRITE-GATED</text>
-    <rect x="312" y="0" width="140" height="34" fill="#ff764d"/>
-    <text x="330" y="23" fill="#000">LOCAL HOST</text>
-    <rect x="464" y="0" width="118" height="34" fill="#b6ffc0"/>
-    <text x="482" y="23" fill="#000">248 TOOLS</text>
-  </g>
-
-  <g transform="translate(314 294)">
-    <rect x="0" y="0" width="704" height="76" fill="#111" stroke="#000" stroke-width="4"/>
     <g stroke="#333" stroke-width="1">
-      <path d="M88 0V76M176 0V76M264 0V76M352 0V76M440 0V76M528 0V76M616 0V76"/>
-      <path d="M0 38H704"/>
+      <path d="M0 56H516M0 84H516M0 112H516M0 140H516M0 168H516"/>
+      <path d="M76 28V196M152 28V196M228 28V196M304 28V196M380 28V196M456 28V196"/>
     </g>
-    <rect x="10" y="9" width="66" height="20" fill="#ff764d"/>
-    <rect x="98" y="9" width="66" height="20" fill="#b6ffc0"/>
-    <rect x="186" y="9" width="66" height="20" fill="#b1c5ff"/>
-    <rect x="274" y="9" width="66" height="20" fill="#fbffa7"/>
-    <rect x="362" y="9" width="66" height="20" fill="#d5b3ff"/>
-    <rect x="450" y="9" width="66" height="20" fill="#0000ff"/>
-    <rect x="538" y="9" width="66" height="20" fill="#ff764d"/>
-    <rect x="626" y="9" width="66" height="20" fill="#b6ffc0"/>
-    <rect x="10" y="47" width="66" height="20" fill="#d5b3ff"/>
-    <rect x="98" y="47" width="66" height="20" fill="#fbffa7"/>
-    <rect x="186" y="47" width="66" height="20" fill="#ff764d"/>
-    <rect x="274" y="47" width="66" height="20" fill="#0000ff"/>
-    <rect x="362" y="47" width="66" height="20" fill="#b6ffc0"/>
-    <rect x="450" y="47" width="66" height="20" fill="#b1c5ff"/>
-    <rect x="538" y="47" width="66" height="20" fill="#fbffa7"/>
-    <rect x="626" y="47" width="66" height="20" fill="#d5b3ff"/>
+    <g>
+      <rect x="12" y="38" width="52" height="17" fill="#b6ffc0"/>
+      <rect x="88" y="38" width="52" height="17" fill="#ff764d"/>
+      <rect x="164" y="38" width="52" height="17" fill="#fbffa7"/>
+      <rect x="240" y="38" width="52" height="17" fill="#d5b3ff"/>
+      <rect x="316" y="38" width="52" height="17" fill="#0000ff"/>
+      <rect x="392" y="38" width="52" height="17" fill="#b1c5ff"/>
+      <rect x="468" y="38" width="36" height="17" fill="#b6ffc0"/>
+      <rect x="12" y="66" width="52" height="17" fill="#ff764d"/>
+      <rect x="88" y="66" width="52" height="17" fill="#d5b3ff"/>
+      <rect x="164" y="66" width="52" height="17" fill="#b1c5ff"/>
+      <rect x="240" y="66" width="52" height="17" fill="#b6ffc0"/>
+      <rect x="316" y="66" width="52" height="17" fill="#fbffa7"/>
+      <rect x="392" y="66" width="52" height="17" fill="#ff764d"/>
+      <rect x="468" y="66" width="36" height="17" fill="#0000ff"/>
+      <rect x="12" y="94" width="52" height="17" fill="#fbffa7"/>
+      <rect x="88" y="94" width="52" height="17" fill="#b6ffc0"/>
+      <rect x="164" y="94" width="52" height="17" fill="#0000ff"/>
+      <rect x="240" y="94" width="52" height="17" fill="#ff764d"/>
+      <rect x="316" y="94" width="52" height="17" fill="#d5b3ff"/>
+      <rect x="392" y="94" width="52" height="17" fill="#b1c5ff"/>
+      <rect x="468" y="94" width="36" height="17" fill="#fbffa7"/>
+      <rect x="12" y="122" width="52" height="17" fill="#d5b3ff"/>
+      <rect x="88" y="122" width="52" height="17" fill="#fbffa7"/>
+      <rect x="164" y="122" width="52" height="17" fill="#ff764d"/>
+      <rect x="240" y="122" width="52" height="17" fill="#0000ff"/>
+      <rect x="316" y="122" width="52" height="17" fill="#b6ffc0"/>
+      <rect x="392" y="122" width="52" height="17" fill="#d5b3ff"/>
+      <rect x="468" y="122" width="36" height="17" fill="#b1c5ff"/>
+      <rect x="12" y="150" width="52" height="17" fill="#b1c5ff"/>
+      <rect x="88" y="150" width="52" height="17" fill="#0000ff"/>
+      <rect x="164" y="150" width="52" height="17" fill="#b6ffc0"/>
+      <rect x="240" y="150" width="52" height="17" fill="#fbffa7"/>
+      <rect x="316" y="150" width="52" height="17" fill="#ff764d"/>
+      <rect x="392" y="150" width="52" height="17" fill="#b6ffc0"/>
+      <rect x="468" y="150" width="36" height="17" fill="#d5b3ff"/>
+    </g>
+    <g fill="#00d084">
+      <rect x="18" y="176" width="8" height="12"/>
+      <rect x="94" y="170" width="8" height="18"/>
+      <rect x="170" y="164" width="8" height="24"/>
+      <rect x="246" y="158" width="8" height="30"/>
+      <rect x="322" y="168" width="8" height="20"/>
+      <rect x="398" y="154" width="8" height="34"/>
+      <rect x="474" y="162" width="8" height="26"/>
+    </g>
   </g>
 
-  <g transform="translate(1048 214)" font-family="Arial, Helvetica, sans-serif">
-    <rect x="0" y="0" width="148" height="134" fill="#000"/>
-    <text x="18" y="34" fill="#fff" font-size="16" font-weight="800">SAFE LANES</text>
-    <text x="18" y="64" fill="#b6ffc0" font-size="13">LiveAPI bridge</text>
-    <text x="18" y="88" fill="#fbffa7" font-size="13">dry-run writes</text>
-    <text x="18" y="112" fill="#d5b3ff" font-size="13">UI by choice</text>
+  <g transform="translate(1014 84)" font-family="Arial, Helvetica, sans-serif">
+    <rect x="0" y="0" width="178" height="196" fill="#ece8df" stroke="#000" stroke-width="3"/>
+    <text x="14" y="24" fill="#000" font-size="15" font-weight="900">CONTROL</text>
+    <rect x="14" y="42" width="150" height="24" fill="#000"/>
+    <text x="26" y="59" fill="#b6ffc0" font-size="12" font-weight="900">ABLETON_MCP</text>
+    <rect x="14" y="78" width="44" height="44" fill="#ff764d" stroke="#000" stroke-width="2"/>
+    <rect x="68" y="78" width="44" height="44" fill="#b1c5ff" stroke="#000" stroke-width="2"/>
+    <rect x="122" y="78" width="42" height="44" fill="#fbffa7" stroke="#000" stroke-width="2"/>
+    <circle cx="36" cy="144" r="17" fill="#fff" stroke="#000" stroke-width="3"/>
+    <circle cx="90" cy="144" r="17" fill="#fff" stroke="#000" stroke-width="3"/>
+    <circle cx="144" cy="144" r="17" fill="#fff" stroke="#000" stroke-width="3"/>
+    <path d="M36 144L47 134M90 144L80 132M144 144L154 151" stroke="#000" stroke-width="3"/>
+    <text x="20" y="180" fill="#000" font-size="11" font-weight="900">dry-run / gated / queued</text>
+  </g>
+
+  <g transform="translate(312 296)" font-family="Arial, Helvetica, sans-serif">
+    <rect x="0" y="0" width="884" height="54" fill="#ece8df" stroke="#000" stroke-width="3"/>
+    <text x="14" y="20" fill="#000" font-size="12" font-weight="900">DEVICE RACK</text>
+    <g>
+      <rect x="110" y="12" width="86" height="30" fill="#b6ffc0" stroke="#000" stroke-width="2"/>
+      <text x="126" y="31" fill="#000" font-size="11" font-weight="900">SCANNER</text>
+      <rect x="214" y="12" width="86" height="30" fill="#b1c5ff" stroke="#000" stroke-width="2"/>
+      <text x="232" y="31" fill="#000" font-size="11" font-weight="900">BRIDGE</text>
+      <rect x="318" y="12" width="86" height="30" fill="#fbffa7" stroke="#000" stroke-width="2"/>
+      <text x="333" y="31" fill="#000" font-size="11" font-weight="900">SAMPLES</text>
+      <rect x="422" y="12" width="86" height="30" fill="#d5b3ff" stroke="#000" stroke-width="2"/>
+      <text x="444" y="31" fill="#000" font-size="11" font-weight="900">MIX</text>
+      <rect x="526" y="12" width="86" height="30" fill="#ff764d" stroke="#000" stroke-width="2"/>
+      <text x="545" y="31" fill="#000" font-size="11" font-weight="900">EXPORT</text>
+      <path d="M196 27H214M300 27H318M404 27H422M508 27H526" stroke="#000" stroke-width="3"/>
+    </g>
+    <g transform="translate(650 10)">
+      <rect x="0" y="0" width="210" height="34" fill="#111"/>
+      <path d="M8 18 C26 2 37 34 54 16 S87 4 104 18 S134 35 152 14 S181 6 202 22" fill="none" stroke="#b6ffc0" stroke-width="3"/>
+      <text x="12" y="30" fill="#fff" font-size="9" font-weight="800">safe production session</text>
+    </g>
+  </g>
+
+  <g transform="translate(312 364)" font-family="Arial, Helvetica, sans-serif">
+    <rect x="0" y="0" width="884" height="24" fill="#000"/>
+    <text x="14" y="17" fill="#fff" font-size="12" font-weight="900">MCP clients -> schemas -> runtime guards -> Max for Live -> Ableton Live</text>
+    <text x="594" y="17" fill="#b6ffc0" font-size="12" font-weight="900">READS DEFAULT / WRITES BY CHOICE</text>
   </g>
 </svg>
