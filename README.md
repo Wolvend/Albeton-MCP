@@ -227,6 +227,7 @@ Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
 | Document | Purpose |
 | --- | --- |
 | [Architecture](docs/ARCHITECTURE.md) | System layers, runtime middleware, queues, and control model. |
+| [Agent installer](docs/AGENT_INSTALLER.md) | Universal install guide for MCP clients, Docker/HTTP MCP, and optional skill trees. |
 | [Ableton bridge](docs/ABLETON_BRIDGE.md) | Max for Live bridge setup and LiveAPI capability notes. |
 | [Ableton UI driver](docs/ABLETON_UI_DRIVER.md) | ChromeDriver-style foreground UI driver contract and runtime behavior. |
 | [Launch modes](docs/LAUNCH.md) | One-command stdio, Docker MCP HTTP, installer, verifier, and UI-driver workflows. |
@@ -235,6 +236,10 @@ Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
 | [Concept to music](docs/CONCEPT_TO_MUSIC.md) | Staged concept, sample, arrangement, execution, and delivery workflow. |
 | [Natural language to music](docs/NATURAL_LANGUAGE_TO_MUSIC.md) | Codex tutorial for turning user wants into careful music-production MCP calls. |
 | [Music production skills](docs/MUSIC_PRODUCTION_SKILLS.md) | Agent-facing skill map from musical intent to current tools and future gaps. |
+| [Infinite Nowhere Protocol](docs/INFINITE_NOWHERE_PROTOCOL.md) | Original offline horror track project, render command, outputs, stems, and safety boundary. |
+| [The Road Has No Horizon](docs/THE_ROAD_HAS_NO_HORIZON.md) | Fully procedural horror track with no reused source samples or prior stems. |
+| [Mall at the End of Sleep](docs/MALL_AT_THE_END_OF_SLEEP.md) | 1980s mall dream track using original synthesis plus fresh public-domain sources, with no user source audio. |
+| [Model runtime compatibility](docs/MODEL_RUNTIME_COMPATIBILITY.md) | Smoke-tested Codex, Ollama, llama.cpp, Claude, Gemini, and OpenRouter connection guidance. |
 | [Future patches](docs/FUTURE_PATCHES.md) | Planned professional music, synthesis, groove, mix, and revision-loop tool roadmap. |
 | [Platform compatibility](docs/PORTABILITY.md) | Windows, WSL, macOS, and Linux support model with environment overrides. |
 | [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |

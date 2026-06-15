@@ -85,7 +85,6 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_get_track_detail", arguments: { track_index: 0, include_mixer: true, include_devices: false, include_clip_slots: false, page: 1, pageSize: 8 }, required: true },
   { name: "ableton_list_scenes", arguments: {}, required: true },
   { name: "ableton_list_devices", arguments: { track_index: 0, page: 1, pageSize: 16 }, required: true },
-  { name: "ableton_get_routing_overview", arguments: { include_devices: false }, required: false },
   {
     name: "ableton_duplicate_clip",
     arguments: { track_index: 0, clip_slot_index: 0, destination_clip_slot_index: 1, dry_run: true },
@@ -93,6 +92,14 @@ export const liveSmokeCalls: SmokeCall[] = [
   },
   { name: "ableton_control_mode_status", arguments: {}, required: true }
 ];
+
+const skipWhenBridgePingFails = new Set([
+  "ableton_get_live_state",
+  "ableton_list_tracks_compact",
+  "ableton_get_track_detail",
+  "ableton_list_scenes",
+  "ableton_list_devices"
+]);
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
@@ -152,6 +159,25 @@ function resultByName(results: SmokeResult[], name: string) {
   return results.find((result) => result.name === name);
 }
 
+export function chooseDeviceProbeTrackIndex(results: SmokeResult[]) {
+  const tracks = getNested(resultByName(results, "ableton_list_tracks_compact")?.structuredContent, ["bridge", "data", "tracks"]);
+  if (!Array.isArray(tracks)) return 0;
+
+  const trackRecords = tracks
+    .map((track) => asRecord(track))
+    .filter((track): track is Record<string, unknown> => Boolean(track));
+  const safeTrack = trackRecords.find((track) => {
+    const name = typeof track.name === "string" ? track.name.toLowerCase() : "";
+    return !name.includes("mcp bridge") && track.device_count === 0;
+  }) ?? trackRecords.find((track) => {
+    const name = typeof track.name === "string" ? track.name.toLowerCase() : "";
+    return !name.includes("mcp bridge");
+  }) ?? trackRecords[0];
+
+  const index = safeTrack?.index;
+  return typeof index === "number" && Number.isInteger(index) && index >= 0 ? index : 0;
+}
+
 function coverageAreaStatus(launchReadiness: unknown, areaId: string) {
   const areas = getNested(launchReadiness, ["launchReadiness", "liveControlCoverage", "areas"]);
   if (!Array.isArray(areas)) return null;
@@ -204,6 +230,15 @@ function collectSetupHints(results: SmokeResult[]) {
   return [...hints];
 }
 
+function publicError(result: SmokeResult) {
+  if (result.error) return result.error;
+  const structured = asRecord(result.structuredContent);
+  const code = typeof structured?.code === "string" ? structured.code : null;
+  const message = typeof structured?.error === "string" ? structured.error : null;
+  if (code && message) return `${code}: ${message}`;
+  return message ?? code ?? undefined;
+}
+
 export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
   const objectiveReadiness = resultByName(results, "ableton_mcp_get_objective_readiness_report")?.structuredContent;
   const launchReadiness = resultByName(results, "ableton_mcp_get_launch_readiness_audit")?.structuredContent;
@@ -213,7 +248,6 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
   const tracks = resultByName(results, "ableton_list_tracks_compact")?.structuredContent;
   const scenes = resultByName(results, "ableton_list_scenes")?.structuredContent;
   const devices = resultByName(results, "ableton_list_devices")?.structuredContent;
-  const routing = resultByName(results, "ableton_get_routing_overview")?.structuredContent;
   const dryRun = resultByName(results, "ableton_duplicate_clip")?.structuredContent;
 
   const counts = {
@@ -225,7 +259,7 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
       ?? numberAt(liveState, [["bridge", "data", "scene_count"]]),
     devices: arrayLengthAt(devices, [["bridge", "data", "devices"], ["devices", "data"], ["devices"], ["data", "devices"]])
       ?? numberAt(devices, [["bridge", "data", "device_count"]]),
-    routingRows: arrayLengthAt(routing, [["bridge", "data", "send_matrix"], ["bridge", "send_matrix"], ["data", "send_matrix"], ["send_matrix"]])
+    routingRows: null
   };
 
   const bridgePing = resultByName(results, "ableton_bridge_ping");
@@ -267,13 +301,16 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
     bridgeCapabilitySummary: asRecord(getNested(bridgeCapabilities, ["capabilities", "summary"])) ?? null,
     counts,
     setupHints: collectSetupHints(results),
-    results: results.map((result) => ({
-      name: result.name,
-      ok: result.ok,
-      isError: result.isError,
-      required: result.required,
-      ...(result.error ? { error: result.error } : {})
-    }))
+    results: results.map((result) => {
+      const error = publicError(result);
+      return {
+        name: result.name,
+        ok: result.ok,
+        isError: result.isError,
+        required: result.required,
+        ...(error ? { error } : {})
+      };
+    })
   };
 }
 
@@ -299,6 +336,16 @@ async function callTool(client: Client, call: SmokeCall): Promise<SmokeResult> {
   }
 }
 
+function skippedBridgeResult(call: SmokeCall): SmokeResult {
+  return {
+    name: call.name,
+    ok: false,
+    isError: true,
+    required: call.required,
+    error: "SKIPPED_BRIDGE_UNREACHABLE: ableton_bridge_ping failed, so live bridge read probes were not queued."
+  };
+}
+
 export async function runLiveSmoke() {
   const transport = new StdioClientTransport({
     command: "node",
@@ -315,8 +362,25 @@ export async function runLiveSmoke() {
   await client.connect(transport);
   try {
     const results = [];
-    for (const call of liveSmokeCalls) {
-      results.push(await callTool(client, call));
+    let bridgePingFailed = false;
+    for (const baseCall of liveSmokeCalls) {
+      if (bridgePingFailed && skipWhenBridgePingFails.has(baseCall.name)) {
+        results.push(skippedBridgeResult(baseCall));
+        continue;
+      }
+      let call: SmokeCall = baseCall;
+      if (baseCall.name === "ableton_list_devices") {
+        call = {
+          ...baseCall,
+          arguments: {
+            ...baseCall.arguments,
+            track_index: chooseDeviceProbeTrackIndex(results)
+          }
+        };
+      }
+      const result = await callTool(client, call);
+      results.push(result);
+      if (baseCall.name === "ableton_bridge_ping" && !result.ok) bridgePingFailed = true;
     }
     return buildLiveSmokeReport(results);
   } finally {

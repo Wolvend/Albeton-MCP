@@ -9,6 +9,8 @@ The safest default is stdio on the same machine.
 
 For music-production agents, start with `ableton_mcp_get_client_bootstrap_bundle`, then call `ableton_mcp_get_objective_readiness_report` and `ableton_mcp_get_launch_readiness_audit` with `check_bridge=false`. The recommended workflow includes concept planning, sample curation, arrangement planning, execution action review, execution manifest review, execution runbook rehearsal, device-chain review, indexed device catalog matching, and dry-run execution before any approval-gated write.
 
+For local Ollama/llama.cpp smoke-test status and current Claude, Gemini, and OpenRouter connection proof points, see [Model runtime compatibility](MODEL_RUNTIME_COMPATIBILITY.md).
+
 ## Automatic Setup
 
 Run:

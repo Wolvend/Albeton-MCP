@@ -38,6 +38,10 @@
     "render:bad-memory-backrooms": "node scripts/render-bad-memory-backrooms.mjs",
     "render:bad-memory-backrooms:v2": "node scripts/render-bad-memory-backrooms-v2.mjs",
     "render:wallpaper-knows-your-name": "node scripts/render-wallpaper-knows-your-name.mjs",
+    "render:infinite-nowhere-protocol": "node scripts/render-infinite-nowhere-protocol.mjs",
+    "render:the-road-has-no-horizon": "node scripts/render-the-road-has-no-horizon.mjs",
+    "stage:mall-at-the-end-of-sleep:sources": "node scripts/stage-mall-at-the-end-sources.mjs",
+    "render:mall-at-the-end-of-sleep": "node scripts/render-mall-at-the-end-of-sleep.mjs",
     "self-test": "node dist/scripts/self-test.js",
     "verify:mcp": "node dist/scripts/verify-mcp.js"
   },

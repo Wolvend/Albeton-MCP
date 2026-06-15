@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { buildLiveSmokeReport, liveSmokeCalls } from "../scripts/live-smoke.js";
+import { buildLiveSmokeReport, chooseDeviceProbeTrackIndex, liveSmokeCalls } from "../scripts/live-smoke.js";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 
@@ -65,10 +65,29 @@ describe("live smoke workflow", () => {
     expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_track_detail");
     expect(liveSmokeCalls.find((call) => call.name === "ableton_get_track_detail")?.arguments)
       .toMatchObject({ track_index: 0, include_devices: false, include_clip_slots: false });
-    expect(liveSmokeCalls.map((call) => call.name)).toContain("ableton_get_routing_overview");
-    expect(liveSmokeCalls.find((call) => call.name === "ableton_get_routing_overview")?.arguments)
-      .toMatchObject({ include_devices: false });
-    expect(liveSmokeCalls.find((call) => call.name === "ableton_get_routing_overview")?.required).toBe(false);
+    expect(liveSmokeCalls.map((call) => call.name)).not.toContain("ableton_get_routing_overview");
+  });
+
+  it("chooses a non-bridge track for the live device probe", () => {
+    expect(chooseDeviceProbeTrackIndex([
+      {
+        name: "ableton_list_tracks_compact",
+        ok: true,
+        isError: false,
+        required: true,
+        structuredContent: {
+          bridge: {
+            data: {
+              tracks: [
+                { index: 0, name: "MCP BRIDGE - keep muted", device_count: 1 },
+                { index: 1, name: "2-MIDI", device_count: 0 },
+                { index: 2, name: "Memory Lead", device_count: 2 }
+              ]
+            }
+          }
+        }
+      }
+    ])).toBe(1);
   });
 
   it("builds a compact success report from mocked MCP results", () => {
@@ -116,8 +135,6 @@ describe("live smoke workflow", () => {
         ? { bridge: { data: { scenes: [{}, {}, {}] } } }
         : call.name === "ableton_duplicate_clip"
           ? { ok: true, dry_run: true }
-          : call.name === "ableton_get_routing_overview"
-            ? { ok: true, bridge: { data: { send_matrix: [{}, {}] } } }
           : call.name === "ableton_list_devices"
             ? { bridge: { data: { devices: [{}] } } }
           : { ok: true }
@@ -131,7 +148,7 @@ describe("live smoke workflow", () => {
     expect(report.counts.tracks).toBe(2);
     expect(report.counts.scenes).toBe(3);
     expect(report.counts.devices).toBe(1);
-    expect(report.counts.routingRows).toBe(2);
+    expect(report.counts.routingRows).toBeNull();
     expect(report.objectiveReadiness).toMatchObject({
       overallStatus: "ready_for_live_reads_and_dry_runs",
       okForDefaultClientUse: true,

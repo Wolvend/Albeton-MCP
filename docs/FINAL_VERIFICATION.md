@@ -1,9 +1,84 @@
 # Final Verification Report
 
 Date: 2026-06-13 local runtime checks
-Updated: 2026-06-14 UTC sample intelligence verification pass
+Updated: 2026-06-14 local beta hardening and Infinite Nowhere Protocol render pass
 
 This report records the latest verification pass for the Ableton MCP production build.
+
+## 2026-06-14 Beta Hardening Pass
+
+The latest beta pass found and fixed one live-smoke workflow issue:
+
+- `ableton_list_devices` was originally probed against track `0`, which is the muted MCP bridge track in the current Live set. Reading the bridge device itself can stall the Max for Live LiveAPI handler.
+- `live-smoke` now chooses a non-bridge track for the device probe when compact track data is available.
+- `live-smoke` now preserves structured MCP error text in its public report.
+- `live-smoke` now fails fast after `ableton_bridge_ping` fails instead of queuing additional bridge read probes into an unresponsive Max device.
+- The slow optional routing overview probe was removed from the quick smoke path; routing remains covered by the safe sweep and direct tool calls.
+
+Current live runtime status:
+
+```text
+Ableton Live: running
+Bridge files: installed and source/target hashes match
+Bridge listener: installed but current loaded bridge instance is not responding to ping
+live-smoke: returns structured setup failure and skipped bridge-read probes, not fake success
+Writes/downloads/UI control: disabled by default
+```
+
+New original offline music project rendered:
+
+```text
+Title: Infinite Nowhere Protocol
+Duration: 228.000 seconds
+Master WAV: %USERPROFILE%\Downloads\infinite-nowhere-protocol-master.wav
+Master MP3: %USERPROFILE%\Downloads\infinite-nowhere-protocol-master.mp3
+Attribution: %USERPROFILE%\Downloads\infinite-nowhere-protocol-attribution.txt
+Verification: %USERPROFILE%\Downloads\infinite-nowhere-protocol-verification.json
+Stems: samples\staging\infinite-nowhere-protocol\stems, 10 stereo WAV stems
+Safety: offline renderer only; no Ableton writes, UI/mouse control, downloads, arbitrary URL fetches, or subliminal/coercive commands
+Peak: 0.7571 linear, true peak about -2.4 dBFS by ffmpeg ebur128
+Integrated loudness: -20.4 LUFS
+Stereo correlation: 0.9042
+Mono peak: 0.7197 linear
+```
+
+After review, the project also rendered a fully separate procedural replacement track to avoid reusing the same ballroom/vocal source family:
+
+```text
+Title: The Road Has No Horizon
+Duration: 204.000 seconds
+Source samples used: 0
+Master WAV: %USERPROFILE%\Downloads\the-road-has-no-horizon-master.wav
+Master MP3: %USERPROFILE%\Downloads\the-road-has-no-horizon-master.mp3
+Attribution: %USERPROFILE%\Downloads\the-road-has-no-horizon-attribution.txt
+Verification: %USERPROFILE%\Downloads\the-road-has-no-horizon-verification.json
+Stems: samples\staging\the-road-has-no-horizon\stems, 8 stereo WAV stems
+Safety: procedural offline renderer only; no Ableton writes, UI/mouse control, downloads, arbitrary URL fetches, source samples, or subliminal/coercive commands
+Peak: 0.7759 linear, true peak about -2.2 dBFS by ffmpeg ebur128
+Integrated loudness: -18.8 LUFS
+Stereo correlation: 0.9498
+Mono peak: 0.7675 linear
+```
+
+The project then rendered a new 1980s mall dream track using fresh public-domain source samples staged only for this project plus original synthesis:
+
+```text
+Title: Mall at the End of Sleep
+Duration: 216.000 seconds
+Source samples used: 8 fresh Public Domain Mark Valentino Sound Effects Library files
+Source staging: samples\staging\mall-at-the-end-of-sleep\sources\sources-manifest.json
+Master WAV: %USERPROFILE%\Downloads\mall-at-the-end-of-sleep-master.wav
+Master MP3: %USERPROFILE%\Downloads\mall-at-the-end-of-sleep-master.mp3
+Attribution: %USERPROFILE%\Downloads\mall-at-the-end-of-sleep-attribution.txt
+Verification: %USERPROFILE%\Downloads\mall-at-the-end-of-sleep-verification.json
+Stems: samples\staging\mall-at-the-end-of-sleep\stems, 8 stereo WAV stems
+Safety: no Ableton writes, UI/mouse control, plugin installs, arbitrary URL fetches, YouTube/SoundCloud ripping, user source audio, previous masters/stems, or subliminal/coercive commands
+Download boundary: fixed allowlisted Internet Archive Public Domain Mark source staging only; render-time downloads are false
+Peak: 0.7732 linear, true peak about -2.2 dBFS by ffmpeg ebur128
+Integrated loudness: -16.9 LUFS
+Stereo correlation: 0.9431
+Mono peak: 0.7399 linear
+```
 
 ## Current Surface
 
