@@ -6,11 +6,11 @@ Production-grade local MCP server for Ableton Live. Ableton MCP gives Codex, Cla
 
 The design goal is simple: **let an AI agent help produce music without turning the workstation into an unsafe remote-control surface.** Reads are safe by default. Writes, downloads, remote HTTP, and foreground mouse control are all explicit choices.
 
-[![Node](https://img.shields.io/badge/node-%3E%3D22-4ee1b5?style=for-the-badge&logo=node.js&logoColor=white)](package.json)
-[![TypeScript](https://img.shields.io/badge/typescript-strict-76a7ff?style=for-the-badge&logo=typescript&logoColor=white)](tsconfig.json)
-[![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20HTTP-f2c35b?style=for-the-badge)](docs/CLIENTS.md)
-[![Security](https://img.shields.io/badge/security-read--only%20default-8bd9c7?style=for-the-badge)](SECURITY.md)
-[![Tools](https://img.shields.io/badge/tools-248-9fb8ff?style=for-the-badge)](docs/TOOL_CATALOG.md)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-4ee1b5?style=flat-square&logo=node.js&logoColor=white)](package.json)
+[![TypeScript](https://img.shields.io/badge/ts-strict-76a7ff?style=flat-square&logo=typescript&logoColor=white)](tsconfig.json)
+[![MCP](https://img.shields.io/badge/mcp-stdio%20%2B%20http-f2c35b?style=flat-square)](docs/CLIENTS.md)
+[![Security](https://img.shields.io/badge/security-read--only-8bd9c7?style=flat-square)](SECURITY.md)
+[![Tools](https://img.shields.io/badge/tools-248-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
 
 > This project is an independent local automation layer. Ableton and Max for Live are trademarks of their respective owners.
 
