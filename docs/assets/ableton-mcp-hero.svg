@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
+  <title id="title">Ableton MCP hero banner</title>
+  <desc id="desc">A professional banner showing Ableton MCP as a secure AI control surface for Ableton Live.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="0.52" stop-color="#172033"/>
+      <stop offset="1" stop-color="#061410"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1">
+      <stop offset="0" stop-color="#4ee1b5"/>
+      <stop offset="0.5" stop-color="#76a7ff"/>
+      <stop offset="1" stop-color="#f2c35b"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M 42 0 L 0 0 0 42" fill="none" stroke="#ffffff" stroke-opacity="0.055" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1280" height="420" rx="30" fill="url(#bg)"/>
+  <rect width="1280" height="420" rx="30" fill="url(#grid)"/>
+  <path d="M0 312 C155 252 273 362 430 302 C582 244 660 172 814 211 C961 249 1083 215 1280 139 L1280 420 L0 420 Z" fill="#4ee1b5" opacity="0.08"/>
+  <path d="M0 348 C186 294 346 393 531 335 C700 281 787 244 955 282 C1087 312 1166 286 1280 250 L1280 420 L0 420 Z" fill="#76a7ff" opacity="0.08"/>
+
+  <g transform="translate(72 64)">
+    <rect x="0" y="0" width="92" height="92" rx="18" fill="#101827" stroke="#4ee1b5" stroke-opacity="0.6"/>
+    <g fill="none" stroke="url(#accent)" stroke-width="7" stroke-linecap="round">
+      <path d="M23 65 L23 28"/>
+      <path d="M43 65 L43 38"/>
+      <path d="M63 65 L63 22"/>
+    </g>
+    <text x="122" y="34" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="50" font-weight="750">Ableton MCP</text>
+    <text x="122" y="70" fill="#a8b6ca" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="21">Secure AI music-production control for Ableton Live</text>
+    <rect x="122" y="98" width="160" height="32" rx="16" fill="#4ee1b5" fill-opacity="0.12" stroke="#4ee1b5" stroke-opacity="0.5"/>
+    <text x="144" y="120" fill="#9ef7d9" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="650">read-only first</text>
+    <rect x="294" y="98" width="136" height="32" rx="16" fill="#76a7ff" fill-opacity="0.12" stroke="#76a7ff" stroke-opacity="0.5"/>
+    <text x="315" y="120" fill="#bdd2ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="650">write-gated</text>
+    <rect x="442" y="98" width="174" height="32" rx="16" fill="#f2c35b" fill-opacity="0.12" stroke="#f2c35b" stroke-opacity="0.5"/>
+    <text x="463" y="120" fill="#f7d98a" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="650">local by default</text>
+  </g>
+
+  <g transform="translate(82 236)" filter="url(#softShadow)">
+    <g>
+      <rect x="0" y="0" width="230" height="86" rx="16" fill="#101827" stroke="#2b3d58"/>
+      <text x="24" y="34" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">MCP Clients</text>
+      <text x="24" y="60" fill="#9fb0c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15">Codex, Claude, Docker, WSL</text>
+    </g>
+    <path d="M236 43 L314 43" stroke="#4ee1b5" stroke-width="4" stroke-linecap="round"/>
+    <path d="M304 32 L318 43 L304 54" fill="none" stroke="#4ee1b5" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(326 0)">
+      <rect x="0" y="0" width="248" height="86" rx="16" fill="#101827" stroke="#2b3d58"/>
+      <text x="24" y="34" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">TypeScript Server</text>
+      <text x="24" y="60" fill="#9fb0c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15">schemas, gates, cache, audits</text>
+    </g>
+    <path d="M580 43 L658 43" stroke="#76a7ff" stroke-width="4" stroke-linecap="round"/>
+    <path d="M648 32 L662 43 L648 54" fill="none" stroke="#76a7ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(670 0)">
+      <rect x="0" y="0" width="240" height="86" rx="16" fill="#101827" stroke="#2b3d58"/>
+      <text x="24" y="34" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">Max for Live Bridge</text>
+      <text x="24" y="60" fill="#9fb0c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15">loopback LiveAPI control</text>
+    </g>
+    <path d="M916 43 L994 43" stroke="#f2c35b" stroke-width="4" stroke-linecap="round"/>
+    <path d="M984 32 L998 43 L984 54" fill="none" stroke="#f2c35b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <g transform="translate(1006 0)">
+      <rect x="0" y="0" width="176" height="86" rx="16" fill="#101827" stroke="#2b3d58"/>
+      <text x="24" y="34" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">Ableton Live</text>
+      <text x="24" y="60" fill="#9fb0c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15">tracks, scenes, clips</text>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="500" viewBox="0 0 1120 500" role="img" aria-labelledby="title desc">
+  <title id="title">Ableton MCP control lanes</title>
+  <desc id="desc">A diagram showing the background LiveAPI lane and optional foreground UI lane.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#121a2a"/>
+      <stop offset="1" stop-color="#0a111d"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" x2="1">
+      <stop offset="0" stop-color="#4ee1b5"/>
+      <stop offset="1" stop-color="#2fbcff"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" x2="1">
+      <stop offset="0" stop-color="#f2c35b"/>
+      <stop offset="1" stop-color="#ff7a70"/>
+    </linearGradient>
+  </defs>
+  <rect width="1120" height="500" rx="26" fill="#07101b"/>
+  <text x="48" y="58" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="750">Two control lanes, one safety model</text>
+  <text x="48" y="92" fill="#a8b6ca" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18">Background bridge first. Foreground mouse/keyboard only when the user explicitly chooses it.</text>
+
+  <g transform="translate(48 130)">
+    <rect x="0" y="0" width="1024" height="128" rx="20" fill="url(#panel)" stroke="#24445d"/>
+    <rect x="24" y="24" width="158" height="80" rx="14" fill="#09221d" stroke="#4ee1b5" stroke-opacity="0.6"/>
+    <text x="48" y="57" fill="#dffdf4" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">Default lane</text>
+    <text x="48" y="83" fill="#8fdcc7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">background</text>
+    <path d="M210 64 L336 64" stroke="url(#green)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M324 51 L341 64 L324 77" fill="none" stroke="#4ee1b5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="368" y="48" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Max for Live LiveAPI bridge</text>
+    <text x="368" y="77" fill="#a8b6ca" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">Reads snapshots, tracks, scenes, clips, devices, mixer, routing, and dry-run write plans.</text>
+    <text x="368" y="101" fill="#76e8c6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15">Real writes require ABLETON_MCP_ENABLE_WRITE=1 and dry_run=false.</text>
+  </g>
+
+  <g transform="translate(48 292)">
+    <rect x="0" y="0" width="1024" height="128" rx="20" fill="url(#panel)" stroke="#514329"/>
+    <rect x="24" y="24" width="158" height="80" rx="14" fill="#2c1f0c" stroke="#f2c35b" stroke-opacity="0.65"/>
+    <text x="48" y="57" fill="#fff3cf" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">Optional lane</text>
+    <text x="48" y="83" fill="#e7c86f" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">foreground</text>
+    <path d="M210 64 L336 64" stroke="url(#amber)" stroke-width="5" stroke-linecap="round"/>
+    <path d="M324 51 L341 64 L324 77" fill="none" stroke="#f2c35b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="368" y="48" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">Ableton UI driver fallback</text>
+    <text x="368" y="77" fill="#a8b6ca" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">Focus, screenshots, bounded clicks, and text only after explicit consent.</text>
+    <text x="368" y="101" fill="#f4cf73" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15">Requires ABLETON_MCP_ENABLE_UI_CONTROL=1 and the local UI driver.</text>
+  </g>
+
+  <g transform="translate(48 452)">
+    <text x="0" y="0" fill="#8391a8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">Downloads, writes, remote HTTP, and UI control are all disabled by default.</text>
+  </g>
+</svg>

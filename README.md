@@ -1,104 +1,163 @@
 # Ableton MCP
 
-Production-grade local MCP server for Ableton Live 12 on Windows.
+![Ableton MCP hero](docs/assets/ableton-mcp-hero.svg)
 
-Ableton MCP gives Codex and other MCP clients a secure local control surface for Ableton projects, libraries, samples, and runtime diagnostics. It is read-only by default, uses explicit feature gates for risky actions, and separates background LiveAPI control from foreground mouse/keyboard automation.
+Production-grade local MCP server for Ableton Live. Ableton MCP gives Codex, Claude, Docker MCP, WSL, OpenClaw, and other MCP-capable agents a secure way to inspect Ableton projects, reason about music production, stage samples, plan arrangements, and control Live through a Max for Live bridge.
 
-```text
-MCP client -> stdio server -> Max for Live bridge -> Ableton LiveAPI
-                         \-> UI driver fallback -> Ableton window
-```
+The design goal is simple: **let an AI agent help produce music without turning the workstation into an unsafe remote-control surface.** Reads are safe by default. Writes, downloads, remote HTTP, and foreground mouse control are all explicit choices.
 
-## Control Model
+[![Node](https://img.shields.io/badge/node-%3E%3D22-4ee1b5?style=for-the-badge&logo=node.js&logoColor=white)](package.json)
+[![TypeScript](https://img.shields.io/badge/typescript-strict-76a7ff?style=for-the-badge&logo=typescript&logoColor=white)](tsconfig.json)
+[![MCP](https://img.shields.io/badge/MCP-stdio%20%2B%20HTTP-f2c35b?style=for-the-badge)](docs/CLIENTS.md)
+[![Security](https://img.shields.io/badge/security-read--only%20default-8bd9c7?style=for-the-badge)](SECURITY.md)
+[![Tools](https://img.shields.io/badge/tools-248-9fb8ff?style=for-the-badge)](docs/TOOL_CATALOG.md)
 
-| Lane | Default | Use it for | User choice required |
-| --- | --- | --- | --- |
-| Background LiveAPI bridge | Enabled for reads, write-gated for changes | Session state, tracks, scenes, clips, devices, mixer, safe production automation | Writes require `ABLETON_MCP_ENABLE_WRITE=1` and `dry_run=false`. |
-| Foreground UI/mouse driver | Disabled | Ableton-only screenshots, focus, clicks, and typing when LiveAPI cannot reach a control | Start `.\launch.ps1 ui-driver` or set `ABLETON_MCP_ENABLE_UI_CONTROL=1`. |
+> This project is an independent local automation layer. Ableton and Max for Live are trademarks of their respective owners.
 
-Use `ableton_get_production_readiness`, `ableton_control_mode_status`, and `ableton_ui_control_consent_status` before enabling write or UI control.
+## What It Does
 
-Named UI actions are preferred over raw coordinates. Use `ableton_list_safe_ui_actions` and `ableton_plan_ui_action_sequence` before any foreground click/type workflow. Raw coordinate clicks remain available only for explicit user-chosen fallback sessions.
+Ableton MCP is a TypeScript/Node MCP server with a local Max for Live LiveAPI bridge, strict Zod schemas, path allowlisting, runtime guardrails, and music-production planning tools.
 
-## What this server can do
-
-| Area | What is available |
+| Area | Capability |
 | --- | --- |
-| Environment | Find Ableton, Max, toolchain, allowed roots, flags, and process status. |
-| Library index | Scan allowed Ableton folders on demand and search indexed samples, presets, clips, templates, and MIDI files. |
-| Set analysis | Read `.als` files as gzip/XML summaries without modifying the original file. |
-| Live session view | Read tracks, scenes, clips, devices, transport, tempo, mixer, and snapshots when the Max for Live bridge is loaded. |
-| Live control | Run write-gated bridge commands with `dry_run` support and serialized queueing, including track/scene/clip creation, scene launch and tempo/signature setup, mixer/master moves, clip naming/looping, audio clip gain, transpose, warp, and marker shaping. |
-| Automation and arrangement | Plan or write-gate automation envelopes, markers, clip moves, duplication, quantize, groove, humanization, Arrangement View placement, and export/save workflows. |
-| Mix and sample analysis | Run read-only LUFS, clipping, broad-band spectrum, reference comparison, sample musical-feature, key/BPM confidence, loop-point, and concept-match checks against allowed local audio files. |
-| UI fallback | Use a ChromeDriver-style local UI driver for Ableton-window focus, screenshots, clicks, and text only when foreground control is intentionally enabled. |
-| Samples | Search or plan licensed sources through the universal free-sample registry, then judge candidates by role, loopability, texture, and confidence before staging. Downloads/imports stay gated behind explicit flags. |
-| Concept-to-music | Turn a feeling, place, or liminal brief into a preset-guided staged production plan, layer sample curation plan, mix plan, device-chain spec, device catalog match report, arrangement skeleton, execution action matrix, execution manifest, execution runbook, and delivery plan. |
-| Plugins | Search curated plugin/package sources, plan downloads, validate staged packages, and stage approved downloads without running installers. |
-| Export planning | Validate export settings and prepare stem/export plans without rendering or touching files. |
-| Safety/evals | Run security checks, runtime reports, bridge mock checks, sample license tests, and full MCP verification. |
+| Live inspection | Read transport, tracks, scenes, clips, devices, mixer, sends, routing, notes, snapshots, and bridge status when the Max for Live device is loaded. |
+| Gated Live control | Dry-run first write tools for tempo, scenes, clips, mixer moves, markers, MIDI notes, sample loading, arrangement helpers, and selected clip operations. |
+| Music planning | Turn a mood/place/reference into concept plans, sample roles, arrangement timelines, device-chain specs, automation maps, mix plans, scorecards, and runbooks. |
+| Sample intelligence | Search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
+| Library and set analysis | Scan only approved Ableton roots on demand, index samples/presets/clips/templates, and summarize `.als` files read-only. |
+| UI fallback | Optional ChromeDriver-style Ableton-window focus, screenshots, clicks, and typing when LiveAPI cannot reach a control. Disabled by default. |
+| Client setup | Generate configs for Codex, Claude Desktop, Cursor, Docker MCP, WSL, OpenClaw, localhost HTTP, and private-network HTTP. |
+| Runtime hardening | Tool schemas, response-size limits, per-tool rate limits, short read caches, bridge queue serialization, path security checks, and verification sweeps. |
 
-## Start locally
-
-For first-time setup, generate ready-to-use client configs:
+## Quick Start
 
 ```powershell
 cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
 .\launch.ps1 setup
-```
-
-This builds the server, installs the Max for Live bridge files, and writes Codex, Claude Desktop, Cursor, WSL, local HTTP, and Tailscale HTTP configs under `config/generated/`. Remote HTTP configs use the default Tailscale URL `http://100.84.223.22:17366/mcp` with a generated bearer token stored only in the ignored generated config folder.
-
-One command is enough for normal use:
-
-```powershell
-cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
-.\launch.ps1 stdio
-```
-
-For Git Bash or another Unix-style shell on Windows:
-
-```bash
-./launch.sh stdio
-```
-
-The launcher installs dependencies if needed, builds the TypeScript output, installs the Max for Live bridge preset files, and then starts the MCP server. Setup logs go to stderr so stdio MCP clients still receive clean JSON-RPC on stdout.
-
-Use these launch modes:
-
-| Mode | Command | Purpose |
-| --- | --- | --- |
-| Regular MCP | `.\launch.ps1 stdio` | Starts the local stdio MCP server for Codex, Claude Desktop, Cursor, or another regular MCP client. |
-| Docker MCP | `.\launch.ps1 docker` | Starts the local Streamable HTTP MCP transport at `http://127.0.0.1:17366/mcp` for Docker MCP catalogs. |
-| Bridge install | `.\launch.ps1 install` | Installs the Ableton Max for Live preset and companion files without starting a server. |
-| Bridge status | `.\launch.ps1 bridge-status -SkipSetup` | Verifies installed bridge file hashes, Ableton process state, and the local Max listener. |
-| Setup | `.\launch.ps1 setup` | Generates ready-to-use client configs with secure defaults. |
-| Verify | `.\launch.ps1 verify` | Builds, installs the bridge files, then runs the MCP verifier. |
-| Full check | `.\launch.ps1 check` | Runs build, tests, lint, doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
-| Live smoke | `.\launch.ps1 live-smoke` | Confirms objective readiness, launch readiness, LiveAPI coverage, bridge reachability, bounded live reads, optional routing probe, and one dry-run write probe. |
-| Concept demo | `.\launch.ps1 concept-demo` | Runs a no-write MCP client workflow from a liminal brief through concept, arrangement, action matrix, approval dry-run, and delivery plan. |
-| UI driver | `.\launch.ps1 ui-driver` | Starts the foreground Ableton UI driver with UI control enabled. |
-
-Pass `-SkipSetup` after first setup when you want fast startup from existing `dist` and installed bridge files. Generated client configs use this fast path by default, so rerun `.\launch.ps1 setup` after code updates that need a rebuild or bridge reinstall.
-
-Manual development commands still work:
-
-```powershell
-cd C:\Users\LIZ\Desktop\MCP\ableton-mcp
-npm install
-npm run build
-npm run bridge:install
-npm test
-npm run lint
-```
-
-Start the MCP server through the launcher, not `npm start`, when an MCP client is attached:
-
-```powershell
 .\launch.ps1 stdio -SkipSetup
 ```
 
-Inspect the MCP tool surface:
+For Git Bash, WSL, macOS, or Linux-style shells:
+
+```bash
+./launch.sh setup
+./launch.sh stdio --skip-setup
+```
+
+First setup installs dependencies if needed, builds `dist`, installs the Max for Live bridge files into the Ableton User Library preset path, and writes generated client configs under `config/generated/`. That generated folder is ignored because private HTTP configs can contain bearer tokens.
+
+## Launch Modes
+
+| Mode | Command | Purpose |
+| --- | --- | --- |
+| Regular MCP | `.\launch.ps1 stdio` | Local stdio MCP for Codex, Claude Desktop, Cursor, and similar clients. |
+| Docker/HTTP MCP | `.\launch.ps1 docker` | Streamable HTTP MCP on `http://127.0.0.1:17366/mcp`. |
+| Private remote HTTP | `.\launch.ps1 docker -RemoteHttp -HttpToken "<token>"` | Private-network/Tailscale use only. Never expose publicly. |
+| Setup | `.\launch.ps1 setup` | Build, install bridge files, and generate client configs. |
+| Verify | `.\launch.ps1 verify` | Build and run the MCP verifier. |
+| Full check | `.\launch.ps1 check` | Build, lint, tests, doctor, release check, sweeps, verifier, and audit. |
+| Bridge status | `.\launch.ps1 bridge-status -SkipSetup` | Check bridge files, Ableton process, and listener state. |
+| Live smoke | `.\launch.ps1 live-smoke -SkipSetup` | Read-only/dry-run bridge confidence report. |
+| Concept demo | `.\launch.ps1 concept-demo -SkipSetup` | No-write concept-to-arrangement MCP workflow. |
+| UI driver | `.\launch.ps1 ui-driver` | Optional foreground Ableton UI control lane. |
+
+## Architecture
+
+```text
+MCP client -> stdio or HTTP transport -> TypeScript MCP server
+                                         |-> Max for Live bridge -> Ableton LiveAPI
+                                         |-> UI driver fallback -> Ableton window
+                                         |-> scanner/cache/docs/sample intelligence
+```
+
+![Ableton MCP control lanes](docs/assets/control-lanes.svg)
+
+The background bridge is the preferred control path. It communicates with a Max for Live device over `127.0.0.1:17364` and serializes requests so concurrent MCP calls do not overlap inside Ableton. The foreground UI driver is a separate fallback on `127.0.0.1:17365` and requires explicit user opt-in.
+
+## Safety Model
+
+The default environment is conservative:
+
+```text
+ABLETON_MCP_ENABLE_WRITE=0
+ABLETON_MCP_ENABLE_UI_CONTROL=0
+ABLETON_MCP_ENABLE_DOWNLOADS=0
+ABLETON_MCP_HTTP_ALLOW_REMOTE=0
+```
+
+| Gate | Default | Enables |
+| --- | --- | --- |
+| `ABLETON_MCP_ENABLE_WRITE=1` | Off | Real Ableton write actions after dry-run review. |
+| `ABLETON_MCP_ENABLE_UI_CONTROL=1` | Off | Foreground UI-driver focus, screenshots, clicks, and typing. |
+| `ABLETON_MCP_ENABLE_DOWNLOADS=1` | Off | Approved sample/package staging with attribution metadata. |
+| `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` | Off | Private-network HTTP binding with a bearer token. |
+
+Allowed roots are intentionally narrow:
+
+```text
+C:\Users\LIZ\Desktop\MCP\ableton-mcp
+C:\Users\LIZ\Documents\Ableton
+C:\ProgramData\Ableton\Live 12 Trial
+```
+
+The Ableton install root is read-only. Broad user folders, AppData, browser profiles, credential folders, password stores, raw private-network URLs, non-HTTPS sample URLs, arbitrary shell execution, plugin installers, and broad filesystem scans are rejected.
+
+## Music Agent Workflow
+
+![Ableton MCP music agent workflow](docs/assets/music-agent-workflow.svg)
+
+For production agents, the normal loop is:
+
+1. Read the brief and constraints.
+2. Generate a concept plan with musical roles.
+3. Curate legal sample candidates and analyze musical fit.
+4. Build an arrangement and mix plan.
+5. Review the execution action matrix and runbook.
+6. Dry-run every write-capable action.
+7. Execute only after the user enables the relevant gate.
+8. Render, analyze, revise, export stems, and preserve attribution.
+
+Recommended first MCP calls:
+
+```text
+ableton_mcp_get_client_bootstrap_bundle
+ableton_mcp_get_objective_readiness_report
+ableton_mcp_get_launch_readiness_audit
+ableton_get_production_readiness
+ableton_plan_agent_music_session
+```
+
+The workflow stays useful even when Ableton is closed: concept planning, sample search, set analysis, library search, device-chain planning, mix planning, and dry-run execution reports all work without pretending that live bridge actions succeeded.
+
+## Client Compatibility
+
+| Client/runtime | Recommended transport | Notes |
+| --- | --- | --- |
+| Codex | stdio | Use checked-in `.mcp.json` or generated config. |
+| Claude Desktop | stdio | Same-device use is safest. |
+| Cursor | stdio | Use generated config from setup. |
+| Docker MCP | Streamable HTTP | Start `.\launch.ps1 docker`; safe allowlist available from MCP. |
+| WSL | Windows launcher or native verifier | Use Windows host control for Ableton; native WSL is useful for headless checks. |
+| OpenClaw | Streamable HTTP consumer | Add Ableton MCP as an outbound MCP server; keep Ableton MCP as the permission owner. |
+| Ollama / llama.cpp | Host-dependent | Use an MCP-capable wrapper around the local model runtime. |
+| OpenRouter / Gemini | Host-dependent | Configure Ableton MCP in the MCP-capable app that uses those models. |
+| Private device | Tokenized Streamable HTTP | Prefer Tailscale/VPN and verify actual listener/firewall exposure. |
+
+See [Client compatibility](docs/CLIENTS.md) and [Model runtime compatibility](docs/MODEL_RUNTIME_COMPATIBILITY.md) for exact commands and caveats.
+
+## Tool Surface
+
+Current verified surface:
+
+```text
+MCP tools: 248
+Resources: 3
+Prompts: 2
+Docker MCP default safe tools: 146
+Default HTTP endpoint: http://127.0.0.1:17366/mcp
+```
+
+Inspect the live catalog:
 
 ```powershell
 npm run inspect
@@ -110,26 +169,34 @@ Run the verifier:
 npm run verify:mcp
 ```
 
-Regular MCP clients can use [.mcp.json](.mcp.json), which now points at `launch.cmd stdio`. Docker MCP clients can use [docker/ableton-mcp.catalog.yaml](docker/ableton-mcp.catalog.yaml) after the host HTTP launcher is running.
+Useful resources and prompts:
 
-## Use the two control lanes
+```text
+Resources:
+- ableton://environment
+- ableton://runtime
+- ableton://scan-status
 
-Ableton MCP has two control lanes. Use the background bridge first; use the UI driver only for UI-only workflows.
+Prompts:
+- ableton-safe-production-session
+- ableton-security-review
+```
 
-| Mode | Port | Default | Purpose |
-| --- | --- | --- | --- |
-| Max for Live bridge | `127.0.0.1:17364` | Preferred | Background LiveAPI reads and write-gated Ableton actions. |
-| Ableton UI driver | `127.0.0.1:17365` | Disabled | Foreground Ableton-window focus, clicks, and text input. |
+## Max for Live Bridge
 
-### Run background bridge control
+Install bridge files:
 
-Load the bridge patch in Ableton:
+```powershell
+npm run bridge:install
+```
+
+Load this device in Ableton:
 
 ```text
 bridge\max-for-live\ableton-mcp-bridge.maxpat
 ```
 
-Keep these files in the same folder:
+Keep these companion files together:
 
 ```text
 Ableton MCP Bridge.amxd
@@ -140,140 +207,91 @@ ableton-mcp-status.js
 package.json
 ```
 
-The companion files can be installed automatically into the Ableton User Library preset folder with:
-
-```powershell
-npm run bridge:install
-```
-
-Then call:
-
-```text
-ableton_bridge_ping
-ableton_get_live_state
-ableton_get_full_snapshot
-```
-
-For a fast end-to-end bridge confidence check that does not write to the Live Set:
+Then run:
 
 ```powershell
 .\launch.ps1 live-smoke -SkipSetup
 ```
 
-### Run foreground UI driver control
+If the bridge is not loaded, MCP reports setup steps and structured errors instead of fake success.
 
-Run:
+## Sample And Render Workflows
+
+The repository includes local render/source-staging scripts used for verification and music-production experiments. Generated audio and staged source files are ignored by Git.
+
+| Script | Purpose |
+| --- | --- |
+| `npm run stage:mall-at-the-end-of-sleep:sources` | Stage fixed Public Domain Mark Internet Archive source WAVs for the Mall project. |
+| `npm run render:mall-at-the-end-of-sleep` | Render a 1980s mall dream track with fresh sources plus original synthesis. |
+| `npm run render:the-road-has-no-horizon` | Render a fully procedural horror track with no source samples. |
+| `npm run render:infinite-nowhere-protocol` | Render a separate horror track project from staged public-domain sources. |
+
+Project notes:
+
+- [Mall at the End of Sleep](docs/MALL_AT_THE_END_OF_SLEEP.md)
+- [The Road Has No Horizon](docs/THE_ROAD_HAS_NO_HORIZON.md)
+- [Infinite Nowhere Protocol](docs/INFINITE_NOWHERE_PROTOCOL.md)
+
+## Development
 
 ```powershell
-.\launch.ps1 ui-driver
+npm install
+npm run build
+npm run lint
+npm test
+npm run verify:mcp
+npm run sweep:safe
+npm audit --audit-level=moderate
 ```
 
-Then use:
+Full local release-style check:
 
-```text
-ableton_ui_driver_ping
-ableton_window_status
-ableton_focus_window
-ableton_capture_screenshot
-ableton_capture_region
-ableton_click_coordinates
-ableton_type_text
+```powershell
+.\launch.ps1 check -SkipSetup
 ```
 
-`click_coordinates` and `capture_region` use Ableton-window-relative coordinates. Screenshots are saved as PNG diagnostics under `diagnostics\screenshots` after the driver focuses the Ableton window and verifies bounded window coordinates.
-
-## Configure feature gates
-
-The server is conservative by default:
-
-```text
-ABLETON_MCP_ENABLE_WRITE=0
-ABLETON_MCP_ENABLE_UI_CONTROL=0
-ABLETON_MCP_ENABLE_DOWNLOADS=0
-```
-
-Turn on a gate only for the workflow that needs it:
-
-| Flag | Enables |
-| --- | --- |
-| `ABLETON_MCP_ENABLE_WRITE=1` | Launching Ableton and sending write-gated LiveAPI bridge actions. |
-| `ABLETON_MCP_ENABLE_UI_CONTROL=1` | UI-driver ping, focus, click, type, and capture requests. |
-| `ABLETON_MCP_ENABLE_DOWNLOADS=1` | Approved sample downloads and imports with attribution metadata. |
-
-## File access policy
-
-Only these roots are allowed:
-
-```text
-C:\Users\LIZ\Desktop\MCP\ableton-mcp
-C:\Users\LIZ\Documents\Ableton
-C:\ProgramData\Ableton\Live 12 Trial
-```
-
-The Ableton install root is read-only. Broad user folders, broad AppData, browser profiles, password stores, credential folders, raw private network URLs, and arbitrary shell execution are rejected.
-
-## Verified local paths
-
-```text
-Ableton Live: C:\ProgramData\Ableton\Live 12 Trial\Program\Ableton Live 12 Trial.exe
-Bundled Max: C:\ProgramData\Ableton\Live 12 Trial\Resources\Max\Max.exe
-User Library: C:\Users\LIZ\Documents\Ableton\User Library
-Factory Packs: C:\Users\LIZ\Documents\Ableton\Factory Packs
-Live Recordings: C:\Users\LIZ\Documents\Ableton\Live Recordings
-```
+The scanner does not run a full library scan at startup. Use explicit scan/search tools or launcher checks when you want fresh local index data.
 
 ## Documentation
 
 | Document | Purpose |
 | --- | --- |
-| [Architecture](docs/ARCHITECTURE.md) | System layers, runtime middleware, queues, and control model. |
-| [Agent installer](docs/AGENT_INSTALLER.md) | Universal install guide for MCP clients, Docker/HTTP MCP, and optional skill trees. |
-| [Ableton bridge](docs/ABLETON_BRIDGE.md) | Max for Live bridge setup and LiveAPI capability notes. |
-| [Ableton UI driver](docs/ABLETON_UI_DRIVER.md) | ChromeDriver-style foreground UI driver contract and runtime behavior. |
-| [Launch modes](docs/LAUNCH.md) | One-command stdio, Docker MCP HTTP, installer, verifier, and UI-driver workflows. |
-| [Docker MCP](docs/DOCKER_MCP.md) | How to connect Docker MCP to the local Windows Ableton host service. |
-| [Docker MCP profile](docs/DOCKER_MCP_PROFILE.md) | Safe local-only Docker MCP profile activation and OpenClaw registry notes. |
-| [Concept to music](docs/CONCEPT_TO_MUSIC.md) | Staged concept, sample, arrangement, execution, and delivery workflow. |
-| [Natural language to music](docs/NATURAL_LANGUAGE_TO_MUSIC.md) | Codex tutorial for turning user wants into careful music-production MCP calls. |
-| [Music production skills](docs/MUSIC_PRODUCTION_SKILLS.md) | Agent-facing skill map from musical intent to current tools and future gaps. |
-| [Infinite Nowhere Protocol](docs/INFINITE_NOWHERE_PROTOCOL.md) | Original offline horror track project, render command, outputs, stems, and safety boundary. |
-| [The Road Has No Horizon](docs/THE_ROAD_HAS_NO_HORIZON.md) | Fully procedural horror track with no reused source samples or prior stems. |
-| [Mall at the End of Sleep](docs/MALL_AT_THE_END_OF_SLEEP.md) | 1980s mall dream track using original synthesis plus fresh public-domain sources, with no user source audio. |
-| [Model runtime compatibility](docs/MODEL_RUNTIME_COMPATIBILITY.md) | Smoke-tested Codex, Ollama, llama.cpp, Claude, Gemini, and OpenRouter connection guidance. |
-| [Future patches](docs/FUTURE_PATCHES.md) | Planned professional music, synthesis, groove, mix, and revision-loop tool roadmap. |
-| [Platform compatibility](docs/PORTABILITY.md) | Windows, WSL, macOS, and Linux support model with environment overrides. |
-| [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps. |
-| [Config templates](config) | Ready-made starting configs for Codex, Claude Desktop, Cursor, WSL, OpenClaw, and remote HTTP clients. |
-| [Security](SECURITY.md) | Feature gates, path policy, network rules, runtime guardrails, and subprocess policy. |
-| [Tool reference](docs/TOOL_REFERENCE.md) | Tool groups, MCP resources, prompts, and verification commands. |
-| [Sample policy](docs/SAMPLE_POLICY.md) | Licensing, attribution, and import metadata rules. |
-| [Sample sources](docs/SAMPLE_SOURCES.md) | Approved remote sources and download/import paths. |
-| [Plugin policy](docs/PLUGIN_POLICY.md) | Plugin/package discovery, download staging, and no-install safety policy. |
-| [Local paths](docs/LOCAL_PATHS.md) | Verified Ableton, Max, library, and database paths. |
-| [Verification](docs/FINAL_VERIFICATION.md) | Latest build, test, MCP, audit, and runtime sweep results. |
+| [Architecture](docs/ARCHITECTURE.md) | Server layers, middleware, cache, bridge, and control model. |
+| [Security](SECURITY.md) | Gates, path policy, network policy, and runtime guardrails. |
+| [Agent installer](docs/AGENT_INSTALLER.md) | Universal setup guide for MCP clients and optional skill trees. |
+| [Launch modes](docs/LAUNCH.md) | Launcher behavior and command matrix. |
+| [Ableton bridge](docs/ABLETON_BRIDGE.md) | Max for Live bridge installation and LiveAPI notes. |
+| [Ableton UI driver](docs/ABLETON_UI_DRIVER.md) | Optional foreground UI control contract. |
+| [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, OpenClaw, OpenRouter, Gemini, llama.cpp, and private-device setup. |
+| [Tool catalog](docs/TOOL_CATALOG.md) | High-level tool groups and current tool count. |
+| [Tool reference](docs/TOOL_REFERENCE.md) | Inspection commands and MCP context reference. |
+| [Concept to music](docs/CONCEPT_TO_MUSIC.md) | Staged production workflow from idea to arrangement plan. |
+| [Natural language to music](docs/NATURAL_LANGUAGE_TO_MUSIC.md) | How agents should translate user requests into musical actions. |
+| [Music production skills](docs/MUSIC_PRODUCTION_SKILLS.md) | Producer-skill roadmap mapped to current and future tools. |
+| [Sample policy](docs/SAMPLE_POLICY.md) | License, attribution, staging, and import rules. |
+| [Sample sources](docs/SAMPLE_SOURCES.md) | Approved source types and source-search policy. |
+| [Plugin policy](docs/PLUGIN_POLICY.md) | Plugin/package discovery and no-install safety policy. |
+| [Final verification](docs/FINAL_VERIFICATION.md) | Latest local verification notes and expected runtime gaps. |
 
-## Current verification status
+## Current Verification Snapshot
 
-Latest local verification:
+Latest checked status in this workspace:
 
 ```text
 Build: passed
-Tests: 24 files, 111 tests passed
 Lint: passed
-Doctor: passed with 0 failures and 1 warning for the optional UI driver listener
-Release check: passed
+Tests: 24 files, 112 tests passed
+MCP verifier: passed, 248 tools, 3 resources, 2 prompts
 Safe sweep: passed, 133 safe calls, 0 unexpected failures
-All-tool contract sweep: passed, 248 registered tools, 248 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
-MCP verifier: 248 tools, 3 resources, 2 prompts
-Bridge install: updated files copied to the Ableton User Library preset folder
-Live bridge probe: listener was present on 127.0.0.1:17364, but request/response timed out after bridge file reinstall; reload or restart the Max for Live bridge device before live compact-read testing
-WSL native verifier: not rerun in this pass
-Client profiles: Codex, Claude, Docker MCP, WSL, remote-device, OpenRouter, Gemini, llama.cpp, and Antigravity guidance available through ableton_mcp_get_client_bootstrap_bundle and ableton_mcp_get_client_connection_profiles; objective readiness available through ableton_mcp_get_objective_readiness_report; safe Docker/OpenClaw allowlist available through ableton_mcp_get_safe_tool_allowlist; bridge setup status available through ableton_bridge_setup_status; launch readiness audit available through ableton_mcp_get_launch_readiness_audit; agent music-session orchestration available through ableton_plan_agent_music_session; reference-audio intake and source-audio transformation planning available through ableton_plan_reference_audio_intake and ableton_plan_source_audio_transformation; layer sample curation available through ableton_curate_concept_samples; device-chain review available through ableton_render_concept_device_chain_spec; indexed device catalog matching available through ableton_render_concept_device_catalog_matches; user-gated UI placement planning available through ableton_plan_concept_device_ui_placement; execution action review available through ableton_render_concept_execution_action_matrix; execution rehearsal available through ableton_render_concept_execution_runbook; full safe client workflow demo available through .\launch.ps1 concept-demo
 Audit: 0 vulnerabilities
 ```
 
 Expected runtime gaps:
 
-- Max for Live bridge calls return `BRIDGE_UNREACHABLE` until the bridge device is loaded in Ableton.
-- Freesound search returns HTTP 401 without `FREESOUND_API_KEY`.
-- Downloads and imports stay blocked while `ABLETON_MCP_ENABLE_DOWNLOADS=0`.
+- Live bridge calls return setup errors until the Max for Live bridge device is loaded in Ableton.
+- Freesound API search can require `FREESOUND_API_KEY`.
+- Downloads, imports, writes, remote HTTP, and UI/mouse control remain blocked unless their gates are explicitly enabled.
+
+## License And Attribution Notes
+
+Code and documentation licensing should be reviewed before public release if no repository license has been added yet. Sample metadata and staged downloads must keep attribution sidecars. Generated audio, diagnostics, caches, and staged source files are ignored by default.

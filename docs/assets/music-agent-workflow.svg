@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="520" viewBox="0 0 1120 520" role="img" aria-labelledby="title desc">
+  <title id="title">Ableton MCP music agent workflow</title>
+  <desc id="desc">A workflow diagram for turning a user brief into a safe Ableton music production session.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0c1321"/>
+      <stop offset="1" stop-color="#08130f"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" x2="1">
+      <stop offset="0" stop-color="#4ee1b5"/>
+      <stop offset="0.5" stop-color="#76a7ff"/>
+      <stop offset="1" stop-color="#f2c35b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1120" height="520" rx="26" fill="url(#bg)"/>
+  <text x="48" y="58" fill="#eef5ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="750">Golden agent loop</text>
+  <text x="48" y="92" fill="#a8b6ca" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18">A safe sequence for turning a mood, place, or reference into music-production actions.</text>
+
+  <path d="M154 252 C254 118 428 115 546 244 C664 373 835 376 966 250" fill="none" stroke="url(#line)" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <g transform="translate(70 180)">
+      <circle cx="72" cy="72" r="58" fill="#122234" stroke="#4ee1b5" stroke-width="2"/>
+      <text x="72" y="63" fill="#eef5ff" text-anchor="middle" font-size="18" font-weight="700">Brief</text>
+      <text x="72" y="88" fill="#9fb0c7" text-anchor="middle" font-size="13">mood + constraints</text>
+    </g>
+    <g transform="translate(218 86)">
+      <circle cx="72" cy="72" r="58" fill="#121d31" stroke="#5fcceb" stroke-width="2"/>
+      <text x="72" y="57" fill="#eef5ff" text-anchor="middle" font-size="18" font-weight="700">Concept</text>
+      <text x="72" y="81" fill="#9fb0c7" text-anchor="middle" font-size="13">layers + roles</text>
+    </g>
+    <g transform="translate(376 152)">
+      <circle cx="72" cy="72" r="58" fill="#121a2c" stroke="#76a7ff" stroke-width="2"/>
+      <text x="72" y="57" fill="#eef5ff" text-anchor="middle" font-size="18" font-weight="700">Sources</text>
+      <text x="72" y="81" fill="#9fb0c7" text-anchor="middle" font-size="13">license + features</text>
+    </g>
+    <g transform="translate(526 256)">
+      <circle cx="72" cy="72" r="58" fill="#171b2a" stroke="#a6a1ff" stroke-width="2"/>
+      <text x="72" y="57" fill="#eef5ff" text-anchor="middle" font-size="18" font-weight="700">Arrangement</text>
+      <text x="72" y="81" fill="#9fb0c7" text-anchor="middle" font-size="13">scenes + automation</text>
+    </g>
+    <g transform="translate(690 170)">
+      <circle cx="72" cy="72" r="58" fill="#211c1c" stroke="#f2c35b" stroke-width="2"/>
+      <text x="72" y="57" fill="#eef5ff" text-anchor="middle" font-size="18" font-weight="700">Dry run</text>
+      <text x="72" y="81" fill="#9fb0c7" text-anchor="middle" font-size="13">review every action</text>
+    </g>
+    <g transform="translate(854 252)">
+      <circle cx="72" cy="72" r="58" fill="#20191a" stroke="#ff8f70" stroke-width="2"/>
+      <text x="72" y="57" fill="#eef5ff" text-anchor="middle" font-size="18" font-weight="700">Execute</text>
+      <text x="72" y="81" fill="#9fb0c7" text-anchor="middle" font-size="13">gated Ableton calls</text>
+    </g>
+  </g>
+
+  <g transform="translate(76 430)" font-family="Inter, Segoe UI, Arial, sans-serif">
+    <rect x="0" y="0" width="968" height="52" rx="16" fill="#0f1a29" stroke="#283b55"/>
+    <text x="28" y="33" fill="#c8d4e6" font-size="16">Render, analyze, revise, export stems, and preserve attribution. If the bridge is unavailable, stay in offline planning instead of faking success.</text>
+  </g>
+</svg>
