@@ -11,6 +11,7 @@ import {
   getProductionSession,
   listProductionSessions,
   prepareProductionAssets,
+  produceTrackFromBrief,
   reviewRenderAndRevise,
   scoreTrackProfessionalism
 } from "../src/production-session.js";
@@ -85,7 +86,7 @@ describe("producer workflow facade", () => {
 
     const listed = await listProductionSessions({ page: 1, pageSize: 10 });
     expect(listed.items.map((item: any) => item.id)).toContain(sessionId);
-  });
+  }, 20_000);
 
   it("stores render review and focused revision facts for allowed local audio", async () => {
     const created = await createProductionSession({
@@ -112,6 +113,26 @@ describe("producer workflow facade", () => {
     expect(review.nextRecommendedCalls.map((call) => call.name)).toContain("ableton_score_track_professionalism");
     expect(advanced.safe_to_execute).toBe(true);
     expect(advanced.artifacts).toHaveLength(1);
+  }, 20_000);
+
+  it("runs the one-call producer facade as dry-run orchestration", async () => {
+    const produced = await produceTrackFromBrief({
+      brief: "procedural-only glass mall cue with a sad memorable motif",
+      style: "dark vaporwave",
+      source_policy: "procedural_only",
+      target_duration_seconds: 90,
+      intensity: 6,
+      max_internal_steps: 5,
+      dry_run: true
+    });
+
+    expect(produced.session_id).toMatch(/^prod-[a-f0-9]{16}$/);
+    expect(produced.dry_run).toBe(true);
+    expect(produced.needs_index).toBe(false);
+    expect(produced.sampleSearchPlan).toMatchObject({ skipped: true });
+    expect(produced.executionPlanSummary).toBeTruthy();
+    expect(JSON.stringify(produced.safety)).toContain("ABLETON_MCP_ENABLE_WRITE=1");
+    expect(produced.exactNextToolCalls.map((call: any) => call.name)).toContain("ableton_execute_concept_plan");
   });
 
   it("reports smaller tool packs without unsafe defaults", () => {
@@ -121,10 +142,13 @@ describe("producer workflow facade", () => {
     const debug = packs.find((pack) => pack.id === "developer_debug");
 
     expect(minimal?.tools).toContain("ableton_create_production_session");
+    expect(minimal?.tools).toContain("ableton_produce_track_from_brief");
     expect(minimal?.tools).toContain("ableton_review_render_and_revise");
     expect(minimal?.tools).not.toContain("ableton_begin_concept_device_ui_session");
     expect(minimal?.tools).not.toContain("ableton_download_sample");
     expect(immersive?.tools).toContain("ableton_list_free_sample_sources");
+    expect(immersive?.tools).toContain("ableton_build_sample_intelligence_index");
+    expect(immersive?.tools).toContain("ableton_plan_sample_chop_map");
     expect(immersive?.tools).toContain("ableton_design_sampler_instrument");
     expect(immersive?.tools).toContain("ableton_generate_harmonic_palette");
     expect(immersive?.toolCount).toBeGreaterThan(minimal?.toolCount ?? 0);

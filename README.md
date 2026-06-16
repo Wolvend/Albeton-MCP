@@ -10,7 +10,7 @@ The design goal is simple: **let an AI agent help produce music without turning 
 [![TypeScript](https://img.shields.io/badge/ts-strict-76a7ff?style=flat-square&logo=typescript&logoColor=white)](tsconfig.json)
 [![MCP](https://img.shields.io/badge/mcp-stdio%20%2B%20http-f2c35b?style=flat-square)](docs/CLIENTS.md)
 [![Security](https://img.shields.io/badge/security-read--only-8bd9c7?style=flat-square)](SECURITY.md)
-[![Tools](https://img.shields.io/badge/tools-312-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
+[![Tools](https://img.shields.io/badge/tools-317-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
 
 > This project is an independent local automation layer. Ableton and Max for Live are trademarks of their respective owners.
 
@@ -22,10 +22,10 @@ Ableton MCP is a TypeScript/Node MCP server with a local Max for Live LiveAPI br
 | --- | --- |
 | Live inspection | Read transport, tracks, scenes, clips, devices, Browser trees, Arrangement clips, mixer, sends, routing, notes, snapshots, and bridge status when the Max for Live device is loaded. |
 | Gated Live control | Dry-run first write tools for tempo, scenes, clips, mixer moves, markers, MIDI notes, sample loading, Arrangement view/time helpers, and selected clip operations. |
-| Producer facade | Stateful session workflow for brief -> blueprint -> sound palette -> assets -> execution plan -> render review -> revision -> delivery readiness through a small tool surface. |
+| Producer facade | Stateful session workflow and one-call dry-run facade for brief -> blueprint -> sound palette -> assets -> execution plan -> render review -> revision -> delivery readiness through a small tool surface. |
 | Producer brain | Parse briefs into tempo/key/hook/layer decisions, source usage mode, sound-design patches, arrangement moments, render review, mix scoring, revision passes, and delivery handoffs. |
 | Music planning | Turn a mood/place/reference into concept plans, sample roles, arrangement timelines, device-chain specs, automation maps, mix plans, scorecards, and runbooks. |
-| Sample intelligence | Search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
+| Sample intelligence | Build a bounded local sample index, search source packs by role, plan sample chops, search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
 | Library and set analysis | Scan only approved Ableton roots on demand, index samples/presets/clips/templates, and summarize `.als` files read-only. |
 | UI fallback | Optional ChromeDriver-style Ableton-window focus, screenshots, clicks, and typing when LiveAPI cannot reach a control. Disabled by default. |
 | Client setup | Generate configs for Codex, Claude Desktop, Cursor, Docker MCP, WSL, OpenClaw, localhost HTTP, and private-network HTTP. |
@@ -58,6 +58,7 @@ First setup installs dependencies if needed, builds `dist`, installs the Max for
 | Setup | `.\launch.ps1 setup` | Build, install bridge files, and generate client configs. |
 | Verify | `.\launch.ps1 verify` | Build and run the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Build, lint, tests, doctor, release check, sweeps, verifier, and audit. |
+| Ready check | `.\launch.ps1 ready -SkipSetup` | Reboot-safe readiness JSON for Node/npm, ffmpeg, build output, MCP tools, generated configs, sample root, doctor/verifier expectations, and bridge listener status. |
 | Bridge status | `.\launch.ps1 bridge-status -SkipSetup` | Check bridge files, Ableton process, and listener state. |
 | Live smoke | `.\launch.ps1 live-smoke -SkipSetup` | Read-only/dry-run bridge confidence report. |
 | Concept demo | `.\launch.ps1 concept-demo -SkipSetup` | No-write concept-to-arrangement MCP workflow. |
@@ -128,12 +129,13 @@ For production agents, the normal loop is:
 1. Read the brief and constraints.
 2. Choose `private_experiment` or `release_candidate` source mode.
 3. Parse the brief into mood, tempo, key, hook, layer, and negative-space decisions.
-4. Curate source/sample candidates and analyze musical fit.
-5. Build sound-design, arrangement, automation, and mix plans.
-6. Review the execution action matrix and runbook.
-7. Dry-run every write-capable action.
-8. Execute only after the user enables the relevant gate.
-9. Render, analyze, compare, revise, export stems, and preserve attribution.
+4. Build or search sample intelligence when local samples are needed.
+5. Curate source/sample candidates and analyze musical fit.
+6. Build sound-design, arrangement, automation, and mix plans.
+7. Review the execution action matrix and runbook.
+8. Dry-run every write-capable action.
+9. Execute only after the user enables the relevant gate.
+10. Render, analyze, compare, revise, export stems, and preserve attribution.
 
 Recommended first MCP calls:
 
@@ -142,6 +144,7 @@ ableton_mcp_get_client_bootstrap_bundle
 ableton_mcp_get_objective_readiness_report
 ableton_mcp_get_launch_readiness_audit
 ableton_get_production_readiness
+ableton_produce_track_from_brief
 ableton_plan_agent_music_session
 ableton_get_project_usage_mode
 ableton_parse_music_brief
@@ -171,10 +174,10 @@ See [Client compatibility](docs/CLIENTS.md) and [Model runtime compatibility](do
 Current verified surface:
 
 ```text
-MCP tools: 301
+MCP tools: 317
 Resources: 3
 Prompts: 2
-Docker MCP default safe tools: 190
+Docker MCP default safe tools: 206
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -307,9 +310,11 @@ Latest checked status in this workspace:
 ```text
 Build: passed
 Lint: passed
-Tests: 25 files, 118 tests passed
-MCP verifier: passed, 301 tools, 3 resources, 2 prompts
-Safe sweep: passed, 185 safe calls, 0 unexpected failures
+Tests: 27 files, 128 tests passed
+MCP verifier: passed, 317 tools, 3 resources, 2 prompts
+Ready check: passed, sample root G:\AbletonMCP\SampleLibrary, 618.29 GB free
+Safe sweep: passed, 201 safe calls, 0 unexpected failures
+All-tool sweep: passed, 317 calls, 0 unexpected failures
 Audit: 0 vulnerabilities
 ```
 

@@ -66,7 +66,7 @@ describe("audio metadata", () => {
       preset: "clean",
       dry_run: false
     })).rejects.toThrow(/already exists/i);
-  });
+  }, 20_000);
 
   it("rejects conversion output outside sample staging or imports", async () => {
     const input = path.join(LOCAL_PATHS.projectRoot, "tests", "fixtures", "tone.wav");

@@ -12,7 +12,9 @@ const fixtures = {
   convertedAudioPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "converted.wav"),
   pluginPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "plugin.zip"),
   preparedAudioId: "prepared-audio-1111111111111111",
-  sourceManifestPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "source-manifest.json")
+  sourceManifestPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "source-manifest.json"),
+  sampleIntelligenceDir: path.join(process.cwd(), "samples", "staging", "contract-sweep-sample-intelligence", "pack-a"),
+  sampleIntelligenceAudioPath: path.join(process.cwd(), "samples", "staging", "contract-sweep-sample-intelligence", "pack-a", "contract-sweep-texture-pad.wav")
 };
 
 describe("all-tool contract sweep", () => {

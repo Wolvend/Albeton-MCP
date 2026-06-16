@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-312 tools
+317 tools
 3 resources
 2 prompts
 ```
@@ -91,6 +91,10 @@ Control-mode tools:
 - `ableton_detect_key_bpm_confidence`: returns BPM/key candidates with confidence and ambiguity warnings instead of a single overconfident answer.
 - `ableton_find_best_loop_points`: finds zero-crossing loop candidates with crossfade suggestions and warnings without writing files.
 - `ableton_match_samples_to_concept`: ranks local or metadata-only candidates against a concept and role list, sanitizing remote text and avoiding URL fetches.
+- `ableton_build_sample_intelligence_index`: builds a bounded SQLite-backed index under `ABLETON_MCP_SAMPLE_LIBRARY_ROOT` only; it never runs on startup and skips excluded/generated folders by default.
+- `ableton_search_sample_intelligence`: searches the local sample index by query, source pack, role hints, and page with redacted paths.
+- `ableton_get_sample_intelligence_item`: reads one indexed sample row by id with path redaction and attribution state.
+- `ableton_plan_sample_chop_map`: creates a dry-run chop/slicing plan from an indexed sample or allowed local path without writing files.
 - `ableton_render_concept_automation_map`: renders deterministic concept automation lanes with section times, beat positions, target hints, candidate devices, and dry-run templates without writes.
 - `ableton_list_free_sample_sources`: reports the approved free/sample-source registry, license rules, host boundaries, search modes, and download modes for agent source selection.
 - `ableton_search_free_sample_sources`: searches live API-backed sources where possible and returns manual search plans for sources that require item-page review.
@@ -107,7 +111,7 @@ Control-mode tools:
 - `ableton_mcp_get_tool_packs`: returns smaller recommended tool packs for `minimal_producer`, `immersive_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` clients.
 - `ableton_set_project_usage_mode` and `ableton_get_project_usage_mode`: switch or read source-review mode. `private_experiment` records unverified sources without blocking iteration; `release_candidate` treats unverified sources as release blockers or warnings.
 - `ableton_create_source_manifest`, `ableton_mark_source_as_user_provided`, `ableton_mark_source_as_experiment_only`, and `ableton_check_release_source_readiness`: create bounded source manifests and distinguish private experimentation from release packaging.
-- `ableton_create_production_session`, `ableton_get_production_session`, and `ableton_list_production_sessions`: create and inspect bounded producer-facade sessions under `diagnostics/runtime/production-sessions`.
+- `ableton_create_production_session`, `ableton_produce_track_from_brief`, `ableton_get_production_session`, and `ableton_list_production_sessions`: create and inspect bounded producer-facade sessions under `diagnostics/runtime/production-sessions`; the one-call facade composes existing internal modules, returns exact next calls, and stays dry-run/read-only by default.
 - `ableton_generate_song_blueprint`, `ableton_design_signature_sound_palette`, `ableton_prepare_production_assets`, and `ableton_create_execution_plan`: move a session from brief to blueprint, sound design, source strategy, and dry-run Ableton action planning without executing writes.
 - `ableton_advance_production_session`, `ableton_review_render_and_revise`, and `ableton_score_track_professionalism`: advance one bounded workflow phase, analyze allowed local renders/stems, store one focused revision pass, and score planning/audio readiness.
 - `ableton_parse_music_brief`, `ableton_compile_mood_palette`, `ableton_plan_tempo_grid`, `ableton_generate_harmonic_palette`, `ableton_generate_motif_system`, `ableton_score_hook_memorability`, `ableton_plan_layer_stack`, `ableton_create_moment_map`, and `ableton_plan_negative_space`: turn a user brief into executable producer decisions before adding tracks.

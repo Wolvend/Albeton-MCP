@@ -24,6 +24,7 @@ Run first-run diagnostics:
 
 ```powershell
 npm run doctor
+npm run ready:check
 ```
 
 Run release packaging checks:
@@ -78,10 +79,11 @@ Native WSL Node can verify the MCP server, but it may not reach the Windows-only
 Expected current results:
 
 ```text
-Tests: 25 files, 118 tests passed
-MCP verifier: 294 tools, 3 resources, 2 prompts
-Safe sweep: 178 safe calls, 0 unexpected failures
-All-tool contract sweep: 294 registered tools, 294 contract calls
+Tests: 27 files, 128 tests passed
+Ready check: 15 checks, 0 failures, 0 warnings
+MCP verifier: 317 tools, 3 resources, 2 prompts
+Safe sweep: 201 safe calls, 0 unexpected failures
+All-tool contract sweep: 317 registered tools, 317 contract calls
 Audit: 0 vulnerabilities
 ```
 

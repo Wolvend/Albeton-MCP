@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-ready", "live-smoke", "concept-demo", "producer-demo", "inspect", "ui-driver", "bridge-status", "bridge-listener", "help")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "ready", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-ready", "live-smoke", "concept-demo", "producer-demo", "inspect", "ui-driver", "bridge-status", "bridge-listener", "help")]
   [string]$Mode = "stdio",
   [switch]$SkipSetup,
   [switch]$NoBuild,
@@ -44,6 +44,7 @@ Modes:
   install          Build and install Ableton Max for Live bridge files only.
   verify           Build and run MCP verifier.
   check            Build, test, lint, doctor, release check, sweeps, verifier, audit.
+  ready            Read-only reboot-ready check for local MCP startup and sample-root config.
   doctor           Run environment and listener checks.
   test, lint       Run unit tests or lint.
   build            Build TypeScript only.
@@ -164,6 +165,11 @@ switch ($Mode) {
     Invoke-CapturedStep { & npm.cmd run sweep:all }
     Invoke-CapturedStep { & npm.cmd run verify:mcp }
     Invoke-CapturedStep { & npm.cmd audit --audit-level=moderate }
+  }
+  "ready" {
+    Invoke-Setup
+    & npm.cmd run ready:check
+    exit $LASTEXITCODE
   }
   "doctor" {
     Invoke-Setup

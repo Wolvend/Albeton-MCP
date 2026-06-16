@@ -15,7 +15,7 @@ Remote HTTP: disabled
 
 The profile name above is the current local Docker MCP profile target. Ableton MCP itself remains a standalone MCP server and is not branded for that profile.
 
-The Docker profile allowlist enables read, planning, search, diagnostics, producer-facade sessions, concept-planning tools, read-only free-sample source listing/search, and read-only sample intelligence. It does not enable write execution, sample download planning/staging/imports, raw UI clicks, or tempo/session mutation by default.
+The Docker profile allowlist enables read, planning, search, diagnostics, producer-facade sessions including the one-call dry-run facade, concept-planning tools, read-only free-sample source listing/search, and bounded local sample intelligence under `ABLETON_MCP_SAMPLE_LIBRARY_ROOT`. It does not enable write execution, sample download planning/staging/imports, raw UI clicks, or tempo/session mutation by default.
 
 ## Start Host HTTP
 
@@ -85,7 +85,7 @@ After Ableton MCP is reachable, clients can also call `ableton_mcp_get_safe_tool
 
 OpenClaw should remain a consumer of Ableton MCP. Ableton MCP still owns write/download/UI gates, path allowlisting, sample-source policy, and LiveAPI/UI-driver separation.
 
-The safe Docker/OpenClaw allowlist includes `ableton_list_free_sample_sources`, `ableton_search_free_sample_sources`, and the read-only sample intelligence tools so clients can discover and judge licensed material candidates. It intentionally excludes `ableton_plan_free_sample_download`, `ableton_stage_concept_samples`, `ableton_download_sample`, and `ableton_import_sample_to_library`; those remain explicit user-gated workflows outside the default profile.
+The safe Docker/OpenClaw allowlist includes `ableton_list_free_sample_sources`, `ableton_search_free_sample_sources`, `ableton_build_sample_intelligence_index`, `ableton_search_sample_intelligence`, `ableton_get_sample_intelligence_item`, and `ableton_plan_sample_chop_map` so clients can discover and judge local material candidates without broad scans. It intentionally excludes `ableton_plan_free_sample_download`, `ableton_stage_concept_samples`, `ableton_download_sample`, and `ableton_import_sample_to_library`; those remain explicit user-gated workflows outside the default profile.
 
 ## Security Notes
 

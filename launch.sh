@@ -157,6 +157,7 @@ Modes:
   install          Build and install Ableton Max for Live bridge files only.
   verify           Build and run MCP verifier.
   check            Build, test, lint, doctor, release check, sweeps, verifier, audit.
+  ready            Read-only reboot-ready check for local MCP startup and sample-root config.
   doctor           Run environment and listener checks.
   test, lint       Run unit tests or lint.
   build            Build TypeScript only.
@@ -239,6 +240,10 @@ case "$MODE" in
     npm run sweep:all
     npm run verify:mcp
     npm audit --audit-level=moderate
+    ;;
+  ready)
+    run_setup
+    npm run ready:check
     ;;
   doctor)
     run_setup

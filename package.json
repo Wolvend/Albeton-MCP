@@ -23,6 +23,7 @@
     "bridge:setup-listener:dev": "tsx scripts/ableton-bridge-setup-listener.ts",
     "inspect": "npx @modelcontextprotocol/inspector --cli node dist/src/index.js --method tools/list",
     "doctor": "node dist/scripts/doctor.js",
+    "ready:check": "node dist/scripts/ready-check.js",
     "configure:clients": "node dist/scripts/configure-clients.js",
     "docker:profile:plan": "node dist/scripts/configure-docker-mcp-profile.js --profile hypernimbus",
     "docker:profile:apply": "node dist/scripts/configure-docker-mcp-profile.js --profile hypernimbus --apply",

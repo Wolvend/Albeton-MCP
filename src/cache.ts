@@ -43,6 +43,30 @@ export async function getDb() {
       snapshot_json TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS sample_intelligence (
+      id TEXT PRIMARY KEY,
+      path TEXT NOT NULL,
+      display_path TEXT NOT NULL,
+      source_pack TEXT NOT NULL,
+      name TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      extension TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      mtime_ms INTEGER NOT NULL,
+      duration_seconds REAL,
+      sample_rate INTEGER,
+      channels INTEGER,
+      peak_db REAL,
+      loudness_hint TEXT,
+      tags TEXT NOT NULL,
+      roles TEXT NOT NULL,
+      attribution_state TEXT NOT NULL,
+      metadata TEXT NOT NULL,
+      indexed_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sample_intelligence_name ON sample_intelligence(name);
+    CREATE INDEX IF NOT EXISTS idx_sample_intelligence_pack ON sample_intelligence(source_pack);
+    CREATE INDEX IF NOT EXISTS idx_sample_intelligence_kind ON sample_intelligence(kind);
   `);
   return db;
 }

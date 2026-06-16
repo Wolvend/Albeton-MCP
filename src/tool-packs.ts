@@ -9,6 +9,7 @@ type ToolPackDefinition = {
 };
 
 const facadeTools = [
+  "ableton_produce_track_from_brief",
   "ableton_create_production_session",
   "ableton_get_production_session",
   "ableton_list_production_sessions",
@@ -31,6 +32,10 @@ const immersiveCreativeTools = [
   "ableton_list_free_sample_sources",
   "ableton_search_free_sample_sources",
   "ableton_plan_free_sample_download",
+  "ableton_build_sample_intelligence_index",
+  "ableton_search_sample_intelligence",
+  "ableton_get_sample_intelligence_item",
+  "ableton_plan_sample_chop_map",
   "ableton_analyze_sample_musical_features",
   "ableton_detect_key_bpm_confidence",
   "ableton_find_best_loop_points",
@@ -79,6 +84,8 @@ export const TOOL_PACK_DEFINITIONS: ToolPackDefinition[] = [
       ...facadeTools,
       "ableton_get_production_readiness",
       "ableton_control_mode_status",
+      "ableton_search_sample_intelligence",
+      "ableton_plan_sample_chop_map",
       "ableton_get_project_usage_mode",
       "ableton_check_release_source_readiness",
       "ableton_render_delivery_plan",

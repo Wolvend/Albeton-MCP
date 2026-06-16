@@ -38,6 +38,7 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `setup` | `.\launch.ps1 setup` | Builds, installs bridge files, and writes generated Codex, Claude, Cursor, WSL, local HTTP, and Tailscale HTTP client configs. |
 | `verify` | `.\launch.ps1 verify` | Builds, installs bridge files, then runs `npm run verify:mcp`. |
 | `check` | `.\launch.ps1 check` | Builds, tests, lints, runs doctor, release check, safe and all-tool sweeps, MCP verifier, and npm audit. |
+| `ready` | `.\launch.ps1 ready -SkipSetup` | Prints compact reboot-readiness JSON for Node/npm, ffmpeg/ffprobe, build output, MCP tool registration, generated client configs, sample-library root, doctor/verifier expectations, and bridge listener status. It does not mutate configs or start Ableton. |
 | `doctor` | `.\launch.ps1 doctor` | Runs environment, catalog, and listener checks. |
 | `test` | `.\launch.ps1 test` | Runs unit tests. |
 | `lint` | `.\launch.ps1 lint` | Runs ESLint. |
@@ -61,6 +62,7 @@ Recommended local sequence:
 
 ```powershell
 .\launch.ps1 setup
+.\launch.ps1 ready -SkipSetup
 .\launch.ps1 check -SkipSetup
 # Open Ableton and load the bridge device if bridge-status reports device_not_loaded.
 .\launch.ps1 bridge-status -SkipSetup

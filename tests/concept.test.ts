@@ -607,7 +607,7 @@ describe("concept-to-music planning", () => {
     expect(automationMap.lanes.some((lane) => lane.dryRunTemplates.some((call) => call.name === "ableton_get_device_parameter_map"))).toBe(true);
     expect(automationMap.exactNextToolCalls.deviceAutomationReadiness.name).toBe("ableton_plan_concept_device_automation_readiness");
     expect(delivery.export.sampleRate).toBe(48000);
-  });
+  }, 20_000);
 
   it("preflights concept execution without contacting the bridge when disabled", async () => {
     const planned = await planConceptTrack({

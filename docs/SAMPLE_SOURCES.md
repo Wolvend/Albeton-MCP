@@ -129,6 +129,21 @@ C:\Users\LIZ\Documents\Ableton\User Library\Samples\Codex Imports
 
 Every staged or imported sample should preserve source URL, title, creator, license, attribution text, download date, original filename, local filename, duration, format, ffprobe metadata, and checksum.
 
+## Local Sample Intelligence
+
+For large local collections, build a searchable role index instead of asking an agent to browse folders manually:
+
+```text
+ableton_build_sample_intelligence_index
+ableton_search_sample_intelligence
+ableton_get_sample_intelligence_item
+ableton_plan_sample_chop_map
+```
+
+The index is bounded, explicit, and SQLite-backed. It only reads under `ABLETON_MCP_SAMPLE_LIBRARY_ROOT`, defaults to the `online-treasure-trove` subfolder when present, stores redacted paths, and never runs on startup. It excludes broad user folders, AppData, browser profiles, credential paths, archives, `__MACOSX`, generated render folders, and plugin folders by default.
+
+Indexed fields include source pack, filename tags, role hints, extension, size, modified time, duration, sample rate, channels, peak/loudness hints when available, attribution sidecar state, and “good for” roles. Use this first when the user wants variety, realism, human texture, better synth/sample choices, or less same-sounding procedural output.
+
 ## Sample Role Universe
 
 Think in roles first, then search sources. The AI should ask for the kind of sound the song needs, not just a folder full of files.

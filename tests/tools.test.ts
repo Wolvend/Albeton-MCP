@@ -111,6 +111,10 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_detect_clipping");
     expect(registeredToolNames).toContain("ableton_compare_reference");
     expect(registeredToolNames).toContain("ableton_analyze_sample_musical_features");
+    expect(registeredToolNames).toContain("ableton_build_sample_intelligence_index");
+    expect(registeredToolNames).toContain("ableton_search_sample_intelligence");
+    expect(registeredToolNames).toContain("ableton_get_sample_intelligence_item");
+    expect(registeredToolNames).toContain("ableton_plan_sample_chop_map");
     expect(registeredToolNames).toContain("ableton_detect_key_bpm_confidence");
     expect(registeredToolNames).toContain("ableton_find_best_loop_points");
     expect(registeredToolNames).toContain("ableton_match_samples_to_concept");
@@ -121,6 +125,7 @@ describe("tool catalog", () => {
     expect(registeredToolNames).toContain("ableton_mark_source_as_experiment_only");
     expect(registeredToolNames).toContain("ableton_check_release_source_readiness");
     expect(registeredToolNames).toContain("ableton_create_production_session");
+    expect(registeredToolNames).toContain("ableton_produce_track_from_brief");
     expect(registeredToolNames).toContain("ableton_get_production_session");
     expect(registeredToolNames).toContain("ableton_list_production_sessions");
     expect(registeredToolNames).toContain("ableton_generate_song_blueprint");
@@ -195,6 +200,8 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_mcp_get_safe_tool_allowlist).toEqual({});
     expect(registeredToolSchemas.ableton_mcp_get_tool_packs).toEqual({});
     expect(registeredToolSchemas.ableton_create_production_session).toHaveProperty("brief");
+    expect(registeredToolSchemas.ableton_produce_track_from_brief).toHaveProperty("max_internal_steps");
+    expect(registeredToolSchemas.ableton_produce_track_from_brief).toHaveProperty("dry_run");
     expect(registeredToolSchemas.ableton_create_production_session).toHaveProperty("source_policy");
     expect(registeredToolSchemas.ableton_get_production_session).toHaveProperty("session_id");
     expect(registeredToolSchemas.ableton_generate_song_blueprint).toHaveProperty("session_id");
@@ -202,6 +209,10 @@ describe("tool catalog", () => {
     expect(registeredToolSchemas.ableton_advance_production_session).toHaveProperty("max_internal_steps");
     expect(registeredToolSchemas.ableton_review_render_and_revise).toHaveProperty("render_path");
     expect(registeredToolSchemas.ableton_score_track_professionalism).toHaveProperty("render_path");
+    expect(registeredToolSchemas.ableton_build_sample_intelligence_index).toHaveProperty("limit");
+    expect(registeredToolSchemas.ableton_search_sample_intelligence).toHaveProperty("roles");
+    expect(registeredToolSchemas.ableton_get_sample_intelligence_item).toHaveProperty("id");
+    expect(registeredToolSchemas.ableton_plan_sample_chop_map).toHaveProperty("slice_count");
     expect(registeredToolSchemas.ableton_set_tempo).toHaveProperty("tempo");
     expect(registeredToolSchemas.ableton_create_audio_track).not.toHaveProperty("payload");
     expect(registeredToolSchemas.ableton_create_audio_track).toHaveProperty("name");

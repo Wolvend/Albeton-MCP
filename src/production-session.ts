@@ -40,6 +40,7 @@ import {
   scoreSoundDesignMaturity
 } from "./producer-brain.js";
 import { paginate } from "./response.js";
+import { searchSampleIntelligence } from "./sample-intelligence.js";
 import { getProjectUsageMode, type SourceUsageMode, usageModePolicy } from "./source-usage.js";
 import { redactPath, resolveSafePath, rootsForReport } from "./security.js";
 
@@ -55,6 +56,11 @@ export type ProductionSessionInput = {
   usage_mode?: SourceUsageMode;
   source_policy?: ProductionSourcePolicy;
   check_bridge?: boolean;
+};
+
+export type ProduceTrackFromBriefInput = ProductionSessionInput & {
+  max_internal_steps?: number;
+  dry_run?: boolean;
 };
 
 export type ProductionSession = {
@@ -568,17 +574,41 @@ export async function reviewRenderAndRevise(options: { session_id: string; rende
     scoreDepthImage({ path: renderSafe.real, stems })
   ]);
   const masking = stems.length >= 2 ? await detectFrequencyMasking({ stems, duration_seconds: options.duration_seconds ?? 30 }) : null;
+  const sampleIndexContext = await searchSampleIntelligence({ query: "", roles: ["voice", "texture", "pad", "impact"], page: 1, pageSize: 6 })
+    .catch((error) => ({
+      unavailable: true,
+      reason: error instanceof Error ? error.message : String(error),
+      nextToolCalls: [{ name: "ableton_build_sample_intelligence_index", arguments: { limit: 500, analyze_audio: true } }]
+    }));
+  const stemMetadata = await Promise.all(stems.slice(0, 8).map(async (stemPath) => {
+    const basename = path.parse(stemPath).name;
+    const indexMatches = await searchSampleIntelligence({ query: basename, page: 1, pageSize: 3 })
+      .then((result) => ({ total: result.total, items: result.items.map((item) => ({ id: item.id, path: item.path, roles: item.roles, tags: item.tags })) }))
+      .catch(() => ({ total: 0, items: [] }));
+    return {
+      filename: path.basename(stemPath),
+      extension: path.extname(stemPath).toLowerCase(),
+      displayPath: redactPath(stemPath),
+      indexMatches
+    };
+  }));
   const findings = [
     ...((quality as any).findings ?? []),
     ...((mudHarsh as any).findings ?? []).map((finding: any) => String(finding.issue ?? finding)),
-    ...((lowEnd as any).findings ?? [])
-  ];
+    ...((lowEnd as any).findings ?? []),
+    stems.length > 0 && stems.length < 4 ? "too few stems supplied to judge role separation, hooks, mix masking, and revision targets" : null,
+    (sampleIndexContext as any).unavailable ? "sample intelligence index unavailable, so source diversity and role matching could not be reviewed" : null,
+    !(sampleIndexContext as any).unavailable && Number((sampleIndexContext as any).total ?? 0) === 0 && session.sourcePolicy !== "procedural_only" ? "sample intelligence index has no role candidates; track may keep reusing too-similar synthetic or local material" : null,
+    stemMetadata.length > 0 && stemMetadata.every((stem) => stem.indexMatches.total === 0) ? "stems do not match the sample intelligence index; verify real-world texture, sample roles, and attribution manually" : null
+  ].filter((finding): finding is string => Boolean(finding));
   const failure = classifyRenderFailure({ findings, scores: (quality as any).scores });
   const revision = await generateRevisionPass({ concept: session.brief, render_path: renderSafe.real, findings });
   const review = sanitizeForStore({
     createdAt: nowIso(),
     renderPath: redactPath(renderSafe.real),
     stemCount: stems.length,
+    stemMetadata,
+    sampleIndexContext,
     quality,
     mudHarsh,
     phase,
@@ -647,6 +677,108 @@ export async function scoreTrackProfessionalism(options: { session_id: string; r
     session_id: session.id,
     professionalism: session.professionalismScore,
     nextRecommendedCalls: session.nextRecommendedCalls
+  };
+}
+
+export async function produceTrackFromBrief(input: ProduceTrackFromBriefInput) {
+  const maxSteps = clamp(input.max_internal_steps ?? 6, 1, 8);
+  const dryRun = input.dry_run !== false;
+  const sessionInput: ProductionSessionInput = {
+    brief: input.brief,
+    ...(input.title ? { title: input.title } : {}),
+    ...(input.style ? { style: input.style } : {}),
+    ...(input.target_duration_seconds !== undefined ? { target_duration_seconds: input.target_duration_seconds } : {}),
+    ...(input.intensity !== undefined ? { intensity: input.intensity } : {}),
+    ...(input.usage_mode !== undefined ? { usage_mode: input.usage_mode } : {}),
+    ...(input.source_policy !== undefined ? { source_policy: input.source_policy } : {}),
+    ...(input.check_bridge !== undefined ? { check_bridge: input.check_bridge } : {})
+  };
+  const created = await createProductionSession(sessionInput);
+  const sessionId = created.session.id;
+  const sourcePolicy = input.source_policy ?? created.session.sourcePolicy;
+  const sampleSearch = sourcePolicy === "procedural_only"
+    ? { skipped: true, reason: "procedural_only source policy" }
+    : await searchSampleIntelligence({ query: "", page: 1, pageSize: 5 });
+  const needsIndex = sourcePolicy !== "procedural_only" && Number((sampleSearch as any).total ?? 0) === 0;
+  if (needsIndex) {
+    const session = await readStoredSession(sessionId);
+    addNext(session, [
+      {
+        name: "ableton_build_sample_intelligence_index",
+        arguments: {
+          limit: 500,
+          analyze_audio: true
+        }
+      },
+      {
+        name: "ableton_produce_track_from_brief",
+        arguments: {
+          brief: session.brief,
+          ...(session.style ? { style: session.style } : {}),
+          target_duration_seconds: session.targetDurationSeconds,
+          intensity: session.intensity,
+          usage_mode: session.usageMode,
+          source_policy: session.sourcePolicy,
+          dry_run: true
+        }
+      }
+    ]);
+    await writeSession(session);
+    return {
+      session_id: sessionId,
+      dry_run: dryRun,
+      needs_index: true,
+      sampleIntelligence: sampleSearch,
+      missingInfo: ["sample intelligence index has no rows for local sample selection"],
+      exactNextToolCalls: session.nextRecommendedCalls,
+      safety: safetyProfile(),
+      stopCriteria: [
+        "Build the sample intelligence index before choosing local samples.",
+        "Do not download, write to Ableton, or use UI/mouse control for this facade call."
+      ]
+    };
+  }
+
+  const artifacts: Array<{ label: string; result: unknown }> = [];
+  let steps = 0;
+  const run = async <T>(label: string, action: () => Promise<T>) => {
+    if (steps >= maxSteps) return null;
+    steps += 1;
+    const result = await action();
+    artifacts.push({ label, result: sanitizeForStore(result) });
+    return result;
+  };
+  await run("blueprint", () => generateSongBlueprint({ session_id: sessionId }));
+  await run("sound_palette", () => designSignatureSoundPalette({ session_id: sessionId }));
+  await run("assets", () => prepareProductionAssets({ session_id: sessionId }));
+  await run("execution_plan", () => createExecutionPlan({ session_id: sessionId, check_bridge: false }));
+  await run("professionalism", () => scoreTrackProfessionalism({ session_id: sessionId }));
+  const session = await readStoredSession(sessionId);
+  return {
+    session_id: sessionId,
+    dry_run: dryRun,
+    needs_index: false,
+    parsedBrief: session.blueprint ? (session.blueprint.parsed ?? null) : null,
+    moodPalette: session.blueprint ? (session.blueprint.mood ?? null) : null,
+    tempoKeyPlan: session.blueprint ? { tempo: session.blueprint.tempo, harmony: session.blueprint.harmony } : null,
+    motifPlan: session.blueprint ? session.blueprint.motif : null,
+    sampleSearchPlan: sampleSearch,
+    soundPalette: session.soundPalette,
+    arrangementMap: session.executionPlan ? {
+      summary: session.executionPlan.summary,
+      timelineSummary: session.executionPlan.timelineSummary,
+      mixPlanSummary: session.executionPlan.mixPlanSummary
+    } : null,
+    executionPlanSummary: session.executionPlan?.summary ?? null,
+    professionalism: session.professionalismScore,
+    artifacts,
+    exactNextToolCalls: session.nextRecommendedCalls,
+    stopCriteria: [
+      "Review the execution plan and approval bundle before any dry-run execution.",
+      "Keep dry_run=true unless ABLETON_MCP_ENABLE_WRITE=1 is intentional and live-smoke is healthy.",
+      "Run render review before delivery packaging."
+    ],
+    safety: safetyProfile()
   };
 }
 

@@ -18,6 +18,7 @@ describe("live smoke workflow", () => {
 
     expect(packageJson.scripts["live-ready"]).toBe("node dist/scripts/live-ready.js");
     expect(packageJson.scripts["live-smoke"]).toBe("node dist/scripts/live-smoke.js");
+    expect(packageJson.scripts["ready:check"]).toBe("node dist/scripts/ready-check.js");
     expect(packageJson.scripts["bridge:status"]).toBe("node dist/scripts/bridge-setup-status.js");
     expect(launchPs1).toContain('"live-ready"');
     expect(launchPs1).toContain("npm.cmd run live-ready");
@@ -25,6 +26,8 @@ describe("live smoke workflow", () => {
     expect(launchPs1).toContain("-OpenBridge");
     expect(launchPs1).toContain('"live-smoke"');
     expect(launchPs1).toContain("npm.cmd run live-smoke");
+    expect(launchPs1).toContain('"ready"');
+    expect(launchPs1).toContain("npm.cmd run ready:check");
     expect(launchPs1).toContain('"bridge-status"');
     expect(launchPs1).toContain("npm.cmd run bridge:status");
     expect(launchSh).toContain("live-ready)");
@@ -33,6 +36,8 @@ describe("live smoke workflow", () => {
     expect(launchSh).toContain("--open-bridge");
     expect(launchSh).toContain("live-smoke)");
     expect(launchSh).toContain("npm run live-smoke");
+    expect(launchSh).toContain("ready)");
+    expect(launchSh).toContain("npm run ready:check");
     expect(launchSh).toContain("bridge-status)");
     expect(launchSh).toContain("npm run bridge:status");
     expect(liveReady).toContain("bridgeDevice");

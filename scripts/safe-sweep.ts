@@ -46,6 +46,8 @@ async function ensureFixtures() {
   const setPath = path.join(dir, "minimal.als");
   const textPath = path.join(dir, "note.txt");
   const audioPath = path.join(dir, "tone.wav");
+  const sampleIntelligenceDir = path.join(LOCAL_PATHS.sampleLibraryRoot, "safe-sweep-sample-intelligence", "pack-a");
+  const sampleIntelligenceAudioPath = path.join(sampleIntelligenceDir, "safe-sweep-texture-pad.wav");
   try {
     await fs.access(setPath);
   } catch {
@@ -62,7 +64,13 @@ async function ensureFixtures() {
   } catch {
     await fs.writeFile(audioPath, makeSilentWav(), { flag: "wx" });
   }
-  return { dir, setPath, textPath, audioPath };
+  await fs.mkdir(sampleIntelligenceDir, { recursive: true });
+  try {
+    await fs.access(sampleIntelligenceAudioPath);
+  } catch {
+    await fs.writeFile(sampleIntelligenceAudioPath, makeSilentWav(), { flag: "wx" });
+  }
+  return { dir, setPath, textPath, audioPath, sampleIntelligenceDir, sampleIntelligenceAudioPath };
 }
 
 const fixtures = await ensureFixtures();
@@ -113,6 +121,10 @@ const calls: SweepCall[] = [
   { name: "ableton_get_scan_status", arguments: {} },
   { name: "ableton_search_library", arguments: { query: "", page: 1, pageSize: 5 } },
   { name: "ableton_search_samples", arguments: { query: "", page: 1, pageSize: 5 } },
+  { name: "ableton_build_sample_intelligence_index", arguments: { root: fixtures.sampleIntelligenceDir, limit: 5, analyze_audio: false } },
+  { name: "ableton_search_sample_intelligence", arguments: { query: "texture pad", roles: ["texture", "pad"], page: 1, pageSize: 5 } },
+  { name: "ableton_get_sample_intelligence_item", arguments: { id: "0000000000000000000000000000000000000000000000000000000000000000" }, expected: "any" },
+  { name: "ableton_plan_sample_chop_map", arguments: { path: fixtures.sampleIntelligenceAudioPath, target_bpm: 80, bars: 1, slice_count: 2, role: "texture" } },
   { name: "ableton_search_presets", arguments: { query: "", page: 1, pageSize: 5 } },
   { name: "ableton_search_templates", arguments: { query: "", page: 1, pageSize: 5 } },
   { name: "ableton_search_clips", arguments: { query: "", page: 1, pageSize: 5 } },
@@ -206,6 +218,7 @@ const calls: SweepCall[] = [
   { name: "ableton_check_release_source_readiness", arguments: { manifest_path: safeSourceManifestPath, usage_mode: "release_candidate" } },
   { name: "ableton_mcp_get_tool_packs", arguments: {} },
   { name: "ableton_create_production_session", arguments: { brief: "safe sweep producer facade liminal mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7, usage_mode: "private_experiment", source_policy: "local_only", check_bridge: false } },
+  { name: "ableton_produce_track_from_brief", arguments: { brief: "safe sweep one-call dry-run liminal mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7, usage_mode: "private_experiment", source_policy: "procedural_only", check_bridge: false, max_internal_steps: 4, dry_run: true } },
   { name: "ableton_get_production_session", arguments: { session_id: "prod-0000000000000000" } },
   { name: "ableton_list_production_sessions", arguments: { page: 1, pageSize: 5 } },
   { name: "ableton_generate_song_blueprint", arguments: { session_id: "prod-0000000000000000" } },
@@ -280,7 +293,17 @@ const calls: SweepCall[] = [
   { name: "ableton_render_concept_automation_map", arguments: { plan_id: safeConcept.plan.id } }
 ];
 
-const transport = new StdioClientTransport({ command: "node", args: ["dist/src/index.js"] });
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["dist/src/index.js"],
+  env: {
+    ...process.env,
+    ABLETON_MCP_ENABLE_WRITE: "0",
+    ABLETON_MCP_ENABLE_UI_CONTROL: "0",
+    ABLETON_MCP_ENABLE_DOWNLOADS: "0",
+    ABLETON_MCP_HTTP_ALLOW_REMOTE: "0"
+  }
+});
 const client = new Client({ name: "ableton-mcp-safe-sweep", version: "0.1.0" });
 await client.connect(transport);
 
