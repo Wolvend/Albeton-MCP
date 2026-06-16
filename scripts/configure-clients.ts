@@ -14,6 +14,7 @@ function detectProjectRoot() {
 const PROJECT_ROOT = detectProjectRoot();
 const DEFAULT_TAILSCALE_HOST = process.env.ABLETON_MCP_TAILSCALE_HOST ?? "100.84.223.22";
 const DEFAULT_HTTP_PORT = process.env.ABLETON_MCP_HTTP_PORT ?? "17366";
+const SAMPLE_LIBRARY_ROOT = process.env.ABLETON_MCP_SAMPLE_LIBRARY_ROOT?.trim();
 
 type Options = {
   outDir: string;
@@ -69,17 +70,21 @@ function slashPath(value: string) {
 }
 
 function stdioConfig(command: string, args: string[], tailscaleHost: string) {
+  const env: Record<string, string> = {
+    ABLETON_MCP_ENABLE_WRITE: "0",
+    ABLETON_MCP_ENABLE_UI_CONTROL: "0",
+    ABLETON_MCP_ENABLE_DOWNLOADS: "0",
+    ABLETON_MCP_TAILSCALE_HOST: tailscaleHost
+  };
+  if (SAMPLE_LIBRARY_ROOT) {
+    env.ABLETON_MCP_SAMPLE_LIBRARY_ROOT = SAMPLE_LIBRARY_ROOT;
+  }
   return {
     mcpServers: {
       "ableton-mcp": {
         command,
         args,
-        env: {
-          ABLETON_MCP_ENABLE_WRITE: "0",
-          ABLETON_MCP_ENABLE_UI_CONTROL: "0",
-          ABLETON_MCP_ENABLE_DOWNLOADS: "0",
-          ABLETON_MCP_TAILSCALE_HOST: tailscaleHost
-        }
+        env
       }
     }
   };
@@ -132,7 +137,7 @@ async function main() {
   await writeJson(files.wsl, stdioConfig("bash", ["-lc", `cd ${wslProject} && ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh stdio`], options.tailscaleHost));
   await writeJson(files.localHttp, remoteConfig(`http://127.0.0.1:${options.httpPort}/mcp`, token));
   await writeJson(files.remoteHttp, remoteConfig(remoteUrl, token));
-  await writeText(files.remoteEnv, [
+  const remoteEnvLines = [
     "ABLETON_MCP_HTTP_ALLOW_REMOTE=1",
     "ABLETON_MCP_HTTP_HOST=0.0.0.0",
     `ABLETON_MCP_HTTP_PORT=${options.httpPort}`,
@@ -141,8 +146,10 @@ async function main() {
     "ABLETON_MCP_ENABLE_WRITE=0",
     "ABLETON_MCP_ENABLE_UI_CONTROL=0",
     "ABLETON_MCP_ENABLE_DOWNLOADS=0",
+    ...(SAMPLE_LIBRARY_ROOT ? [`ABLETON_MCP_SAMPLE_LIBRARY_ROOT=${SAMPLE_LIBRARY_ROOT}`] : []),
     ""
-  ].join(os.EOL));
+  ];
+  await writeText(files.remoteEnv, remoteEnvLines.join(os.EOL));
 
   await writeText(files.summary, [
     "# Ableton MCP Generated Setup",
@@ -150,6 +157,7 @@ async function main() {
     `Project: ${PROJECT_ROOT}`,
     `Tailscale URL: ${remoteUrl}`,
     `Token: ${options.withToken ? "generated and stored in remote-http.env" : "placeholder only; rerun with --with-token for remote HTTP"}`,
+    SAMPLE_LIBRARY_ROOT ? `Sample library root: ${SAMPLE_LIBRARY_ROOT}` : "Sample library root: default ./samples/staging",
     "",
     "## Local stdio clients",
     "",

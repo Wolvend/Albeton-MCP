@@ -86,6 +86,7 @@ ABLETON_MCP_ENABLE_WRITE=0
 ABLETON_MCP_ENABLE_UI_CONTROL=0
 ABLETON_MCP_ENABLE_DOWNLOADS=0
 ABLETON_MCP_HTTP_ALLOW_REMOTE=0
+ABLETON_MCP_SAMPLE_LIBRARY_ROOT=
 ```
 
 | Gate | Default | Enables |
@@ -94,6 +95,7 @@ ABLETON_MCP_HTTP_ALLOW_REMOTE=0
 | `ABLETON_MCP_ENABLE_UI_CONTROL=1` | Off | Foreground UI-driver focus, screenshots, clicks, and typing. |
 | `ABLETON_MCP_ENABLE_DOWNLOADS=1` | Off | Approved sample/package staging with attribution metadata. |
 | `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` | Off | Private-network HTTP binding with a bearer token. |
+| `ABLETON_MCP_SAMPLE_LIBRARY_ROOT=<path>` | `samples/staging` | Optional external sample library root for large staged sample packs. |
 
 Allowed roots are intentionally narrow:
 
@@ -101,6 +103,7 @@ Allowed roots are intentionally narrow:
 C:\Users\LIZ\Desktop\MCP\ableton-mcp
 C:\Users\LIZ\Documents\Ableton
 C:\ProgramData\Ableton\Live 12 Trial
+optional: ABLETON_MCP_SAMPLE_LIBRARY_ROOT
 ```
 
 The Ableton install root is read-only. Broad user folders, AppData, browser profiles, credential folders, password stores, raw private-network URLs, non-HTTPS sample URLs, arbitrary shell execution, plugin installers, and broad filesystem scans are rejected.
@@ -241,6 +244,7 @@ The repository includes local render/source-staging scripts used for verificatio
 | --- | --- |
 | `npm run stage:mall-at-the-end-of-sleep:sources` | Stage fixed Public Domain Mark Internet Archive source WAVs for the Mall project. |
 | `npm run render:mall-at-the-end-of-sleep` | Render a 1980s mall dream track with fresh sources plus original synthesis. |
+| `npm run render:spy-radio-horror` | Render a single-source backrooms horror track from the provided `spy-radio-station-34545 - evil chopped reverse edit.mp3`. |
 | `npm run render:the-atrium-below-the-world` | Render a fully procedural 1980s mallcore / underwater vaporwave track with no reused sources. |
 | `npm run render:the-road-has-no-horizon` | Render a fully procedural horror track with no source samples. |
 | `npm run render:infinite-nowhere-protocol` | Render a separate horror track project from staged public-domain sources. |
@@ -248,6 +252,7 @@ The repository includes local render/source-staging scripts used for verificatio
 Project notes:
 
 - [Mall at the End of Sleep](docs/MALL_AT_THE_END_OF_SLEEP.md)
+- [Spy Radio: Bad Trip Station](docs/SPY_RADIO_HORROR.md)
 - [The Atrium Below The World](docs/THE_ATRIUM_BELOW_THE_WORLD.md)
 - [The Road Has No Horizon](docs/THE_ROAD_HAS_NO_HORIZON.md)
 - [Infinite Nowhere Protocol](docs/INFINITE_NOWHERE_PROTOCOL.md)

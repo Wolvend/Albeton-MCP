@@ -40,6 +40,8 @@
     "render:bad-memory-backrooms:v2": "node scripts/render-bad-memory-backrooms-v2.mjs",
     "render:wallpaper-knows-your-name": "node scripts/render-wallpaper-knows-your-name.mjs",
     "render:infinite-nowhere-protocol": "node scripts/render-infinite-nowhere-protocol.mjs",
+    "render:spy-radio-horror": "node scripts/render-spy-radio-horror.mjs",
+    "render:blue-food-court-after-midnight": "node scripts/render-blue-food-court-after-midnight.mjs",
     "render:the-road-has-no-horizon": "node scripts/render-the-road-has-no-horizon.mjs",
     "stage:mall-at-the-end-of-sleep:sources": "node scripts/stage-mall-at-the-end-sources.mjs",
     "render:mall-at-the-end-of-sleep": "node scripts/render-mall-at-the-end-of-sleep.mjs",

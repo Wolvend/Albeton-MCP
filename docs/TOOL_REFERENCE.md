@@ -104,7 +104,7 @@ Control-mode tools:
 - `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.
 - `ableton_mcp_get_client_bootstrap_bundle`: returns a one-call safe bootstrap bundle for Codex, Claude, Docker MCP, OpenClaw, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity.
 - `ableton_mcp_get_safe_tool_allowlist`: returns the Docker/OpenClaw safe tool allowlist as structured data plus CSV without changing client configuration.
-- `ableton_mcp_get_tool_packs`: returns smaller recommended tool packs for `minimal_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` clients.
+- `ableton_mcp_get_tool_packs`: returns smaller recommended tool packs for `minimal_producer`, `immersive_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` clients.
 - `ableton_set_project_usage_mode` and `ableton_get_project_usage_mode`: switch or read source-review mode. `private_experiment` records unverified sources without blocking iteration; `release_candidate` treats unverified sources as release blockers or warnings.
 - `ableton_create_source_manifest`, `ableton_mark_source_as_user_provided`, `ableton_mark_source_as_experiment_only`, and `ableton_check_release_source_readiness`: create bounded source manifests and distinguish private experimentation from release packaging.
 - `ableton_create_production_session`, `ableton_get_production_session`, and `ableton_list_production_sessions`: create and inspect bounded producer-facade sessions under `diagnostics/runtime/production-sessions`.

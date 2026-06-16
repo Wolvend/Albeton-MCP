@@ -1,4 +1,4 @@
-export type ToolPackId = "minimal_producer" | "sound_designer" | "mix_engineer" | "live_operator" | "developer_debug";
+export type ToolPackId = "minimal_producer" | "immersive_producer" | "sound_designer" | "mix_engineer" | "live_operator" | "developer_debug";
 
 type ToolPackDefinition = {
   id: ToolPackId;
@@ -21,6 +21,55 @@ const facadeTools = [
   "ableton_score_track_professionalism"
 ];
 
+const immersiveCreativeTools = [
+  ...facadeTools,
+  "ableton_get_production_readiness",
+  "ableton_control_mode_status",
+  "ableton_get_project_usage_mode",
+  "ableton_set_project_usage_mode",
+  "ableton_check_release_source_readiness",
+  "ableton_list_free_sample_sources",
+  "ableton_search_free_sample_sources",
+  "ableton_plan_free_sample_download",
+  "ableton_analyze_sample_musical_features",
+  "ableton_detect_key_bpm_confidence",
+  "ableton_find_best_loop_points",
+  "ableton_match_samples_to_concept",
+  "ableton_parse_music_brief",
+  "ableton_compile_mood_palette",
+  "ableton_plan_tempo_grid",
+  "ableton_generate_harmonic_palette",
+  "ableton_generate_motif_system",
+  "ableton_score_hook_memorability",
+  "ableton_plan_layer_stack",
+  "ableton_create_moment_map",
+  "ableton_plan_negative_space",
+  "ableton_design_synth_patch",
+  "ableton_design_operator_patch",
+  "ableton_design_wavetable_patch",
+  "ableton_design_drift_patch",
+  "ableton_design_sampler_instrument",
+  "ableton_design_granular_texture",
+  "ableton_design_rack_macros",
+  "ableton_score_sound_design_maturity",
+  "ableton_score_patch_against_concept",
+  "ableton_score_arrangement_arc",
+  "ableton_score_arrangement_motion",
+  "ableton_score_density_curve",
+  "ableton_generate_automation_curves",
+  "ableton_analyze_render_quality",
+  "ableton_detect_frequency_masking",
+  "ableton_detect_mud_harshness_sibilance",
+  "ableton_detect_phase_mono_issues",
+  "ableton_score_low_end_control",
+  "ableton_score_mix_balance",
+  "ableton_score_mix_translation",
+  "ableton_plan_stereo_depth_stage",
+  "ableton_score_depth_image",
+  "ableton_generate_revision_pass",
+  "ableton_compare_render_versions"
+];
+
 export const TOOL_PACK_DEFINITIONS: ToolPackDefinition[] = [
   {
     id: "minimal_producer",
@@ -37,6 +86,13 @@ export const TOOL_PACK_DEFINITIONS: ToolPackDefinition[] = [
       "ableton_mcp_get_safe_tool_allowlist"
     ],
     excludedClasses: ["real_live_writes", "foreground_ui_mouse", "downloads", "raw_execution"]
+  },
+  {
+    id: "immersive_producer",
+    description: "Expanded creative surface for sample-rich, synth-heavy, human-sounding music with better source variety, patch variety, and revision depth.",
+    defaultForAgents: false,
+    tools: immersiveCreativeTools,
+    excludedClasses: ["real_live_writes", "foreground_ui_mouse", "downloads", "raw_execution", "plugin_installers"]
   },
   {
     id: "sound_designer",

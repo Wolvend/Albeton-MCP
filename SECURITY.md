@@ -6,9 +6,11 @@ Ableton MCP is read-only by default.
 
 - Explicit path allowlist.
 - `ABLETON_MCP_ALLOWED_ROOTS` cannot widen access beyond the built-in approved roots.
+- `ABLETON_MCP_SAMPLE_LIBRARY_ROOT` may add one explicit sample-library root for staging and local sample search.
 - Realpath resolution before file operations.
 - Symlink escape rejection.
 - Read-only Ableton installation root.
+- Optional external sample-library root is read/write, but still blocked from broad user folders, AppData, credentials, browser profiles, and password stores.
 - No broad `C:\`, `C:\Users\LIZ`, or AppData access.
 - No arbitrary shell tool.
 - No arbitrary URL fetch tool.

@@ -14,7 +14,7 @@ Default agents should start with the facade instead of choosing from the full ra
 6. `ableton_review_render_and_revise`
 7. `ableton_score_track_professionalism`
 
-Sessions are stored under `diagnostics/runtime/production-sessions` with redacted local paths. The facade may write bounded diagnostics, but it does not write Ableton state, download files, use UI/mouse control, or bypass approval gates. Use `ableton_mcp_get_tool_packs` to retrieve the smaller `minimal_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` surfaces.
+Sessions are stored under `diagnostics/runtime/production-sessions` with redacted local paths. The facade may write bounded diagnostics, but it does not write Ableton state, download files, use UI/mouse control, or bypass approval gates. Use `ableton_mcp_get_tool_packs` to retrieve the smaller `minimal_producer`, `immersive_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` surfaces.
 
 ## Private Experiment Vs Release Candidate
 

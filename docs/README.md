@@ -31,6 +31,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Concept to music](CONCEPT_TO_MUSIC.md) | Using producer sessions plus staged concept, sample, arrangement, execution, and delivery tools. |
 | [Natural language to music](NATURAL_LANGUAGE_TO_MUSIC.md) | Teaching Codex how to translate user briefs into safe MCP music workflows. |
 | [Music production skills](MUSIC_PRODUCTION_SKILLS.md) | Mapping producer skills to current Ableton MCP tools and planned gaps. |
+| [Spy Radio: Bad Trip Station](SPY_RADIO_HORROR.md) | Single-source horror render project notes and prompt used for the sample-driven backrooms experiment. |
 | [Occult liminal Backrooms track](OCCULT_LIMINAL_BACKROOMS_TRACK.md) | A full song thesis and Codex production goal for the haunted Backrooms piece. |
 | [Infinite Nowhere Protocol](INFINITE_NOWHERE_PROTOCOL.md) | Original offline horror track project, render command, outputs, stems, and safety boundary. |
 | [The Road Has No Horizon](THE_ROAD_HAS_NO_HORIZON.md) | Fully procedural horror track with no reused source samples or prior stems. |

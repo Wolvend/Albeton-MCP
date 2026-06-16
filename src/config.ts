@@ -35,7 +35,7 @@ const userProfile = hostPath(rawUserProfile);
 
 function envPath(name: string, fallback: string) {
   return process.env[name] && process.env[name]!.trim().length > 0
-    ? process.env[name]!
+    ? hostPath(process.env[name]!)
     : fallback;
 }
 
@@ -89,10 +89,13 @@ export const PLATFORM = {
 } as const;
 
 const abletonDocumentsRoot = envPath("ABLETON_MCP_ABLETON_ROOT", defaultAbletonDocumentsRoot());
+const defaultSampleLibraryRoot = path.join(PROJECT_ROOT, "samples", "staging");
+const sampleLibraryRoot = envPath("ABLETON_MCP_SAMPLE_LIBRARY_ROOT", defaultSampleLibraryRoot);
 
 export const LOCAL_PATHS = {
   projectRoot: PROJECT_ROOT,
   abletonRoot: abletonDocumentsRoot,
+  sampleLibraryRoot,
   liveInstall: envPath("ABLETON_MCP_LIVE_INSTALL", defaultLiveInstall()),
   liveExecutable: envPath("ABLETON_MCP_LIVE_EXECUTABLE", defaultLiveExecutable()),
   maxExecutable: envPath("ABLETON_MCP_MAX_EXECUTABLE", defaultMaxExecutable()),
@@ -102,8 +105,8 @@ export const LOCAL_PATHS = {
   preferences: envPath("ABLETON_MCP_PREFERENCES", defaultPreferences()),
   liveDatabase: envPath("ABLETON_MCP_LIVE_DATABASE", defaultLiveDatabase()),
   imports: envPath("ABLETON_MCP_IMPORTS", path.join(abletonDocumentsRoot, "User Library", "Samples", "Codex Imports")),
-  staging: path.join(PROJECT_ROOT, "samples", "staging"),
-  pluginStaging: path.join(PROJECT_ROOT, "samples", "staging", "plugins"),
+  staging: sampleLibraryRoot,
+  pluginStaging: envPath("ABLETON_MCP_PLUGIN_STAGING_ROOT", path.join(sampleLibraryRoot, "plugins")),
   diagnostics: path.join(PROJECT_ROOT, "diagnostics")
 } as const;
 
@@ -125,6 +128,7 @@ export function getAllowedRoots(): AllowedRoot[] {
   const baseline = [
     LOCAL_PATHS.projectRoot,
     LOCAL_PATHS.abletonRoot,
+    LOCAL_PATHS.staging,
     LOCAL_PATHS.liveInstall
   ].filter(Boolean).map((root) => path.resolve(root));
   const explicit = process.env.ABLETON_MCP_ALLOWED_ROOTS;
@@ -132,10 +136,11 @@ export function getAllowedRoots(): AllowedRoot[] {
     ...baseline
   ];
   const liveInstallRoot = LOCAL_PATHS.liveInstall ? path.resolve(LOCAL_PATHS.liveInstall).toLowerCase() : null;
-  return roots.map((root) => path.resolve(root)).filter((root) => {
+  const approved = roots.map((root) => path.resolve(hostPath(root))).filter((root) => {
     const lower = root.toLowerCase();
     return baseline.some((allowed) => lower === allowed.toLowerCase());
-  }).map((root) => ({
+  });
+  return [...new Set(approved.map((root) => path.resolve(root)))].map((root) => ({
     path: root,
     mode: liveInstallRoot && root.toLowerCase() === liveInstallRoot
       ? "readonly"

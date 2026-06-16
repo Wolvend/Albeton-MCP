@@ -225,6 +225,40 @@ function sessionBaseArgs(session: ProductionSession) {
   };
 }
 
+function soundPatchPlanForRole(role: string, sourcePolicy: ProductionSourcePolicy, _brief: string) {
+  const lower = role.toLowerCase();
+  const sampleStrategy = sourcePolicy === "procedural_only"
+    ? "procedural synthesis, generated noise, or resynthesized material only"
+    : sourcePolicy === "local_only"
+      ? "approved local samples, user-provided files, or staged imports"
+      : sourcePolicy === "metadata_search"
+        ? "metadata-reviewed samples with manual proof"
+        : "dry-run download plans with approved staging only";
+
+  if (/(sub|bass|low)/.test(lower)) {
+    return { family: "foundation", plan: { device: "Operator or Sampler", purpose: "mono-safe sub pressure with a human attack shape", macro: "pressure", sampleStrategy }, notes: ["keep the core centered", "avoid square-wave-only low end"] };
+  }
+  if (/(hook|lead|melody|motif|theme)/.test(lower)) {
+    return { family: "identity", plan: { device: "Wavetable or Operator", purpose: "clear musical identity with overtone motion", macro: "identity", sampleStrategy }, notes: ["make the line singable", "reserve one recognisable contour"] };
+  }
+  if (/(pad|chord|harmony|body|bed)/.test(lower)) {
+    return { family: "harmony", plan: { device: "Drift or Wavetable", purpose: "warm harmonic body with slow detune and width", macro: "warmth", sampleStrategy }, notes: ["keep the harmony supportive", "use borrowed tones only where they matter"] };
+  }
+  if (/(vocal|choir|voice|breath|human)/.test(lower)) {
+    return { family: "human", plan: { device: "Sampler or Granular", purpose: "human presence, vowel ghosts, and breath texture", macro: "presence", sampleStrategy }, notes: ["avoid intelligible hidden commands", "treat voice as arrangement material"] };
+  }
+  if (/(texture|air|room|noise|smear|atmos|ambient)/.test(lower)) {
+    return { family: "texture", plan: { device: "Granular or Drift", purpose: "room-scale atmosphere, smear, and distance", macro: "distance", sampleStrategy }, notes: ["let the room move", "use width for reflections, not the whole core"] };
+  }
+  if (/(impact|hit|drum|percussion|pulse|thump|transient)/.test(lower)) {
+    return { family: "impact", plan: { device: "Sampler or Drum Rack", purpose: "transient punctuation and rhythmic motion", macro: "strike", sampleStrategy }, notes: ["give every hit a job", "prefer a few strong impacts over constant fill"] };
+  }
+  if (/(transition|fx|moment|ear candy|lift|rise|fall)/.test(lower)) {
+    return { family: "motion", plan: { device: "Wavetable or Effect Rack", purpose: "filter motion, reverse tails, and scene changes", macro: "motion", sampleStrategy }, notes: ["save transitions for section changes", "avoid novelty without structure"] };
+  }
+  return { family: "support", plan: { device: "Drift, Operator, or Sampler", purpose: "supporting layer with a clear role and motion", macro: "age", sampleStrategy }, notes: ["assign a role before stacking more sounds"] };
+}
+
 function summarizeExecutionPlan(executionPlan: Record<string, unknown>) {
   const actionMatrix = executionPlan.actionMatrix as any;
   const runbook = executionPlan.runbook as any;
@@ -374,20 +408,32 @@ export async function designSignatureSoundPalette(options: { session_id: string 
   ]) as Array<{ role: string }>;
   const patches = layers.slice(0, 8).map((layer) => {
     const role = layer.role;
-    const patch = role.includes("sub")
-      ? { role, plan: { device: "Operator", purpose: "mono-safe sub pressure", macro: "pressure" } }
-      : role.includes("texture")
-        ? { role, plan: { device: "Wavetable or Drift", purpose: "wide motion with filtered air", macro: "distance" } }
-        : { role, plan: { device: "Drift or Operator", purpose: "signature musical identity", macro: "age" } };
+    const patchInfo = soundPatchPlanForRole(role, refreshed.sourcePolicy, refreshed.brief);
+    const patch = { role, family: patchInfo.family, plan: patchInfo.plan, notes: patchInfo.notes };
     return {
       ...patch,
       maturity: scoreSoundDesignMaturity({ concept: refreshed.brief, role, patch_plan: patch.plan })
     };
   });
+  const deviceFamilies = [...new Set(patches.map((patch) => patch.plan.device))];
+  const roleFamilies = [...new Set(patches.map((patch) => patch.family))];
   refreshed.soundPalette = {
     concept: refreshed.brief,
     sourcePolicy: refreshed.sourcePolicy,
     layerPatches: patches,
+    varietyPlan: {
+      deviceFamilies,
+      roleFamilies,
+      sampleStrategy: refreshed.sourcePolicy === "procedural_only"
+        ? "procedural synthesis and generated textures only"
+        : "approved sources plus staged imports, with at least one sample role for human or mechanical detail",
+      antiSamenessRules: [
+        "Reserve one foundation layer, one identity layer, one human layer, one texture layer, and one motion layer.",
+        "Use at least one sample-derived or mechanically sourced layer when the source policy permits it.",
+        "Avoid square-wave-only leads and blanket reverb on every layer.",
+        "Change register, device family, or rhythmic role between sections."
+      ]
+    },
     sampler: {
       policy: refreshed.sourcePolicy,
       rule: "Only use approved local, generated, or manifest-tracked experiment sources."

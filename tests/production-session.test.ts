@@ -73,6 +73,8 @@ describe("producer workflow facade", () => {
 
     expect(blueprint.blueprint.conceptPlan).toHaveProperty("id");
     expect(palette.soundPalette).toHaveProperty("layerPatches");
+    expect((palette.soundPalette as any).varietyPlan.deviceFamilies.length).toBeGreaterThanOrEqual(3);
+    expect((palette.soundPalette as any).varietyPlan.antiSamenessRules.length).toBeGreaterThanOrEqual(4);
     expect(assets.assetPlan).toHaveProperty("downloadGate");
     expect(execution.executionPlan).toHaveProperty("dryRunOnly", true);
     expect(score.professionalism).toHaveProperty("planningScore");
@@ -115,12 +117,17 @@ describe("producer workflow facade", () => {
   it("reports smaller tool packs without unsafe defaults", () => {
     const packs = getToolPacks(registeredToolNames);
     const minimal = packs.find((pack) => pack.id === "minimal_producer");
+    const immersive = packs.find((pack) => pack.id === "immersive_producer");
     const debug = packs.find((pack) => pack.id === "developer_debug");
 
     expect(minimal?.tools).toContain("ableton_create_production_session");
     expect(minimal?.tools).toContain("ableton_review_render_and_revise");
     expect(minimal?.tools).not.toContain("ableton_begin_concept_device_ui_session");
     expect(minimal?.tools).not.toContain("ableton_download_sample");
+    expect(immersive?.tools).toContain("ableton_list_free_sample_sources");
+    expect(immersive?.tools).toContain("ableton_design_sampler_instrument");
+    expect(immersive?.tools).toContain("ableton_generate_harmonic_palette");
+    expect(immersive?.toolCount).toBeGreaterThan(minimal?.toolCount ?? 0);
     expect(debug?.toolCount).toBe(registeredToolNames.length);
   });
 

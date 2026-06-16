@@ -38,7 +38,19 @@ function windowsPathToWslPath(value: string) {
 }
 
 function redactionRoots() {
-  const roots = new Set<string>();
+  const roots = new Map<string, string>();
+  const addRoot = (candidate: string | undefined, token: string) => {
+    if (!candidate) return;
+    for (const variant of [
+      candidate,
+      candidate.replaceAll("\\", "/"),
+      candidate.replaceAll("/", "\\"),
+      windowsPathToWslPath(candidate)
+    ]) {
+      if (!variant || variant === path.parse(variant).root) continue;
+      roots.set(variant, token);
+    }
+  };
   const mountedWindowsUser = LOCAL_PATHS.projectRoot.replaceAll("\\", "/").match(/^(\/mnt\/[A-Za-z]\/Users\/[^/]+)/)?.[1];
   const driveWindowsUser = LOCAL_PATHS.projectRoot.replaceAll("\\", "/").match(/^([A-Za-z]:\/Users\/[^/]+)/)?.[1];
   for (const candidate of [
@@ -48,15 +60,13 @@ function redactionRoots() {
     mountedWindowsUser,
     driveWindowsUser
   ]) {
-    if (!candidate) continue;
-    roots.add(candidate);
-    roots.add(candidate.replaceAll("\\", "/"));
-    roots.add(candidate.replaceAll("/", "\\"));
-    roots.add(windowsPathToWslPath(candidate));
+    addRoot(candidate, "%USERPROFILE%");
   }
-  return [...roots]
-    .filter((candidate) => candidate && candidate !== path.parse(candidate).root)
-    .sort((left, right) => right.length - left.length);
+  addRoot(LOCAL_PATHS.sampleLibraryRoot, "%ABLETON_MCP_SAMPLE_LIBRARY_ROOT%");
+  addRoot(LOCAL_PATHS.pluginStaging, "%ABLETON_MCP_PLUGIN_STAGING_ROOT%");
+  return [...roots.entries()]
+    .sort(([left], [right]) => right.length - left.length)
+    .map(([root, token]) => ({ root, token }));
 }
 
 export async function resolveSafePath(inputPath: string, options: { mustExist?: boolean; forWrite?: boolean } = {}) {
@@ -96,8 +106,8 @@ export async function resolveSafePath(inputPath: string, options: { mustExist?: 
 
 export function redactPath(value: string): string {
   let redacted = value;
-  for (const root of redactionRoots()) {
-    redacted = redacted.replace(new RegExp(escapeRegExp(root), "gi"), "%USERPROFILE%");
+  for (const { root, token } of redactionRoots()) {
+    redacted = redacted.replace(new RegExp(escapeRegExp(root), "gi"), token);
   }
   return redacted;
 }

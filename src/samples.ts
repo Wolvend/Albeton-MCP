@@ -10,6 +10,7 @@ import { isImportTarget, redactPath, resolveSafePath } from "./security.js";
 
 const MAX_ATTRIBUTION_SIDECARS = 500;
 const MAX_ATTRIBUTION_BYTES = 128_000;
+const ATTRIBUTION_SKIP_DIRS = new Set(["online-treasure-trove", "renders", "plugins", "__macosx"]);
 const IA_AUDIO_EXTENSIONS = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg", ".opus"]);
 const MAX_IA_AUDIO_FILES = 100;
 const MAX_UNIVERSAL_SOURCE_RESULTS = 50;
@@ -686,6 +687,9 @@ async function collectAttributionSidecars(root: string, scope: string, accessIss
         continue;
       }
       if (entry.isDirectory()) {
+        if (scope === "staging" && depth === 0 && ATTRIBUTION_SKIP_DIRS.has(entry.name.toLowerCase())) {
+          continue;
+        }
         await walk(safe.real, depth + 1);
         continue;
       }
