@@ -1,5 +1,6 @@
 import path from "node:path";
 import os from "node:os";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +38,11 @@ function envPath(name: string, fallback: string) {
   return process.env[name] && process.env[name]!.trim().length > 0
     ? hostPath(process.env[name]!)
     : fallback;
+}
+
+function existingWindowsToolPath(fallbackPath: string, pathCommand: string) {
+  if (!isWindows) return pathCommand;
+  return fs.existsSync(fallbackPath) ? fallbackPath : pathCommand;
 }
 
 function defaultLiveInstall() {
@@ -114,8 +120,8 @@ export const TOOL_PATHS = {
   node: envPath("ABLETON_MCP_NODE", process.execPath),
   npm: envPath("ABLETON_MCP_NPM", isWindows ? "C:\\Program Files\\nodejs\\npm.cmd" : "npm"),
   git: envPath("ABLETON_MCP_GIT", isWindows ? "C:\\Program Files\\Git\\cmd\\git.exe" : "git"),
-  ffmpeg: envPath("ABLETON_MCP_FFMPEG", isWindows ? "C:\\ffmpeg_latest\\ffmpeg.exe" : "ffmpeg"),
-  ffprobe: envPath("ABLETON_MCP_FFPROBE", isWindows ? "C:\\ffmpeg_latest\\ffprobe.exe" : "ffprobe"),
+  ffmpeg: envPath("ABLETON_MCP_FFMPEG", existingWindowsToolPath("C:\\ffmpeg_latest\\ffmpeg.exe", "ffmpeg")),
+  ffprobe: envPath("ABLETON_MCP_FFPROBE", existingWindowsToolPath("C:\\ffmpeg_latest\\ffprobe.exe", "ffprobe")),
   powershell: envPath("ABLETON_MCP_POWERSHELL", isWindows ? "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" : "pwsh")
 } as const;
 

@@ -8,7 +8,7 @@ import { resolveSafePath } from "../src/security.js";
 describe("path allowlist", () => {
   it("allows project paths", async () => {
     const resolved = await resolveSafePath(LOCAL_PATHS.projectRoot, { mustExist: true });
-    expect(resolved.real).toContain("ableton-mcp");
+    expect(path.resolve(resolved.real).toLowerCase()).toBe(path.resolve(LOCAL_PATHS.projectRoot).toLowerCase());
   });
 
   it("rejects forbidden broad roots and secret paths", async () => {

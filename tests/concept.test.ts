@@ -123,7 +123,7 @@ describe("concept-to-music planning", () => {
     const stored = JSON.parse(await fs.readFile(journal.path, "utf8")) as Record<string, any>;
 
     expect(summary).toMatchObject({ id: journal.id, status: "failed", events: 2 });
-    expect(summary.path).toContain("%USERPROFILE%");
+    expect(summary.path).toContain("%ABLETON_MCP_PROJECT_ROOT%");
     expect(JSON.stringify(stored)).not.toContain(samplePath);
     expect(JSON.stringify(stored)).toContain("%ABLETON_MCP_SAMPLE_LIBRARY_ROOT%");
     expect(stored.events.map((event: Record<string, unknown>) => event.type)).toEqual([

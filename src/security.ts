@@ -53,6 +53,7 @@ function redactionRoots() {
   };
   const mountedWindowsUser = LOCAL_PATHS.projectRoot.replaceAll("\\", "/").match(/^(\/mnt\/[A-Za-z]\/Users\/[^/]+)/)?.[1];
   const driveWindowsUser = LOCAL_PATHS.projectRoot.replaceAll("\\", "/").match(/^([A-Za-z]:\/Users\/[^/]+)/)?.[1];
+  addRoot(LOCAL_PATHS.projectRoot, "%ABLETON_MCP_PROJECT_ROOT%");
   for (const candidate of [
     PLATFORM.userHome,
     process.env.USERPROFILE,

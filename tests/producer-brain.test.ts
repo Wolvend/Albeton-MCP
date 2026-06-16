@@ -17,6 +17,12 @@ import { LOCAL_PATHS } from "../src/config.js";
 
 const fixtureAudio = path.join(process.cwd(), "diagnostics", "runtime", "producer-brain-test", "tone.wav");
 
+function expandRedactedPath(value: unknown) {
+  return String(value)
+    .replace("%ABLETON_MCP_PROJECT_ROOT%", LOCAL_PATHS.projectRoot)
+    .replace("%USERPROFILE%", process.env.USERPROFILE ?? "");
+}
+
 function makeSilentWav() {
   const sampleRate = 44100;
   const durationSeconds = 0.2;
@@ -93,7 +99,7 @@ describe("producer brain tools", () => {
       sources: [{ title: "unknown loop", role: "hook", status: "unverified" }],
       dry_run: false
     });
-    const output = String(manifest.output).replace("%USERPROFILE%", process.env.USERPROFILE ?? "");
+    const output = expandRedactedPath(manifest.output);
     const readiness = await checkReleaseSourceReadiness({ manifest_path: output, usage_mode: "release_candidate" });
 
     expect(readiness.canContinuePrivateExperiment).toBe(true);

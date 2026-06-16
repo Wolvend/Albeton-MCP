@@ -61,7 +61,7 @@ describe("sample license policy", () => {
       stagedAt: "2026-06-13T00:00:00.000Z"
     }));
 
-    const report = await generateAttributionReport(1, 100);
+    const report = await generateAttributionReport(1, 100, [{ scope: "staging", path: LOCAL_PATHS.staging }]);
     const item = report.items.find((entry) => entry.destinationName === "report-fixture.wav");
 
     expect(item).toBeTruthy();

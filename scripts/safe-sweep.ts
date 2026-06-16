@@ -87,7 +87,14 @@ const safeSourceManifest = await createSourceManifest({
   sources: [{ title: "safe sweep unverified scratch source", role: "texture" }],
   dry_run: false
 });
-const safeSourceManifestPath = String(safeSourceManifest.output).replace("%USERPROFILE%", process.env.USERPROFILE ?? "");
+
+function expandRedactedPath(value: unknown) {
+  return String(value)
+    .replace("%ABLETON_MCP_PROJECT_ROOT%", LOCAL_PATHS.projectRoot)
+    .replace("%USERPROFILE%", process.env.USERPROFILE ?? "");
+}
+
+const safeSourceManifestPath = expandRedactedPath(safeSourceManifest.output);
 
 const calls: SweepCall[] = [
   { name: "ableton_mcp_health", arguments: {} },

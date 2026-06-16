@@ -713,9 +713,14 @@ async function collectAttributionSidecars(root: string, scope: string, accessIss
   return items;
 }
 
-export async function generateAttributionReport(page = 1, pageSize = 25) {
+type AttributionReportRoot = {
+  scope: string;
+  path: string;
+};
+
+export async function generateAttributionReport(page = 1, pageSize = 25, reportRoots?: AttributionReportRoot[]) {
   const accessIssues: Array<Record<string, unknown>> = [];
-  const roots = [
+  const roots = reportRoots ?? [
     { scope: "staging", path: LOCAL_PATHS.staging },
     { scope: "imports", path: LOCAL_PATHS.imports }
   ];
