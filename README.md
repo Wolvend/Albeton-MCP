@@ -74,9 +74,14 @@ MCP client -> stdio or HTTP transport -> TypeScript MCP server
                                          |-> scanner/cache/docs/sample intelligence
 ```
 
-![Ableton MCP control lanes](docs/assets/control-lanes.svg)
+**Control Lanes**
 
-The background bridge is the preferred control path. It communicates with a Max for Live device over `127.0.0.1:17364` and serializes requests so concurrent MCP calls do not overlap inside Ableton. The foreground UI driver is a separate fallback on `127.0.0.1:17365` and requires explicit user opt-in.
+| Lane | Default | Path | Gate |
+| --- | --- | --- | --- |
+| Background LiveAPI bridge | Preferred | MCP client -> server queue -> Max for Live bridge -> Ableton LiveAPI | Real writes require `ABLETON_MCP_ENABLE_WRITE=1` and `dry_run=false`. |
+| Foreground UI driver | Optional fallback | MCP client -> local UI driver -> Ableton window focus, screenshots, clicks, and text | Requires `ABLETON_MCP_ENABLE_UI_CONTROL=1` and explicit user choice. |
+
+The background bridge communicates with a Max for Live device over `127.0.0.1:17364` and serializes requests so concurrent MCP calls do not overlap inside Ableton. The foreground UI driver is a separate fallback on `127.0.0.1:17365`.
 
 ## Safety Model
 
@@ -122,9 +127,21 @@ This is source-policy behavior only. It does not enable downloads, Ableton write
 
 ## Music Agent Workflow
 
-![Ableton MCP music agent workflow](docs/assets/music-agent-workflow.svg)
-
 For production agents, the normal loop is:
+
+```text
+brief
+  -> source mode
+  -> concept parse
+  -> sample intelligence
+  -> sound palette
+  -> arrangement map
+  -> dry-run action plan
+  -> gated execution
+  -> render review
+  -> revision pass
+  -> delivery package
+```
 
 1. Read the brief and constraints.
 2. Choose `private_experiment` or `release_candidate` source mode.
