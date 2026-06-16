@@ -6,6 +6,18 @@ Ableton MCP can turn a place, feeling, or liminal visual brief into a staged Abl
 
 Fast path:
 
+- `ableton_create_production_session`
+  - Preferred default entrypoint for agents that need a smaller, stateful surface.
+  - Creates a bounded session under `diagnostics/runtime/production-sessions` and records brief, source mode, source policy, capability snapshot, next calls, and safety gates.
+  - Does not download, write to Ableton, expose HTTP remotely, or use UI/mouse control.
+
+- `ableton_generate_song_blueprint` -> `ableton_design_signature_sound_palette` -> `ableton_create_execution_plan`
+  - Turns the stored session into a song blueprint, role-based sound palette, source/asset strategy, and dry-run Ableton execution plan.
+  - Use `ableton_advance_production_session` when an agent wants one bounded phase call instead of choosing each raw tool.
+
+- `ableton_review_render_and_revise`
+  - After a rough render exists, analyzes allowed local render/stem paths, stores a focused revision pass, and returns exact next calls.
+
 - `ableton_plan_agent_music_session`
   - Read-only orchestration plan for Codex, Docker MCP, OpenClaw, Claude, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity.
   - Takes a mood/place brief and returns the exact readiness, concept, sample, arrangement, approval, and delivery calls an agent should run.

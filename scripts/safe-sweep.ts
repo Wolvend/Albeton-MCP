@@ -204,6 +204,17 @@ const calls: SweepCall[] = [
   { name: "ableton_mark_source_as_user_provided", arguments: { project_name: "safe sweep user source", source: { title: "user supplied one-shot", role: "impact" }, dry_run: true } },
   { name: "ableton_mark_source_as_experiment_only", arguments: { project_name: "safe sweep experiment source", source: { title: "experiment scratch loop", role: "texture" }, dry_run: true } },
   { name: "ableton_check_release_source_readiness", arguments: { manifest_path: safeSourceManifestPath, usage_mode: "release_candidate" } },
+  { name: "ableton_mcp_get_tool_packs", arguments: {} },
+  { name: "ableton_create_production_session", arguments: { brief: "safe sweep producer facade liminal mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7, usage_mode: "private_experiment", source_policy: "local_only", check_bridge: false } },
+  { name: "ableton_get_production_session", arguments: { session_id: "prod-0000000000000000" } },
+  { name: "ableton_list_production_sessions", arguments: { page: 1, pageSize: 5 } },
+  { name: "ableton_generate_song_blueprint", arguments: { session_id: "prod-0000000000000000" } },
+  { name: "ableton_design_signature_sound_palette", arguments: { session_id: "prod-0000000000000000" } },
+  { name: "ableton_prepare_production_assets", arguments: { session_id: "prod-0000000000000000" } },
+  { name: "ableton_create_execution_plan", arguments: { session_id: "prod-0000000000000000", check_bridge: false } },
+  { name: "ableton_advance_production_session", arguments: { session_id: "prod-0000000000000000", phase: "execution_plan", max_internal_steps: 4, dry_run: true } },
+  { name: "ableton_review_render_and_revise", arguments: { session_id: "prod-0000000000000000", render_path: fixtures.audioPath, stem_paths: [fixtures.audioPath], duration_seconds: 0.1 } },
+  { name: "ableton_score_track_professionalism", arguments: { session_id: "prod-0000000000000000", render_path: fixtures.audioPath, duration_seconds: 0.1 } },
   { name: "ableton_list_internet_archive_audio_files", arguments: { identifier: "opensource_audio", page: 1, pageSize: 5 }, expected: "any" },
   { name: "ableton_preview_remote_sample", arguments: { url: "https://archive.org/download/example/file.wav", license: "CC0" } },
   { name: "ableton_generate_session_plan", arguments: { brief: "safe sweep liminal hallway cue", style: "liminal/backrooms/horror", target_duration_seconds: 120, intensity: 7 } },
@@ -274,11 +285,19 @@ const client = new Client({ name: "ableton-mcp-safe-sweep", version: "0.1.0" });
 await client.connect(transport);
 
 const results = [];
+let productionSessionId: string | null = null;
 for (const call of calls) {
   try {
-    const result = await client.callTool({ name: call.name, arguments: call.arguments });
+    const callArguments = productionSessionId
+      ? Object.fromEntries(Object.entries(call.arguments).map(([key, value]) => [key, value === "prod-0000000000000000" ? productionSessionId : value]))
+      : call.arguments;
+    const result = await client.callTool({ name: call.name, arguments: callArguments });
     const expected = call.expected ?? "ok";
     const isError = Boolean(result.isError);
+    if (call.name === "ableton_create_production_session" && !isError) {
+      const sessionId = (result as any).structuredContent?.productionSession?.session?.id;
+      if (typeof sessionId === "string") productionSessionId = sessionId;
+    }
     results.push({ name: call.name, ok: !isError || expected === "any", isError, expected });
   } catch (error) {
     results.push({ name: call.name, ok: false, expected: call.expected ?? "ok", error: error instanceof Error ? error.message : String(error) });

@@ -10,7 +10,7 @@ The design goal is simple: **let an AI agent help produce music without turning 
 [![TypeScript](https://img.shields.io/badge/ts-strict-76a7ff?style=flat-square&logo=typescript&logoColor=white)](tsconfig.json)
 [![MCP](https://img.shields.io/badge/mcp-stdio%20%2B%20http-f2c35b?style=flat-square)](docs/CLIENTS.md)
 [![Security](https://img.shields.io/badge/security-read--only-8bd9c7?style=flat-square)](SECURITY.md)
-[![Tools](https://img.shields.io/badge/tools-301-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
+[![Tools](https://img.shields.io/badge/tools-312-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
 
 > This project is an independent local automation layer. Ableton and Max for Live are trademarks of their respective owners.
 
@@ -22,6 +22,7 @@ Ableton MCP is a TypeScript/Node MCP server with a local Max for Live LiveAPI br
 | --- | --- |
 | Live inspection | Read transport, tracks, scenes, clips, devices, Browser trees, Arrangement clips, mixer, sends, routing, notes, snapshots, and bridge status when the Max for Live device is loaded. |
 | Gated Live control | Dry-run first write tools for tempo, scenes, clips, mixer moves, markers, MIDI notes, sample loading, Arrangement view/time helpers, and selected clip operations. |
+| Producer facade | Stateful session workflow for brief -> blueprint -> sound palette -> assets -> execution plan -> render review -> revision -> delivery readiness through a small tool surface. |
 | Producer brain | Parse briefs into tempo/key/hook/layer decisions, source usage mode, sound-design patches, arrangement moments, render review, mix scoring, revision passes, and delivery handoffs. |
 | Music planning | Turn a mood/place/reference into concept plans, sample roles, arrangement timelines, device-chain specs, automation maps, mix plans, scorecards, and runbooks. |
 | Sample intelligence | Search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
@@ -60,6 +61,7 @@ First setup installs dependencies if needed, builds `dist`, installs the Max for
 | Bridge status | `.\launch.ps1 bridge-status -SkipSetup` | Check bridge files, Ableton process, and listener state. |
 | Live smoke | `.\launch.ps1 live-smoke -SkipSetup` | Read-only/dry-run bridge confidence report. |
 | Concept demo | `.\launch.ps1 concept-demo -SkipSetup` | No-write concept-to-arrangement MCP workflow. |
+| Producer demo | `.\launch.ps1 producer-demo -SkipSetup` | No-write producer-facade MCP workflow with session, blueprint, palette, execution plan, and score. |
 | UI driver | `.\launch.ps1 ui-driver` | Optional foreground Ableton UI control lane. |
 
 ## Architecture

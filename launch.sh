@@ -165,6 +165,7 @@ Modes:
   live-ready       Report host/Ableton/bridge readiness; optionally start Ableton or open the bridge preset.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
+  producer-demo    Run the small producer-facade MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
   bridge-status    Report bridge install freshness, Ableton process state, and listener status.
@@ -278,6 +279,10 @@ case "$MODE" in
   concept-demo)
     run_setup
     npm run demo:concept
+    ;;
+  producer-demo)
+    run_setup
+    npm run demo:producer
     ;;
   inspect)
     run_setup

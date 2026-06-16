@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-301 tools
+312 tools
 3 resources
 2 prompts
 ```
@@ -39,6 +39,7 @@ Primary groups:
 - Screenshot and UI tools
 - Legal sample discovery/import
 - Source usage mode for private experiments and release candidates
+- Producer workflow facade and smaller tool packs for default agents
 - Producer-brain planning for briefs, mood, tempo, harmony, hooks, layer stacks, moments, and negative space
 - Sound-design brain for synth, Operator, Wavetable, Drift, Sampler, granular, rack macro, and patch scoring plans
 - Render/revision/mix analysis for render quality, masking, mud/harshness/sibilance, phase/mono risk, low-end control, balance, translation, stereo depth, and revision passes
@@ -103,8 +104,12 @@ Control-mode tools:
 - `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.
 - `ableton_mcp_get_client_bootstrap_bundle`: returns a one-call safe bootstrap bundle for Codex, Claude, Docker MCP, OpenClaw, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity.
 - `ableton_mcp_get_safe_tool_allowlist`: returns the Docker/OpenClaw safe tool allowlist as structured data plus CSV without changing client configuration.
+- `ableton_mcp_get_tool_packs`: returns smaller recommended tool packs for `minimal_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` clients.
 - `ableton_set_project_usage_mode` and `ableton_get_project_usage_mode`: switch or read source-review mode. `private_experiment` records unverified sources without blocking iteration; `release_candidate` treats unverified sources as release blockers or warnings.
 - `ableton_create_source_manifest`, `ableton_mark_source_as_user_provided`, `ableton_mark_source_as_experiment_only`, and `ableton_check_release_source_readiness`: create bounded source manifests and distinguish private experimentation from release packaging.
+- `ableton_create_production_session`, `ableton_get_production_session`, and `ableton_list_production_sessions`: create and inspect bounded producer-facade sessions under `diagnostics/runtime/production-sessions`.
+- `ableton_generate_song_blueprint`, `ableton_design_signature_sound_palette`, `ableton_prepare_production_assets`, and `ableton_create_execution_plan`: move a session from brief to blueprint, sound design, source strategy, and dry-run Ableton action planning without executing writes.
+- `ableton_advance_production_session`, `ableton_review_render_and_revise`, and `ableton_score_track_professionalism`: advance one bounded workflow phase, analyze allowed local renders/stems, store one focused revision pass, and score planning/audio readiness.
 - `ableton_parse_music_brief`, `ableton_compile_mood_palette`, `ableton_plan_tempo_grid`, `ableton_generate_harmonic_palette`, `ableton_generate_motif_system`, `ableton_score_hook_memorability`, `ableton_plan_layer_stack`, `ableton_create_moment_map`, and `ableton_plan_negative_space`: turn a user brief into executable producer decisions before adding tracks.
 - `ableton_design_synth_patch`, `ableton_design_operator_patch`, `ableton_design_wavetable_patch`, `ableton_design_drift_patch`, `ableton_design_sampler_instrument`, `ableton_design_granular_texture`, `ableton_design_rack_macros`, `ableton_score_sound_design_maturity`, and `ableton_score_patch_against_concept`: plan and score professional sound design without pretending to insert devices.
 - `ableton_score_arrangement_arc`, `ableton_score_arrangement_motion`, `ableton_score_density_curve`, `ableton_generate_automation_curves`, `ableton_generate_revision_pass`, `ableton_generate_next_revision_pass`, and `ableton_compare_render_versions`: keep arrangement and revision work focused on one measurable improvement pass at a time.

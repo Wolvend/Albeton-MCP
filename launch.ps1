@@ -1,5 +1,5 @@
 param(
-  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-ready", "live-smoke", "concept-demo", "inspect", "ui-driver", "bridge-status", "bridge-listener", "help")]
+  [ValidateSet("stdio", "http", "docker", "install", "setup", "verify", "check", "doctor", "test", "lint", "build", "sweep", "sweep-all", "live-ready", "live-smoke", "concept-demo", "producer-demo", "inspect", "ui-driver", "bridge-status", "bridge-listener", "help")]
   [string]$Mode = "stdio",
   [switch]$SkipSetup,
   [switch]$NoBuild,
@@ -52,6 +52,7 @@ Modes:
   live-ready       Report host/Ableton/bridge readiness; optionally start Ableton or open the bridge preset.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
+  producer-demo    Run the small producer-facade MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
   bridge-status    Report bridge install freshness, Ableton process state, and listener status.
@@ -212,6 +213,11 @@ switch ($Mode) {
   "concept-demo" {
     Invoke-Setup
     & npm.cmd run demo:concept
+    exit $LASTEXITCODE
+  }
+  "producer-demo" {
+    Invoke-Setup
+    & npm.cmd run demo:producer
     exit $LASTEXITCODE
   }
   "inspect" {

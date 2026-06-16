@@ -1,6 +1,6 @@
 # MCP Tool Catalog
 
-The server currently registers 301 MCP tools.
+The server currently registers 312 MCP tools.
 
 Use this command to inspect the live catalog:
 
@@ -29,6 +29,7 @@ Some LiveAPI write requests are intentionally capability-limited until the runni
 | UI driver fallback | `ableton_ui_driver_ping`, `ableton_window_status`, `ableton_focus_window`, `ableton_begin_concept_device_ui_session`, `ableton_click_coordinates` |
 | Sample discovery/import | `ableton_list_free_sample_sources`, `ableton_search_free_sample_sources`, `ableton_plan_free_sample_download`, `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, `ableton_search_internet_archive_audio`, `ableton_list_internet_archive_audio_files`, `ableton_search_freesound`, `ableton_download_sample`, `ableton_import_sample_to_library` |
 | Source usage mode | `ableton_set_project_usage_mode`, `ableton_get_project_usage_mode`, `ableton_create_source_manifest`, `ableton_mark_source_as_user_provided`, `ableton_mark_source_as_experiment_only`, `ableton_check_release_source_readiness` |
+| Producer workflow facade | `ableton_create_production_session`, `ableton_generate_song_blueprint`, `ableton_design_signature_sound_palette`, `ableton_prepare_production_assets`, `ableton_create_execution_plan`, `ableton_advance_production_session`, `ableton_review_render_and_revise`, `ableton_score_track_professionalism`, `ableton_mcp_get_tool_packs` |
 | Producer brain planning | `ableton_parse_music_brief`, `ableton_compile_mood_palette`, `ableton_plan_tempo_grid`, `ableton_generate_harmonic_palette`, `ableton_generate_motif_system`, `ableton_score_hook_memorability`, `ableton_plan_layer_stack`, `ableton_create_moment_map`, `ableton_plan_negative_space` |
 | Sound design brain | `ableton_design_synth_patch`, `ableton_design_operator_patch`, `ableton_design_wavetable_patch`, `ableton_design_drift_patch`, `ableton_design_sampler_instrument`, `ableton_design_granular_texture`, `ableton_design_rack_macros`, `ableton_score_sound_design_maturity`, `ableton_score_patch_against_concept` |
 | Arrangement, revision, and mix brain | `ableton_score_arrangement_arc`, `ableton_score_arrangement_motion`, `ableton_score_density_curve`, `ableton_generate_automation_curves`, `ableton_analyze_render_quality`, `ableton_detect_frequency_masking`, `ableton_detect_mud_harshness_sibilance`, `ableton_detect_phase_mono_issues`, `ableton_score_low_end_control`, `ableton_score_mix_balance`, `ableton_score_mix_translation`, `ableton_plan_stereo_depth_stage`, `ableton_score_depth_image`, `ableton_generate_revision_pass`, `ableton_generate_next_revision_pass`, `ableton_compare_render_versions` |

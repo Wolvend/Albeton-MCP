@@ -49,6 +49,7 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `live-ready -OpenBridge` | `.\launch.ps1 live-ready -OpenBridge -SkipSetup` | Explicitly asks the OS/Ableton to open the installed `Ableton MCP Bridge.amxd` preset, then re-checks the listener. It does not move the mouse; Ableton may still prompt or require the current set to accept the device. |
 | `live-smoke` | `.\launch.ps1 live-smoke` | Confirms objective readiness, launch readiness, LiveAPI coverage, bridge reachability, bounded live reads, optional routing probe, and one dry-run write probe. |
 | `concept-demo` | `.\launch.ps1 concept-demo` | Runs a side-effect-free MCP client workflow from concept brief to stored arrangement, action matrix, approval dry-run, and delivery plan. |
+| `producer-demo` | `.\launch.ps1 producer-demo` | Runs the small producer-facade workflow from brief to session, blueprint, sound palette, dry-run execution plan, and professionalism score. |
 | `inspect` | `.\launch.ps1 inspect` | Lists tools through MCP Inspector. |
 | `ui-driver` | `.\launch.ps1 ui-driver` | Enables `ABLETON_MCP_ENABLE_UI_CONTROL=1` and starts the foreground Ableton UI driver. |
 | `bridge-listener` | `.\launch.ps1 bridge-listener` | Starts the local bridge setup listener. |

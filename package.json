@@ -33,6 +33,7 @@
     "live-ready": "node dist/scripts/live-ready.js",
     "live-smoke": "node dist/scripts/live-smoke.js",
     "demo:concept": "node dist/scripts/agent-music-dry-run.js",
+    "demo:producer": "node dist/scripts/producer-demo.js",
     "render:occult-liminal": "node scripts/render-occult-liminal.mjs",
     "render:there-was-never-a-door": "node scripts/render-there-was-never-a-door.mjs",
     "render:bad-memory-backrooms": "node scripts/render-bad-memory-backrooms.mjs",

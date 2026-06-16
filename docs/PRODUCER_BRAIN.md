@@ -2,6 +2,20 @@
 
 Ableton MCP now includes a producer-brain layer: read-only and dry-run-first tools that help an agent turn a plain-language music brief into concrete musical decisions, then review renders and generate focused revision passes. These tools do not replace the Max for Live bridge. They sit before it, so agents can plan better before asking Ableton to change anything.
 
+## Producer Facade
+
+Default agents should start with the facade instead of choosing from the full raw catalog:
+
+1. `ableton_create_production_session`
+2. `ableton_generate_song_blueprint`
+3. `ableton_design_signature_sound_palette`
+4. `ableton_prepare_production_assets`
+5. `ableton_create_execution_plan`
+6. `ableton_review_render_and_revise`
+7. `ableton_score_track_professionalism`
+
+Sessions are stored under `diagnostics/runtime/production-sessions` with redacted local paths. The facade may write bounded diagnostics, but it does not write Ableton state, download files, use UI/mouse control, or bypass approval gates. Use `ableton_mcp_get_tool_packs` to retrieve the smaller `minimal_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` surfaces.
+
 ## Private Experiment Vs Release Candidate
 
 Source checks use two modes:

@@ -15,7 +15,7 @@ Remote HTTP: disabled
 
 The profile name above is the current local Docker MCP profile target. Ableton MCP itself remains a standalone MCP server and is not branded for that profile.
 
-The Docker profile allowlist enables read, planning, search, diagnostics, concept-planning tools, read-only free-sample source listing/search, and read-only sample intelligence. It does not enable write execution, sample download planning/staging/imports, raw UI clicks, or tempo/session mutation by default.
+The Docker profile allowlist enables read, planning, search, diagnostics, producer-facade sessions, concept-planning tools, read-only free-sample source listing/search, and read-only sample intelligence. It does not enable write execution, sample download planning/staging/imports, raw UI clicks, or tempo/session mutation by default.
 
 ## Start Host HTTP
 

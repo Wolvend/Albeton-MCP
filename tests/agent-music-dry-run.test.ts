@@ -6,6 +6,7 @@ import {
   defaultAgentMusicDryRunOptions,
   parseAgentMusicDryRunArgs
 } from "../scripts/agent-music-dry-run.js";
+import { parseProducerDemoArgs } from "../scripts/producer-demo.js";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 
@@ -18,10 +19,15 @@ describe("agent music dry-run workflow", () => {
     const launchSh = fs.readFileSync(path.join(projectRoot, "launch.sh"), "utf8");
 
     expect(packageJson.scripts["demo:concept"]).toBe("node dist/scripts/agent-music-dry-run.js");
+    expect(packageJson.scripts["demo:producer"]).toBe("node dist/scripts/producer-demo.js");
     expect(launchPs1).toContain('"concept-demo"');
+    expect(launchPs1).toContain('"producer-demo"');
     expect(launchPs1).toContain("npm.cmd run demo:concept");
+    expect(launchPs1).toContain("npm.cmd run demo:producer");
     expect(launchSh).toContain("concept-demo)");
+    expect(launchSh).toContain("producer-demo)");
     expect(launchSh).toContain("npm run demo:concept");
+    expect(launchSh).toContain("npm run demo:producer");
   });
 
   it("plans a safe MCP-consumer sequence without real writes, downloads, or UI control", () => {
@@ -78,5 +84,23 @@ describe("agent music dry-run workflow", () => {
     expect(parsed.client).toBe("openclaw");
     expect(parsed.sources).toEqual(["local_library", "internet_archive"]);
     expect(parsed.search_samples).toBe(true);
+  });
+
+  it("parses producer-demo options with bounded values", () => {
+    const parsed = parseProducerDemoArgs([
+      "--brief",
+      "dystopian empty mall memory",
+      "--duration",
+      "9999",
+      "--intensity",
+      "12",
+      "--source-policy",
+      "metadata_search"
+    ]);
+
+    expect(parsed.brief).toBe("dystopian empty mall memory");
+    expect(parsed.target_duration_seconds).toBe(900);
+    expect(parsed.intensity).toBe(10);
+    expect(parsed.source_policy).toBe("metadata_search");
   });
 });
