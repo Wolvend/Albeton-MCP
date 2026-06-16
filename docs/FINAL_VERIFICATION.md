@@ -1,7 +1,7 @@
 # Final Verification Report
 
 Date: 2026-06-13 local runtime checks
-Updated: 2026-06-16 producer-brain upgrade and full local verification pass
+Updated: 2026-06-16 reference comparison, producer-brain upgrade, and full local verification pass
 
 This report records the latest verification pass for the Ableton MCP production build.
 
@@ -16,6 +16,7 @@ The latest pass added the producer-brain and engineer-brain MCP layer:
 - Arrangement arc, arrangement motion, density curve, automation curve, revision pass, next revision pass, and render-version comparison tools.
 - Render quality, masking, mud/harshness/sibilance, phase/mono, low-end, mix balance, mix translation, stereo-depth, and depth-image analysis tools.
 - Capability matrix, render-failure classification, song runbook, session handoff, organization validation, and delivery-package tools.
+- Reference-inspired Browser and Arrangement tools after reviewing `ahujasid/ableton-mcp`: `ableton_get_browser_tree`, `ableton_get_browser_items_at_path`, `ableton_get_arrangement_clips`, `ableton_switch_to_arrangement_view`, `ableton_set_arrangement_time`, `ableton_duplicate_session_clip_to_arrangement`, and dry-run-only `ableton_load_drum_kit`.
 
 Security posture stayed unchanged:
 
@@ -106,10 +107,10 @@ Mono peak: 0.7399 linear
 ## Current Surface
 
 ```text
-Tools: 294
+Tools: 301
 Resources: 3
 Prompts: 2
-Docker MCP default safe tools: 187
+Docker MCP default safe tools: 190
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -121,9 +122,9 @@ Tests: 25 files, 118 tests passed
 Lint: passed
 Doctor: passed with 0 failures and 1 warning for the optional UI driver listener
 Release check: passed
-Safe sweep: passed, 178 safe calls, 0 unexpected failures
-All-tool contract sweep: passed, 294 registered tools, 294 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
-MCP verifier: passed, 294 tools, 3 resources, 2 prompts
+Safe sweep: passed, 185 safe calls, 0 unexpected failures
+All-tool contract sweep: passed, 301 registered tools, 301 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
+MCP verifier: passed, 301 tools, 3 resources, 2 prompts
 Audit: 0 vulnerabilities
 ```
 
@@ -160,7 +161,7 @@ Result: succeeded.
 npm run doctor
 ```
 
-Result: succeeded. Doctor reported 8 checks, 0 failures, and 1 runtime warning because the optional UI driver on `127.0.0.1:17365` was not loaded. The HTTP transport on `127.0.0.1:17366` was reachable, the Max for Live bridge listener on `127.0.0.1:17364` was present, and the local catalog reported 294 tools.
+Result: succeeded. Doctor reported 8 checks, 0 failures, and 1 runtime warning because the optional UI driver on `127.0.0.1:17365` was not loaded. The HTTP transport on `127.0.0.1:17366` was reachable, the Max for Live bridge listener on `127.0.0.1:17364` was present, and the local catalog reported 301 tools.
 
 ```powershell
 npm run release:check
@@ -172,23 +173,23 @@ Result: succeeded. Release check found no missing required files or scripts. It 
 npm run sweep:safe
 ```
 
-Result: succeeded. Safe sweep called 178 read-only and dry-run tools with 0 unexpected failures, including source usage mode, producer-brain planning, sound-design planning, render/mix analysis, revision/handoff tools, `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, the universal sample-source registry calls, plus the existing readiness, bridge, concept, routing, attribution, and dry-run write-planning calls.
+Result: succeeded. Safe sweep called 185 read-only and dry-run tools with 0 unexpected failures, including source usage mode, producer-brain planning, sound-design planning, render/mix analysis, revision/handoff tools, reference-inspired Browser/Arrangement calls, `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, the universal sample-source registry calls, plus the existing readiness, bridge, concept, routing, attribution, and dry-run write-planning calls.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 294 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now includes source usage manifests, producer-brain planning, sound design, arrangement/revision, mix/render analysis, capability handoff, the read-only sample intelligence tools, and the universal free-sample source registry, and preserves the existing concept, bridge, UI-consent, routing, automation-readiness, attribution, delivery, and dry-run execution coverage.
+Result: succeeded. All-tool contract sweep called all 301 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now includes source usage manifests, producer-brain planning, sound design, Browser/Arrangement reference coverage, arrangement/revision, mix/render analysis, capability handoff, the read-only sample intelligence tools, and the universal free-sample source registry, and preserves the existing concept, bridge, UI-consent, routing, automation-readiness, attribution, delivery, and dry-run execution coverage.
 
 The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_humanize_midi_clip` with deterministic seeded dry-run planning, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature/color/rename tools, typed track/return/master volume/pan/color tools, typed return-track rename, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, `ableton_set_clip_markers`, and `ableton_set_clip_color` contracts. Concept arrangement plans now include created-track, created-return, and created-scene placeholders for scene setup, color, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, clip colors, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, a deterministic approval id, and a read-only readiness handoff that links concept automation lanes to `ableton_extract_automation_summary` target discovery; real execution requires approval confirmation, reruns preflight, writes a redacted execution journal, resolves executable placeholders from a live snapshot immediately before write-gated bridge calls, and stops on bridge-level `unsupported: true` results.
 
-LiveAPI bridge source now includes track mixer send summaries in mixer reads/snapshots, typed `track_index`/`device_index` selectors for targeted read tools, a read-only routing overview with a send matrix, read-only automation target summaries for mixer/device parameters, `send_index` validation before `ableton_set_track_send` writes, conservative `ableton_insert_midi_notes` replacement support, deterministic `ableton_humanize_midi_clip` note rewrites, and bounded `ableton_get_clip_notes` reads using the modern note API argument order. The note-write paths require `get_notes_extended` and `remove_notes_extended` before adding replacement notes. Agents can inspect return routing, automation candidates, and MIDI targets before applying reverb/delay/texture sends, parameter-value changes, note replacement, or MIDI humanization. The bridge also uses typed `track_index` for track arm/mute/solo and rename writes, preventing generated MCP calls from falling back to the currently selected track.
+LiveAPI bridge source now includes track mixer send summaries in mixer reads/snapshots, typed `track_index`/`device_index` selectors for targeted read tools, a read-only routing overview with a send matrix, read-only automation target summaries for mixer/device parameters, bounded Browser tree/path reads, Arrangement clip reads, gated Arrangement view/time/session-to-arrangement helpers, `send_index` validation before `ableton_set_track_send` writes, conservative `ableton_insert_midi_notes` replacement support, deterministic `ableton_humanize_midi_clip` note rewrites, and bounded `ableton_get_clip_notes` reads using the modern note API argument order. The note-write paths require `get_notes_extended` and `remove_notes_extended` before adding replacement notes. Agents can inspect return routing, automation candidates, Browser targets, Arrangement clips, and MIDI targets before applying reverb/delay/texture sends, parameter-value changes, note replacement, MIDI humanization, or Arrangement writes. The bridge also uses typed `track_index` for track arm/mute/solo and rename writes, preventing generated MCP calls from falling back to the currently selected track.
 
 ```powershell
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 294 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 301 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -198,7 +199,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 
 ## Docker MCP
 
-The latest code-level default safe allowlist contains 187 tools after adding read-only producer-brain planning, source readiness, render/mix analysis, and handoff tools. The Docker profile apply/verify commands below are from the previous profile activation pass; rerun `npm run docker:profile:apply` and `npm run docker:profile:verify` when you want the active Docker profile updated to the new allowlist.
+The latest code-level default safe allowlist contains 190 tools after adding read-only producer-brain planning, Browser/Arrangement reads, source readiness, render/mix analysis, and handoff tools. The Docker profile apply/verify commands below are from the previous profile activation pass; rerun `npm run docker:profile:apply` and `npm run docker:profile:verify` when you want the active Docker profile updated to the new allowlist.
 
 ```powershell
 npm run docker:profile:verify

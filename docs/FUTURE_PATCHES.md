@@ -179,6 +179,8 @@ This is the most important professional layer. The agent should create, render, 
 
 These are implementation unlocks, not just planning tools.
 
+Reference-inspired Browser/Arrangement discovery is now implemented: `ableton_get_browser_tree`, `ableton_get_browser_items_at_path`, `ableton_get_arrangement_clips`, `ableton_switch_to_arrangement_view`, `ableton_set_arrangement_time`, and `ableton_duplicate_session_clip_to_arrangement`. `ableton_load_drum_kit` exists as a dry-run planning tool only; real Browser `load_item` insertion remains a future unlock.
+
 | Tool | What It Does | Code Contract | Agent Should |
 | --- | --- | --- | --- |
 | `ableton_create_arrangement_audio_clip` | Real Arrangement View audio placement after verified LiveAPI support. | `input: { path, track_index, start_time, duration?, dry_run } -> output: { clip_id, track_index, start_time }` | Place stems/samples on the timeline without UI control. |

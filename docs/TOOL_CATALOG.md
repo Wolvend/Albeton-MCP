@@ -1,6 +1,6 @@
 # MCP Tool Catalog
 
-The server currently registers 294 MCP tools.
+The server currently registers 301 MCP tools.
 
 Use this command to inspect the live catalog:
 
@@ -24,8 +24,8 @@ Some LiveAPI write requests are intentionally capability-limited until the runni
 | Ableton set analysis | `ableton_analyze_set`, `ableton_get_set_summary`, `ableton_compare_sets` |
 | Live bridge reads | `ableton_get_live_state`, `ableton_list_tracks`, `ableton_get_return_track_mixer`, `ableton_get_transport` |
 | Write-gated Live control | `ableton_set_tempo`, `ableton_fire_scene`, `ableton_set_scene_tempo`, `ableton_rename_scene`, `ableton_rename_return_track`, `ableton_set_track_color`, `ableton_set_clip_color`, `ableton_create_clip`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_master_volume`, `ableton_set_device_parameter` |
-| Automation and arrangement | `ableton_create_automation_envelope`, `ableton_set_automation_point`, `ableton_create_arrangement_marker`, `ableton_quantize_clip` |
-| Bridge discovery | `ableton_get_bridge_capabilities`, `ableton_list_arrangement_markers`, `ableton_get_clip_notes`, `ableton_get_clip_envelopes`, `ableton_get_device_parameter_map`, `ableton_extract_automation_summary` |
+| Automation and arrangement | `ableton_create_automation_envelope`, `ableton_set_automation_point`, `ableton_create_arrangement_marker`, `ableton_switch_to_arrangement_view`, `ableton_set_arrangement_time`, `ableton_duplicate_session_clip_to_arrangement`, `ableton_quantize_clip` |
+| Bridge discovery | `ableton_get_bridge_capabilities`, `ableton_get_browser_tree`, `ableton_get_browser_items_at_path`, `ableton_list_arrangement_markers`, `ableton_get_arrangement_clips`, `ableton_get_clip_notes`, `ableton_get_clip_envelopes`, `ableton_get_device_parameter_map`, `ableton_extract_automation_summary` |
 | UI driver fallback | `ableton_ui_driver_ping`, `ableton_window_status`, `ableton_focus_window`, `ableton_begin_concept_device_ui_session`, `ableton_click_coordinates` |
 | Sample discovery/import | `ableton_list_free_sample_sources`, `ableton_search_free_sample_sources`, `ableton_plan_free_sample_download`, `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, `ableton_search_internet_archive_audio`, `ableton_list_internet_archive_audio_files`, `ableton_search_freesound`, `ableton_download_sample`, `ableton_import_sample_to_library` |
 | Source usage mode | `ableton_set_project_usage_mode`, `ableton_get_project_usage_mode`, `ableton_create_source_manifest`, `ableton_mark_source_as_user_provided`, `ableton_mark_source_as_experiment_only`, `ableton_check_release_source_readiness` |

@@ -23,6 +23,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | --- | --- |
 | [Tool catalog](TOOL_CATALOG.md) | Seeing the high-level MCP tool groups. |
 | [Tool reference](TOOL_REFERENCE.md) | Checking commands for inspecting tools and MCP context. |
+| [Reference comparison](REFERENCE_AHUJASID_COMPARISON.md) | Comparing this project against `ahujasid/ableton-mcp` and recording adopted capability gaps. |
 | [Local paths](LOCAL_PATHS.md) | Confirming verified Ableton, Max, library, and database paths. |
 | [Sample policy](SAMPLE_POLICY.md) | Reviewing licensing and attribution rules. |
 | [Sample sources](SAMPLE_SOURCES.md) | Checking approved sample sources and import paths. |

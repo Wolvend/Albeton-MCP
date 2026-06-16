@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-294 tools
+301 tools
 3 resources
 2 prompts
 ```
@@ -33,7 +33,7 @@ Primary groups:
 - Automation, groove, and arrangement workflows
 - Professional arrangement/effect/automation/export dry-run tools
 - Offline LUFS, clipping, spectrum, reference checks, and sample musical intelligence
-- Bridge capability reporting plus discovery for arrangement markers, clip notes, envelopes, and device parameter maps
+- Bridge capability reporting plus discovery for Browser trees/items, arrangement markers/clips, clip notes, envelopes, and device parameter maps
 - User-choice UI control consent and production readiness checks
 - Named safe UI actions and dry-run action sequences
 - Screenshot and UI tools
@@ -68,6 +68,7 @@ Control-mode tools:
 - `ableton_plan_concept_routing_readiness`: maps a stored concept arrangement's planned sends to routing-overview discovery calls and exact dry-run send templates.
 - `ableton_plan_concept_device_automation_readiness`: maps staged concept device chains and automation lanes to device discovery, `ableton_extract_automation_summary`, and dry-run write templates.
 - `ableton_browse_live_devices`: returns an offline Ableton-native device browser plan by default; with `check_bridge=true`, reads bounded `live_app browser` BrowserItem metadata through the Max for Live bridge without loading or inserting devices. `max_items` is a total per-category item budget and `max_depth` is capped at 2.
+- `ableton_get_browser_tree` and `ableton_get_browser_items_at_path`: reference-compatible, read-only Browser discovery calls. They return bounded BrowserItem metadata and path hints only; they never call Browser `load_item`.
 - `ableton_render_concept_device_chain_spec`: renders the staged device chains as a production-ready review spec with layer roles, device order, conservative parameter hints, automation links, discovery calls, and dry-run templates.
 - `ableton_render_concept_device_catalog_matches`: matches staged device-chain names against already-indexed Ableton presets, Max devices, and optional plugin presets without scanning, writing, or exposing local paths.
 - `ableton_plan_concept_device_ui_placement`: plans explicit user-gated foreground UI placement for staged concept devices without moving the mouse, typing, inserting devices, or using raw coordinates.
@@ -78,7 +79,10 @@ Control-mode tools:
 - `ableton_render_concept_execution_runbook`: renders a read-only execution rehearsal with ordered phases, gates, dependencies, expected postconditions, and inspection calls before approval or real writes.
 - `ableton_extract_automation_summary`: reads live mixer/device automation target candidates with bounded parameter output; breakpoint writes remain unsupported unless a bridge reports support.
 - `ableton_write_track_volume_automation`, `ableton_write_send_automation`, and `ableton_write_device_parameter_automation`: create explicit dry-run automation lane plans and return unsupported for real breakpoint writes until the bridge can prove support.
-- `ableton_place_sample_on_arrangement`, `ableton_create_arrangement_audio_clip`, `ableton_move_arrangement_clip`, and `ableton_set_arrangement_loop`: typed Arrangement View planning tools; real Arrangement View placement/edit/export calls remain unsupported by the current background bridge.
+- `ableton_get_arrangement_clips`: reads Arrangement View clips for one track when Live exposes `arrangement_clips`.
+- `ableton_switch_to_arrangement_view`, `ableton_set_arrangement_time`, and `ableton_duplicate_session_clip_to_arrangement`: reference-inspired Arrangement helpers. They are dry-run first and write-gated because they change the visible Live view, playhead, or arrangement content.
+- `ableton_place_sample_on_arrangement`, `ableton_create_arrangement_audio_clip`, `ableton_move_arrangement_clip`, and `ableton_set_arrangement_loop`: typed Arrangement View planning tools; direct sample placement/edit/export calls remain unsupported by the current background bridge.
+- `ableton_load_drum_kit`: plans Drum Rack/kit Browser loading from typed paths but returns unsupported for real execution until Browser `load_item` insertion has a proven safe path.
 - `ableton_insert_stock_audio_effect`, `ableton_apply_effect_chain_preset`, and `ableton_create_return_effect_bus`: professional device-chain/bus planning tools that avoid partial side effects while named device insertion remains unsupported.
 - `ableton_reverse_clip_to_sample` and `ableton_crop_clip`: write-gated local ffmpeg transforms for approved source audio into staging/import paths; dry-run by default and never overwrite.
 - `ableton_analyze_lufs`, `ableton_analyze_spectrum`, `ableton_detect_clipping`, and `ableton_compare_reference`: read-only ffmpeg-backed mix checks for rendered masters and references.

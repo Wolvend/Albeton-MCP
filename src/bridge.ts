@@ -51,8 +51,11 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "clip_detail", tool: "ableton_get_clip_detail", status: "read_only", domain: "clips", notes: "Single clip-slot detail read for agent inspection before writes." },
   { action: "list_devices", tool: "ableton_list_devices", status: "read_only", domain: "devices" },
   { action: "list_device_parameters", tool: "ableton_list_device_parameters", status: "read_only", domain: "devices" },
+  { action: "browser_tree", tool: "ableton_get_browser_tree", status: "read_only", domain: "browser", notes: "Reference-compatible bounded Browser tree read; never loads items." },
   { action: "browser_device_tree", tool: "ableton_browse_live_devices", status: "read_only", domain: "browser", notes: "Reads bounded Ableton Browser categories from the loaded Max for Live bridge when requested." },
+  { action: "browser_items_at_path", tool: "ableton_get_browser_items_at_path", status: "read_only", domain: "browser", notes: "Reads bounded BrowserItem children from a path or bridge path_hint; never loads items." },
   { action: "arrangement_markers", tool: "ableton_list_arrangement_markers", status: "read_only", domain: "arrangement" },
+  { action: "arrangement_clips", tool: "ableton_get_arrangement_clips", status: "read_only", domain: "arrangement", notes: "Uses track arrangement_clips when the running Live version exposes it." },
   { action: "clip_notes", tool: "ableton_get_clip_notes", status: "read_only", domain: "clips", notes: "Returns unsupported when the current clip/API cannot expose notes reliably." },
   { action: "clip_envelopes", tool: "ableton_get_clip_envelopes", status: "unsupported", domain: "automation", notes: "Detailed clip envelope enumeration needs a reviewed LiveAPI mapping." },
   { action: "device_parameter_map", tool: "ableton_get_device_parameter_map", status: "read_only", domain: "devices" },
@@ -105,8 +108,12 @@ const bridgeCapabilities: BridgeActionCapability[] = [
   { action: "ableton_rename_scene", tool: "ableton_rename_scene", status: "write_gated", domain: "scenes", requiresWriteGate: true, dryRunFirst: true },
   { action: "ableton_rename_clip", tool: "ableton_rename_clip", status: "write_gated", domain: "clips", requiresWriteGate: true, dryRunFirst: true },
   { action: "ableton_create_arrangement_marker", tool: "ableton_create_arrangement_marker", status: "write_gated", domain: "arrangement", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_switch_to_arrangement_view", tool: "ableton_switch_to_arrangement_view", status: "write_gated", domain: "arrangement", requiresWriteGate: true, dryRunFirst: true, notes: "Changes Ableton's visible view but does not use mouse control." },
+  { action: "ableton_set_arrangement_time", tool: "ableton_set_arrangement_time", status: "write_gated", domain: "arrangement", requiresWriteGate: true, dryRunFirst: true },
+  { action: "ableton_duplicate_session_clip_to_arrangement", tool: "ableton_duplicate_session_clip_to_arrangement", status: "write_gated", domain: "arrangement", requiresWriteGate: true, dryRunFirst: true, notes: "Uses track duplicate_clip_to_arrangement only when the bridge reports success." },
   { action: "ableton_insert_instrument", tool: "ableton_insert_instrument", status: "unsupported", domain: "devices", notes: "Needs a verified Browser/hot-swap target for the running Ableton version." },
   { action: "ableton_insert_effect", tool: "ableton_insert_effect", status: "unsupported", domain: "devices", notes: "Needs a verified Browser/hot-swap target for the running Ableton version." },
+  { action: "ableton_load_drum_kit", tool: "ableton_load_drum_kit", status: "unsupported", domain: "devices", notes: "Browser load_item/device insertion remains disabled until a safe atomic path is proven." },
   { action: "ableton_map_macro", tool: "ableton_map_macro", status: "unsupported", domain: "devices", notes: "Rack macro mapping needs a verified rack/device mapping path for this Ableton version." },
   { action: "ableton_apply_groove", tool: "ableton_apply_groove", status: "unsupported", domain: "groove", notes: "Groove application needs a verified groove-pool and clip mapping path for this Ableton version." },
   { action: "ableton_create_automation_envelope", tool: "ableton_create_automation_envelope", status: "unsupported", domain: "automation", notes: "LiveAPI envelope creation is not exposed reliably from this bridge context." },
@@ -166,7 +173,9 @@ function bridgeTimeoutForAction(action: string) {
     "list_clips",
     "routing_overview",
     "automation_summary",
-    "browser_device_tree"
+    "browser_tree",
+    "browser_device_tree",
+    "browser_items_at_path"
   ].includes(action)) return HEAVY_BRIDGE_TIMEOUT_MS;
   if ([
     "list_tracks",
@@ -177,6 +186,7 @@ function bridgeTimeoutForAction(action: string) {
     "list_devices",
     "list_device_parameters",
     "device_parameter_map",
+    "arrangement_clips",
     "list_return_tracks",
     "master_track",
     "track_mixer",

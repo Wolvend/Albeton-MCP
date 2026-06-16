@@ -1201,6 +1201,174 @@ function browserDeviceTree(payload) {
   };
 }
 
+function knownBrowserCategories() {
+  return ["instruments", "audio_effects", "midi_effects", "max_for_live", "plugins", "drums", "sounds", "clips", "samples"];
+}
+
+function isKnownBrowserCategory(category) {
+  var known = knownBrowserCategories();
+  for (var i = 0; i < known.length; i += 1) {
+    if (known[i] === category) return true;
+  }
+  return false;
+}
+
+function normalizeBrowserName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/^\s+|\s+$/g, "");
+}
+
+function browserCategoryChildCount(browserApi, category) {
+  var directCount = childCount(browserApi, category);
+  if (directCount > 0) return { count: directCount, direct: true, rootPath: "live_app browser " + category };
+  var categoryPath = "live_app browser " + category;
+  return { count: childCount(liveObject(categoryPath), "children"), direct: false, rootPath: categoryPath };
+}
+
+function browserCategoryChildPath(categoryInfo, index) {
+  if (categoryInfo.direct) return categoryInfo.rootPath + " " + index;
+  return categoryInfo.rootPath + " children " + index;
+}
+
+function browserObjectChildren(parentPath, maxItems, maxDepth) {
+  var parentApi = liveObject(parentPath);
+  var total = childCount(parentApi, "children");
+  var budget = { remaining: maxItems };
+  var items = [];
+  var end = Math.min(total, maxItems);
+  for (var i = 0; i < end && budget.remaining > 0; i += 1) {
+    budget.remaining -= 1;
+    items.push(browserItemSummary(parentPath + " children " + i, i, 0, maxDepth, maxItems, budget));
+  }
+  return { total: total, returned: items.length, items: items };
+}
+
+function browserCategoryChildren(category, maxItems, maxDepth) {
+  var browserApi = liveObject("live_app browser");
+  var info = browserCategoryChildCount(browserApi, category);
+  var budget = { remaining: maxItems };
+  var items = [];
+  var end = Math.min(info.count, maxItems);
+  for (var i = 0; i < end && budget.remaining > 0; i += 1) {
+    budget.remaining -= 1;
+    items.push(browserItemSummary(browserCategoryChildPath(info, i), i, 0, maxDepth, maxItems, budget));
+  }
+  return { total: info.count, returned: items.length, items: items, category_info: info };
+}
+
+function findBrowserCategoryChild(category, name) {
+  var browserApi = liveObject("live_app browser");
+  var info = browserCategoryChildCount(browserApi, category);
+  var needle = normalizeBrowserName(name);
+  var scanLimit = Math.min(info.count, 256);
+  for (var i = 0; i < scanLimit; i += 1) {
+    var childPath = browserCategoryChildPath(info, i);
+    var childName = normalizeBrowserName(safeGet(liveObject(childPath), "name", ""));
+    if (childName === needle) return childPath;
+  }
+  return null;
+}
+
+function findBrowserObjectChild(parentPath, name) {
+  var parentApi = liveObject(parentPath);
+  var count = childCount(parentApi, "children");
+  var needle = normalizeBrowserName(name);
+  var scanLimit = Math.min(count, 256);
+  for (var i = 0; i < scanLimit; i += 1) {
+    var childPath = parentPath + " children " + i;
+    var childName = normalizeBrowserName(safeGet(liveObject(childPath), "name", ""));
+    if (childName === needle) return childPath;
+  }
+  return null;
+}
+
+function browserItemsAtPath(payload) {
+  var requestedPath = String(payload && payload.path ? payload.path : "");
+  var maxItems = Math.max(1, Math.min(64, Number(payload && payload.max_items ? payload.max_items : 24)));
+  var maxDepth = Math.max(0, Math.min(2, Number(payload && payload.max_depth !== undefined ? payload.max_depth : 1)));
+  if (!requestedPath) throw new Error("path is required.");
+  if (!/^[A-Za-z0-9 _\.\/:#-]+$/.test(requestedPath)) throw new Error("Browser path contains unsupported characters.");
+  var traversalParts = requestedPath.split(/[\/\\]+/);
+  for (var traversalIndex = 0; traversalIndex < traversalParts.length; traversalIndex += 1) {
+    if (traversalParts[traversalIndex] === "." || traversalParts[traversalIndex] === "..") {
+      throw new Error("Browser path cannot contain traversal segments.");
+    }
+  }
+
+  if (requestedPath.indexOf("live_app browser") === 0) {
+    var hinted = browserObjectChildren(requestedPath, maxItems, maxDepth);
+    return {
+      source: "live_app browser",
+      read_only: true,
+      requested_path: requestedPath,
+      resolved_path_hint: requestedPath,
+      total_children: hinted.total,
+      returned: hinted.returned,
+      items: hinted.items
+    };
+  }
+
+  var parts = requestedPath.split(/[\/\\]+/);
+  var cleaned = [];
+  for (var p = 0; p < parts.length; p += 1) {
+    var part = String(parts[p] || "").replace(/^\s+|\s+$/g, "");
+    if (part) cleaned.push(part);
+  }
+  if (!cleaned.length) throw new Error("path must include a browser category.");
+
+  var category = normalizeBrowserCategory(cleaned[0]);
+  if (!isKnownBrowserCategory(category)) {
+    return unsupported("browser_items_at_path", "Unknown or unavailable browser category.", {
+      requested_category: cleaned[0],
+      available_categories: knownBrowserCategories()
+    });
+  }
+
+  if (cleaned.length === 1) {
+    var categoryChildren = browserCategoryChildren(category, maxItems, maxDepth);
+    return {
+      source: "live_app browser",
+      read_only: true,
+      requested_path: requestedPath,
+      category: category,
+      total_children: categoryChildren.total,
+      returned: categoryChildren.returned,
+      items: categoryChildren.items
+    };
+  }
+
+  var currentPath = findBrowserCategoryChild(category, cleaned[1]);
+  if (!currentPath) {
+    return unsupported("browser_items_at_path", "Path part not found under browser category.", {
+      requested_path: requestedPath,
+      category: category,
+      missing_part: cleaned[1]
+    });
+  }
+  for (var i = 2; i < cleaned.length; i += 1) {
+    currentPath = findBrowserObjectChild(currentPath, cleaned[i]);
+    if (!currentPath) {
+      return unsupported("browser_items_at_path", "Path part not found under BrowserItem.", {
+        requested_path: requestedPath,
+        missing_part: cleaned[i],
+        resolved_until_index: i - 1
+      });
+    }
+  }
+
+  var children = browserObjectChildren(currentPath, maxItems, maxDepth);
+  return {
+    source: "live_app browser",
+    read_only: true,
+    requested_path: requestedPath,
+    category: category,
+    resolved_path_hint: currentPath,
+    item: browserItemSummary(currentPath, 0, 0, 0, 1, { remaining: 0 }),
+    total_children: children.total,
+    returned: children.returned,
+    items: children.items
+  };
+}
+
 function fireClip(payload) {
   var target = clipSlotFromPayload(payload);
   return { track_index: target.track_index, slot_index: target.slot_index, result: safeCall(target.slot, "fire") };
@@ -1439,6 +1607,59 @@ function listArrangementMarkers() {
   return { markers: markers };
 }
 
+function arrangementClipSummary(trackIndex, clipIndex) {
+  var clip = liveObject("live_set tracks " + trackIndex + " arrangement_clips " + clipIndex);
+  return {
+    id: objectId(clip),
+    index: clipIndex,
+    name: safeGet(clip, "name", ""),
+    color: safeGet(clip, "color", null),
+    start_time: safeGet(clip, "start_time", null),
+    end_time: safeGet(clip, "end_time", null),
+    length: safeGet(clip, "length", null),
+    is_midi_clip: safeGet(clip, "is_midi_clip", null),
+    is_audio_clip: safeGet(clip, "is_audio_clip", null),
+    is_playing: safeGet(clip, "is_playing", null)
+  };
+}
+
+function listArrangementClips(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var track = liveObject("live_set tracks " + trackIndex);
+  var count = childCount(track, "arrangement_clips");
+  var bounds = pageBounds(payload, 32, 64);
+  var end = Math.min(count, bounds.offset + bounds.limit);
+  var clips = [];
+  for (var i = bounds.offset; i < end; i += 1) {
+    clips.push(arrangementClipSummary(trackIndex, i));
+  }
+  return {
+    track_index: trackIndex,
+    track_name: safeGet(track, "name", ""),
+    clip_count: count,
+    offset: bounds.offset,
+    limit: bounds.limit,
+    returned: clips.length,
+    clips: clips,
+    support_note: "If clip_count is zero, the track may have no Arrangement clips or this LiveAPI context may not expose arrangement_clips."
+  };
+}
+
+function switchToArrangementView() {
+  var view = liveObject("live_app view");
+  var result = safeCall(view, "show_view", ["Arranger"]);
+  if (!callSucceeded(result)) return unsupported("ableton_switch_to_arrangement_view", "Application view show_view('Arranger') is unavailable from this LiveAPI context.", { result: result });
+  return { view: "Arranger", result: result };
+}
+
+function setArrangementTime(payload) {
+  var time = Number(payload && payload.time);
+  if (!isFinite(time) || time < 0) throw new Error("time must be a non-negative beat position.");
+  var song = liveObject("live_set");
+  song.set("current_song_time", time);
+  return { current_song_time: safeGet(song, "current_song_time", null) };
+}
+
 function createArrangementMarker(payload) {
   var time = Number(payload && payload.time);
   var name = String(payload && payload.name ? payload.name : "").slice(0, 128);
@@ -1536,6 +1757,32 @@ function moveClip(payload) {
   var deleteResult = safeCall(clipSlotByIndexes(sourceTrack, sourceSlot), "delete_clip");
   if (!callSucceeded(deleteResult)) return unsupported("ableton_move_clip", "Clip duplicated but source delete_clip is unavailable from this LiveAPI context.", { duplicate: duplicateResult, delete_result: deleteResult });
   return { moved: true, duplicate: duplicateResult, delete_result: deleteResult };
+}
+
+function duplicateSessionClipToArrangement(payload) {
+  var trackIndex = parseTrackIndex(payload);
+  var slotIndex = parseClipSlotIndex(payload);
+  var destinationTime = Number(payload && payload.destination_time);
+  if (!isFinite(destinationTime) || destinationTime < 0) throw new Error("destination_time must be a non-negative beat position.");
+  if (!clipExists(trackIndex, slotIndex)) throw new Error("Source clip slot does not contain a clip.");
+  var track = liveObject("live_set tracks " + trackIndex);
+  var clip = clipByIndexes(trackIndex, slotIndex);
+  var result = safeCall(track, "duplicate_clip_to_arrangement", [clip, destinationTime]);
+  if (!callSucceeded(result)) {
+    return unsupported("ableton_duplicate_session_clip_to_arrangement", "Track.duplicate_clip_to_arrangement is unavailable from this LiveAPI context.", {
+      track_index: trackIndex,
+      clip_slot_index: slotIndex,
+      destination_time: destinationTime,
+      result: result
+    });
+  }
+  return {
+    duplicated: true,
+    track_index: trackIndex,
+    clip_slot_index: slotIndex,
+    destination_time: destinationTime,
+    arrangement: listArrangementClips({ track_index: trackIndex })
+  };
 }
 
 function getClipNotes(payload) {
@@ -1680,8 +1927,11 @@ function bridgeCapabilities() {
     ["clip_detail", "read_only", "clips"],
     ["list_devices", "read_only", "devices"],
     ["list_device_parameters", "read_only", "devices"],
+    ["browser_tree", "read_only", "browser"],
     ["browser_device_tree", "read_only", "browser"],
+    ["browser_items_at_path", "read_only", "browser"],
     ["arrangement_markers", "read_only", "arrangement"],
+    ["arrangement_clips", "read_only", "arrangement"],
     ["clip_notes", "read_only", "clips"],
     ["clip_envelopes", "unsupported", "automation"],
     ["device_parameter_map", "read_only", "devices"],
@@ -1734,8 +1984,12 @@ function bridgeCapabilities() {
     ["ableton_rename_scene", "write_gated", "scenes"],
     ["ableton_rename_clip", "write_gated", "clips"],
     ["ableton_create_arrangement_marker", "write_gated", "arrangement"],
+    ["ableton_switch_to_arrangement_view", "write_gated", "arrangement"],
+    ["ableton_set_arrangement_time", "write_gated", "arrangement"],
+    ["ableton_duplicate_session_clip_to_arrangement", "write_gated", "arrangement"],
     ["ableton_insert_instrument", "unsupported", "devices"],
     ["ableton_insert_effect", "unsupported", "devices"],
+    ["ableton_load_drum_kit", "unsupported", "devices"],
     ["ableton_map_macro", "unsupported", "devices"],
     ["ableton_apply_groove", "unsupported", "groove"],
     ["ableton_create_automation_envelope", "unsupported", "automation"],
@@ -1803,6 +2057,7 @@ function dispatch(action, payload) {
   if (action === "return_track_mixer") return getReturnTrackMixer(payload);
   if (action === "list_scenes") return { scenes: listScenes() };
   if (action === "arrangement_markers") return listArrangementMarkers();
+  if (action === "arrangement_clips") return listArrangementClips(payload);
   if (action === "list_clips") return { clips: listClips() };
   if (action === "list_clip_slots") return listClipSlots(payload);
   if (action === "clip_detail") return clipDetail(payload);
@@ -1810,7 +2065,8 @@ function dispatch(action, payload) {
   if (action === "clip_envelopes") return getClipEnvelopes(payload);
   if (action === "list_devices") return listDevices(payload);
   if (action === "list_device_parameters") return listDeviceParameters(payload);
-  if (action === "browser_device_tree") return browserDeviceTree(payload);
+  if (action === "browser_tree" || action === "browser_device_tree" || action === "get_browser_tree") return browserDeviceTree(payload);
+  if (action === "browser_items_at_path" || action === "get_browser_items_at_path") return browserItemsAtPath(payload);
   if (action === "device_parameter_map") return listDeviceParameters(payload);
   if (action === "automation_summary") return automationSummary(payload);
   if (action === "selected_track") return { track: summarizeTrack(selectedTrackIndex(), false, false) };
@@ -1854,6 +2110,8 @@ function dispatch(action, payload) {
   if (action === "ableton_set_automation_point") return setAutomationPoint(payload);
   if (action === "ableton_simplify_automation") return simplifyAutomation(payload);
   if (action === "ableton_create_arrangement_marker") return createArrangementMarker(payload);
+  if (action === "ableton_switch_to_arrangement_view" || action === "switch_to_arrangement_view") return switchToArrangementView(payload);
+  if (action === "ableton_set_arrangement_time" || action === "set_current_song_time") return setArrangementTime(payload);
   if (action === "ableton_fire_scene") return fireScene(payload);
   if (action === "ableton_set_scene_tempo") return setSceneTempo(payload);
   if (action === "ableton_set_scene_time_signature") return setSceneTimeSignature(payload);
@@ -1861,6 +2119,7 @@ function dispatch(action, payload) {
   if (action === "ableton_duplicate_scene") return duplicateScene(payload);
   if (action === "ableton_duplicate_clip") return duplicateClip(payload);
   if (action === "ableton_move_clip") return moveClip(payload);
+  if (action === "ableton_duplicate_session_clip_to_arrangement" || action === "duplicate_session_clip_to_arrangement") return duplicateSessionClipToArrangement(payload);
   if (action === "ableton_quantize_clip") return quantizeClip(payload);
   if (action === "ableton_humanize_midi_clip") return humanizeMidiClip(payload);
   return unsupported(action, "Action is registered on the MCP side but not implemented in the v1 LiveAPI bridge yet.", {});

@@ -10,7 +10,7 @@ The design goal is simple: **let an AI agent help produce music without turning 
 [![TypeScript](https://img.shields.io/badge/ts-strict-76a7ff?style=flat-square&logo=typescript&logoColor=white)](tsconfig.json)
 [![MCP](https://img.shields.io/badge/mcp-stdio%20%2B%20http-f2c35b?style=flat-square)](docs/CLIENTS.md)
 [![Security](https://img.shields.io/badge/security-read--only-8bd9c7?style=flat-square)](SECURITY.md)
-[![Tools](https://img.shields.io/badge/tools-294-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
+[![Tools](https://img.shields.io/badge/tools-301-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
 
 > This project is an independent local automation layer. Ableton and Max for Live are trademarks of their respective owners.
 
@@ -20,8 +20,8 @@ Ableton MCP is a TypeScript/Node MCP server with a local Max for Live LiveAPI br
 
 | Area | Capability |
 | --- | --- |
-| Live inspection | Read transport, tracks, scenes, clips, devices, mixer, sends, routing, notes, snapshots, and bridge status when the Max for Live device is loaded. |
-| Gated Live control | Dry-run first write tools for tempo, scenes, clips, mixer moves, markers, MIDI notes, sample loading, arrangement helpers, and selected clip operations. |
+| Live inspection | Read transport, tracks, scenes, clips, devices, Browser trees, Arrangement clips, mixer, sends, routing, notes, snapshots, and bridge status when the Max for Live device is loaded. |
+| Gated Live control | Dry-run first write tools for tempo, scenes, clips, mixer moves, markers, MIDI notes, sample loading, Arrangement view/time helpers, and selected clip operations. |
 | Producer brain | Parse briefs into tempo/key/hook/layer decisions, source usage mode, sound-design patches, arrangement moments, render review, mix scoring, revision passes, and delivery handoffs. |
 | Music planning | Turn a mood/place/reference into concept plans, sample roles, arrangement timelines, device-chain specs, automation maps, mix plans, scorecards, and runbooks. |
 | Sample intelligence | Search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
@@ -166,10 +166,10 @@ See [Client compatibility](docs/CLIENTS.md) and [Model runtime compatibility](do
 Current verified surface:
 
 ```text
-MCP tools: 294
+MCP tools: 301
 Resources: 3
 Prompts: 2
-Docker MCP default safe tools: 187
+Docker MCP default safe tools: 190
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -281,6 +281,7 @@ The scanner does not run a full library scan at startup. Use explicit scan/searc
 | [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, OpenClaw, OpenRouter, Gemini, llama.cpp, and private-device setup. |
 | [Tool catalog](docs/TOOL_CATALOG.md) | High-level tool groups and current tool count. |
 | [Tool reference](docs/TOOL_REFERENCE.md) | Inspection commands and MCP context reference. |
+| [Reference comparison](docs/REFERENCE_AHUJASID_COMPARISON.md) | Comparison against `ahujasid/ableton-mcp` and adopted Browser/Arrangement gaps. |
 | [Producer brain](docs/PRODUCER_BRAIN.md) | Source usage modes, brief parsing, sound design, render review, mix scoring, revision loops, and handoff tools. |
 | [Concept to music](docs/CONCEPT_TO_MUSIC.md) | Staged production workflow from idea to arrangement plan. |
 | [Natural language to music](docs/NATURAL_LANGUAGE_TO_MUSIC.md) | How agents should translate user requests into musical actions. |
@@ -298,8 +299,8 @@ Latest checked status in this workspace:
 Build: passed
 Lint: passed
 Tests: 25 files, 118 tests passed
-MCP verifier: passed, 294 tools, 3 resources, 2 prompts
-Safe sweep: passed, 178 safe calls, 0 unexpected failures
+MCP verifier: passed, 301 tools, 3 resources, 2 prompts
+Safe sweep: passed, 185 safe calls, 0 unexpected failures
 Audit: 0 vulnerabilities
 ```
 
