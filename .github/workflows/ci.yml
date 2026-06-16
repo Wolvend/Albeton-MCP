@@ -47,3 +47,38 @@ jobs:
 
       - name: Release check
         run: npm run release:check
+
+  hardening:
+    name: Headless Hardening
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Doctor
+        run: npm run doctor
+
+      - name: Safe sweep
+        run: npm run sweep:safe
+
+      - name: All-tool contract sweep
+        run: npm run sweep:all
+
+      - name: Audit
+        run: npm audit --audit-level=moderate
+
+      - name: Whitespace check
+        run: git diff --check

@@ -186,7 +186,7 @@ Result: succeeded.
 npm run doctor
 ```
 
-Result: succeeded. Doctor reported 8 checks, 0 failures, and 1 runtime warning because the optional UI driver on `127.0.0.1:17365` was not loaded. The HTTP transport on `127.0.0.1:17366` was reachable, the Max for Live bridge listener on `127.0.0.1:17364` was present, and the local catalog reported 301 tools.
+Result: succeeded. Doctor reported 8 checks, 0 failures, and 1 runtime warning because the optional UI driver on `127.0.0.1:17365` was not loaded. The HTTP transport on `127.0.0.1:17366` was reachable, the Max for Live bridge listener on `127.0.0.1:17364` was present, and the local catalog matched the current 317-tool surface.
 
 ```powershell
 npm run release:check
@@ -198,13 +198,13 @@ Result: succeeded. Release check found no missing required files or scripts. It 
 npm run sweep:safe
 ```
 
-Result: succeeded. Safe sweep called 185 read-only and dry-run tools with 0 unexpected failures, including source usage mode, producer-brain planning, sound-design planning, render/mix analysis, revision/handoff tools, reference-inspired Browser/Arrangement calls, `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, the universal sample-source registry calls, plus the existing readiness, bridge, concept, routing, attribution, and dry-run write-planning calls.
+Result: succeeded. Safe sweep called 201 read-only and dry-run tools with 0 unexpected failures, including source usage mode, producer-brain planning, sound-design planning, render/mix analysis, revision/handoff tools, reference-inspired Browser/Arrangement calls, `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, the universal sample-source registry calls, plus the existing readiness, bridge, concept, routing, attribution, and dry-run write-planning calls.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 301 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now includes source usage manifests, producer-brain planning, sound design, Browser/Arrangement reference coverage, arrangement/revision, mix/render analysis, capability handoff, the read-only sample intelligence tools, and the universal free-sample source registry, and preserves the existing concept, bridge, UI-consent, routing, automation-readiness, attribution, delivery, and dry-run execution coverage.
+Result: succeeded. All-tool contract sweep called all 317 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now includes source usage manifests, producer-brain planning, sound design, Browser/Arrangement reference coverage, arrangement/revision, mix/render analysis, capability handoff, the read-only sample intelligence tools, and the universal free-sample source registry, and preserves the existing concept, bridge, UI-consent, routing, automation-readiness, attribution, delivery, and dry-run execution coverage.
 
 The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_humanize_midi_clip` with deterministic seeded dry-run planning, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature/color/rename tools, typed track/return/master volume/pan/color tools, typed return-track rename, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, `ableton_set_clip_markers`, and `ableton_set_clip_color` contracts. Concept arrangement plans now include created-track, created-return, and created-scene placeholders for scene setup, color, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, clip colors, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, a deterministic approval id, and a read-only readiness handoff that links concept automation lanes to `ableton_extract_automation_summary` target discovery; real execution requires approval confirmation, reruns preflight, writes a redacted execution journal, resolves executable placeholders from a live snapshot immediately before write-gated bridge calls, and stops on bridge-level `unsupported: true` results.
 
@@ -214,7 +214,7 @@ LiveAPI bridge source now includes track mixer send summaries in mixer reads/sna
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 301 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 317 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -224,7 +224,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 
 ## Docker MCP
 
-The latest code-level default safe allowlist contains 190 tools after adding read-only producer-brain planning, Browser/Arrangement reads, source readiness, render/mix analysis, and handoff tools. The Docker profile apply/verify commands below are from the previous profile activation pass; rerun `npm run docker:profile:apply` and `npm run docker:profile:verify` when you want the active Docker profile updated to the new allowlist.
+The latest code-level default safe allowlist contains 206 tools after adding the producer facade and sample-intelligence workflows. The Docker profile apply/verify commands below may reflect an earlier profile activation pass; rerun `npm run docker:profile:apply` and `npm run docker:profile:verify` when you want the active Docker profile updated to the current allowlist.
 
 ```powershell
 npm run docker:profile:verify
@@ -273,7 +273,7 @@ The host HTTP service can be started with:
 .\launch.ps1 docker -SkipSetup
 ```
 
-For this verification run, the host HTTP service was restarted after the latest build so Docker could query the rebuilt 217-tool server. A direct Streamable HTTP MCP probe reported `toolCount: 217`, `hasObjectiveReadiness: true`, `hasLaunchAudit: true`, `objectiveStatus: "ready_for_default_clients_pending_live_bridge"`, `auditMode: "ready_for_offline_planning"`, `okForDefaultClientUse: true`, `bridgeReachable: false`, and `safeToolCount: 140`. The objective report and launch audit include LiveAPI control coverage for write-gated supported track/scene/sample/MIDI/mixer/marker actions plus explicit unsupported boundaries for native device insertion, automation breakpoint writes, and quantization. The rebuilt HTTP surface also exposes the user-gated concept device UI session only outside the safe client allowlist; real UI/mouse work still requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
+For this verification run, the host HTTP service was restarted after the latest build so Docker could query the MCP server. The objective report and launch audit include LiveAPI control coverage for write-gated supported track/scene/sample/MIDI/mixer/marker actions plus explicit unsupported boundaries for native device insertion, automation breakpoint writes, and quantization. The HTTP surface also exposes the user-gated concept device UI session only outside the safe client allowlist; real UI/mouse work still requires `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
 
 Health result:
 
@@ -297,9 +297,9 @@ Docker gateway dry-run:
 docker mcp gateway run --profile hypernimbus --dry-run --block-secrets
 ```
 
-Result: succeeded after restarting the local HTTP listener on `127.0.0.1:17366`. Docker loaded the selected profile and listed `ableton-mcp` with 140 enabled safe tools.
+Result: succeeded after restarting the local HTTP listener on `127.0.0.1:17366`. Docker loaded the selected profile and listed `ableton-mcp` with its configured safe-tool allowlist.
 
-Direct Streamable HTTP probe against `http://127.0.0.1:17366/mcp` reported `toolCount: 217`, `hasObjectiveReadiness: true`, `hasLaunchAudit: true`, `objectiveStatus: "ready_for_default_clients_pending_live_bridge"`, `auditMode: "ready_for_offline_planning"`, `okForDefaultClientUse: true`, `bridgeReachable: false`, and `safeToolCount: 140`.
+Direct Streamable HTTP probe against `http://127.0.0.1:17366/mcp` reported objective readiness, launch audit support, `objectiveStatus: "ready_for_default_clients_pending_live_bridge"`, `auditMode: "ready_for_offline_planning"`, `okForDefaultClientUse: true`, and `bridgeReachable: false`.
 
 Note: `--block-network` is not used for this gateway check because `ableton-mcp` is configured as a Docker MCP remote server at `http://127.0.0.1:17366/mcp`; blocking network access can prevent Docker Gateway from reaching that local MCP endpoint.
 
@@ -333,7 +333,7 @@ Result: succeeded for the user-provided source-song path under `%USERPROFILE%\Do
 wsl.exe -d Ubuntu --cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp -e bash -lc 'ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh check --skip-setup'
 ```
 
-Result: succeeded under WSL with 217 tools, 3 resources, and 2 prompts. The native WSL verifier ran the MCP catalog, security, runtime, bridge-mock, and sample-search checks. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`.
+Result: succeeded under WSL with the native MCP catalog, security, runtime, bridge-mock, and sample-search checks. Platform path security rejected `/`, `%USERPROFILE%`, `%USERPROFILE%/.ssh`, and `%USERPROFILE%/AppData/Roaming`. Rerun the WSL check after major tool-surface changes to confirm the current 317-tool surface from that environment.
 
 ```powershell
 wsl.exe -d Ubuntu --cd /mnt/c/Users/LIZ/Desktop/MCP/ableton-mcp -e bash -lc 'ABLETON_MCP_USE_BASH_NODE=1 ABLETON_MCP_SKIP_SETUP=1 ./launch.sh concept-demo --skip-setup'

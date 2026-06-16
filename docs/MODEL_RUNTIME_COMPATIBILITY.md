@@ -15,7 +15,7 @@ Evidence:
 - `config/codex.json` and `.mcp.json` use `mcpServers.ableton-mcp.command = C:/Users/LIZ/Desktop/MCP/ableton-mcp/launch.cmd`.
 - Args are `["stdio", "-SkipSetup"]`.
 - Feature gates stay off: `ABLETON_MCP_ENABLE_WRITE=0`, `ABLETON_MCP_ENABLE_UI_CONTROL=0`, `ABLETON_MCP_ENABLE_DOWNLOADS=0`.
-- `npm run verify:mcp` passed with 294 tools, 3 resources, 2 prompts, path security checks, runtime report, security report, bridge mock, and sample metadata search.
+- `npm run verify:mcp` now reports the current 317-tool surface, 3 resources, 2 prompts, path security checks, runtime report, security report, bridge mock, and sample metadata search. Earlier smoke-test counts in this document were historical and should not be treated as the current catalog.
 
 ### llama.cpp
 
