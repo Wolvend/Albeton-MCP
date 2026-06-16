@@ -12,7 +12,7 @@ The design goal is simple: **let an AI agent help produce music without turning 
 [![Security](https://img.shields.io/badge/security-read--only-8bd9c7?style=flat-square)](SECURITY.md)
 [![Tools](https://img.shields.io/badge/tools-301-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
 
-> This project is an independent local automation layer. Ableton and Max for Live are trademarks of their respective owners.
+> This project is an independent local automation layer.
 
 ## What It Does
 
