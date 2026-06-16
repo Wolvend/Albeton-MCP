@@ -13,6 +13,12 @@ For the producer-skill view of why these tools matter and how agents should sequ
 - No broad filesystem scans, arbitrary shell, arbitrary URL fetch, public HTTP exposure, hidden commands, or fake success.
 - Unsupported LiveAPI operations must return structured `unsupported: true` results with next steps.
 
+## Current Producer-Brain Milestone
+
+The first producer-brain milestone is implemented and verified in the current MCP catalog. It covers source usage modes, private-experiment manifests, release-candidate source readiness, brief parsing, mood palettes, tempo grids, harmonic palettes, motif systems, hook scoring, layer stacks, moment maps, negative-space planning, synth/sampler/granular/rack-macro planning, arrangement scoring, density scoring, automation-curve generation, render quality analysis, mix balance and translation scoring, stereo/depth planning, revision-pass generation, render-version comparison, capability matrix reporting, failure classification, session handoff, project-organization checks, and delivery-package manifests.
+
+Current reference: [Producer brain](PRODUCER_BRAIN.md). The roadmap tables below now mean "deeper future implementation" for any tool name already present in the producer-brain reference, such as replacing heuristic scoring with richer DSP, adding stored plan ids, or wiring proven LiveAPI execution where safe.
+
 ## Implementation Pattern
 
 New tools should use strict typed schemas and structured responses.

@@ -1,9 +1,32 @@
 # Final Verification Report
 
 Date: 2026-06-13 local runtime checks
-Updated: 2026-06-14 local beta hardening and Infinite Nowhere Protocol render pass
+Updated: 2026-06-16 producer-brain upgrade and full local verification pass
 
 This report records the latest verification pass for the Ableton MCP production build.
+
+## 2026-06-16 Producer-Brain Upgrade Pass
+
+The latest pass added the producer-brain and engineer-brain MCP layer:
+
+- Source usage mode tools for `private_experiment` and `release_candidate`.
+- Source manifests that allow private unverified experimentation while preserving release blockers.
+- Brief parsing, mood palette, tempo grid, harmonic palette, motif system, hook scoring, layer stack, moment map, and negative-space planning tools.
+- Synth, Operator, Wavetable, Drift, Sampler, granular texture, rack macro, and patch/concept scoring tools.
+- Arrangement arc, arrangement motion, density curve, automation curve, revision pass, next revision pass, and render-version comparison tools.
+- Render quality, masking, mud/harshness/sibilance, phase/mono, low-end, mix balance, mix translation, stereo-depth, and depth-image analysis tools.
+- Capability matrix, render-failure classification, song runbook, session handoff, organization validation, and delivery-package tools.
+
+Security posture stayed unchanged:
+
+```text
+Writes: disabled by default and dry-run first
+Downloads: disabled by default
+UI/mouse control: disabled by default
+Remote HTTP: disabled by default
+Arbitrary URL scraping/shell/broad scans: not implemented
+Unsupported bridge operations: report unsupported/setup errors, not fake success
+```
 
 ## 2026-06-14 Beta Hardening Pass
 
@@ -83,24 +106,24 @@ Mono peak: 0.7399 linear
 ## Current Surface
 
 ```text
-Tools: 248
+Tools: 294
 Resources: 3
 Prompts: 2
-Docker MCP default safe tools: 146
+Docker MCP default safe tools: 187
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
-Latest incremental verification for the sample intelligence core:
+Latest incremental verification for the producer-brain core:
 
 ```text
 Build: passed
-Tests: 24 files, 111 tests passed
+Tests: 25 files, 118 tests passed
 Lint: passed
 Doctor: passed with 0 failures and 1 warning for the optional UI driver listener
 Release check: passed
-Safe sweep: passed, 133 safe calls, 0 unexpected failures
-All-tool contract sweep: passed, 248 registered tools, 248 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
-MCP verifier: passed, 248 tools, 3 resources, 2 prompts
+Safe sweep: passed, 178 safe calls, 0 unexpected failures
+All-tool contract sweep: passed, 294 registered tools, 294 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
+MCP verifier: passed, 294 tools, 3 resources, 2 prompts
 Audit: 0 vulnerabilities
 ```
 
@@ -125,7 +148,7 @@ Result: succeeded.
 npm test
 ```
 
-Result: succeeded. Vitest reported 24 test files and 111 tests passed, including the sample intelligence core tests, universal free-sample source registry tests, YouTube/SoundCloud manual-proof boundaries, host mismatch rejection, bridge/setup checks, Docker/OpenClaw allowlist checks, concept workflow checks, sample attribution checks, Internet Archive audio file extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior, and concept execution write-gate rejection.
+Result: succeeded. Vitest reported 25 test files and 118 tests passed, including producer-brain source usage mode tests, release-candidate source blocker tests, render-quality fixture analysis, all-tool contract coverage, sample intelligence core tests, universal free-sample source registry tests, YouTube/SoundCloud manual-proof boundaries, host mismatch rejection, bridge/setup checks, Docker/OpenClaw allowlist checks, concept workflow checks, sample attribution checks, Internet Archive audio file extraction, redirect rejection for sample/plugin downloads, unsupported LiveAPI dry-run behavior, and concept execution write-gate rejection.
 
 ```powershell
 npm run lint
@@ -137,7 +160,7 @@ Result: succeeded.
 npm run doctor
 ```
 
-Result: succeeded. Doctor reported 8 checks, 0 failures, and 1 runtime warning because the optional UI driver on `127.0.0.1:17365` was not loaded. The HTTP transport on `127.0.0.1:17366` was reachable, the Max for Live bridge listener on `127.0.0.1:17364` was present, and the local catalog reported 248 tools.
+Result: succeeded. Doctor reported 8 checks, 0 failures, and 1 runtime warning because the optional UI driver on `127.0.0.1:17365` was not loaded. The HTTP transport on `127.0.0.1:17366` was reachable, the Max for Live bridge listener on `127.0.0.1:17364` was present, and the local catalog reported 294 tools.
 
 ```powershell
 npm run release:check
@@ -149,13 +172,13 @@ Result: succeeded. Release check found no missing required files or scripts. It 
 npm run sweep:safe
 ```
 
-Result: succeeded. Safe sweep called 133 read-only and dry-run tools with 0 unexpected failures, including `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, the universal sample-source registry calls, plus the existing readiness, bridge, concept, routing, attribution, and dry-run write-planning calls.
+Result: succeeded. Safe sweep called 178 read-only and dry-run tools with 0 unexpected failures, including source usage mode, producer-brain planning, sound-design planning, render/mix analysis, revision/handoff tools, `ableton_analyze_sample_musical_features`, `ableton_detect_key_bpm_confidence`, `ableton_find_best_loop_points`, `ableton_match_samples_to_concept`, the universal sample-source registry calls, plus the existing readiness, bridge, concept, routing, attribution, and dry-run write-planning calls.
 
 ```powershell
 npm run sweep:all
 ```
 
-Result: succeeded. All-tool contract sweep called all 248 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now includes the read-only sample intelligence tools and universal free-sample source registry, and preserves the existing concept, bridge, UI-consent, routing, automation-readiness, attribution, delivery, and dry-run execution coverage.
+Result: succeeded. All-tool contract sweep called all 294 registered tools exactly once with safe read-only, dry-run, or intentionally gated arguments. It reported 0 missing specs, 0 extra specs, 0 duplicate specs, and 0 unexpected failures. The sweep now includes source usage manifests, producer-brain planning, sound design, arrangement/revision, mix/render analysis, capability handoff, the read-only sample intelligence tools, and the universal free-sample source registry, and preserves the existing concept, bridge, UI-consent, routing, automation-readiness, attribution, delivery, and dry-run execution coverage.
 
 The sweep covers `ableton_insert_midi_notes` with bounded typed note input, `ableton_humanize_midi_clip` with deterministic seeded dry-run planning, `ableton_load_preset_or_sample` with an approved staged audio fixture in dry-run mode, typed scene launch/tempo/signature/color/rename tools, typed track/return/master volume/pan/color tools, typed return-track rename, and the typed `ableton_rename_clip`, `ableton_set_clip_loop`, `ableton_set_clip_gain`, `ableton_transpose_clip`, `ableton_set_clip_warp`, `ableton_set_clip_markers`, and `ableton_set_clip_color` contracts. Concept arrangement plans now include created-track, created-return, and created-scene placeholders for scene setup, color, volume, pan, reverb/delay sends, sparse MIDI motifs, clip names, loop boundaries, clip colors, approved local sample assignments, audio clip gain, pitch, warp, marker shaping, staged device-chain plans, staged automation metadata, a deterministic approval id, and a read-only readiness handoff that links concept automation lanes to `ableton_extract_automation_summary` target discovery; real execution requires approval confirmation, reruns preflight, writes a redacted execution journal, resolves executable placeholders from a live snapshot immediately before write-gated bridge calls, and stops on bridge-level `unsupported: true` results.
 
@@ -165,7 +188,7 @@ LiveAPI bridge source now includes track mixer send summaries in mixer reads/sna
 npm run verify:mcp
 ```
 
-Result: succeeded. The verifier reported 248 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
+Result: succeeded. The verifier reported 294 tools, 3 resources, and 2 prompts. Path security rejected `C:\`, `%USERPROFILE%`, `%USERPROFILE%\.ssh`, and `%USERPROFILE%\AppData\Roaming`.
 
 ```powershell
 npm audit --audit-level=moderate
@@ -175,7 +198,7 @@ Result: succeeded. npm reported 0 vulnerabilities.
 
 ## Docker MCP
 
-The latest code-level default safe allowlist contains 146 tools after adding read-only sample intelligence and free-sample source listing/search. The Docker profile apply/verify commands below are from the previous profile activation pass; rerun `npm run docker:profile:apply` and `npm run docker:profile:verify` when you want the active Docker profile updated to the new allowlist.
+The latest code-level default safe allowlist contains 187 tools after adding read-only producer-brain planning, source readiness, render/mix analysis, and handoff tools. The Docker profile apply/verify commands below are from the previous profile activation pass; rerun `npm run docker:profile:apply` and `npm run docker:profile:verify` when you want the active Docker profile updated to the new allowlist.
 
 ```powershell
 npm run docker:profile:verify

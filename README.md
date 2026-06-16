@@ -10,7 +10,7 @@ The design goal is simple: **let an AI agent help produce music without turning 
 [![TypeScript](https://img.shields.io/badge/ts-strict-76a7ff?style=flat-square&logo=typescript&logoColor=white)](tsconfig.json)
 [![MCP](https://img.shields.io/badge/mcp-stdio%20%2B%20http-f2c35b?style=flat-square)](docs/CLIENTS.md)
 [![Security](https://img.shields.io/badge/security-read--only-8bd9c7?style=flat-square)](SECURITY.md)
-[![Tools](https://img.shields.io/badge/tools-248-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
+[![Tools](https://img.shields.io/badge/tools-294-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
 
 > This project is an independent local automation layer. Ableton and Max for Live are trademarks of their respective owners.
 
@@ -22,6 +22,7 @@ Ableton MCP is a TypeScript/Node MCP server with a local Max for Live LiveAPI br
 | --- | --- |
 | Live inspection | Read transport, tracks, scenes, clips, devices, mixer, sends, routing, notes, snapshots, and bridge status when the Max for Live device is loaded. |
 | Gated Live control | Dry-run first write tools for tempo, scenes, clips, mixer moves, markers, MIDI notes, sample loading, arrangement helpers, and selected clip operations. |
+| Producer brain | Parse briefs into tempo/key/hook/layer decisions, source usage mode, sound-design patches, arrangement moments, render review, mix scoring, revision passes, and delivery handoffs. |
 | Music planning | Turn a mood/place/reference into concept plans, sample roles, arrangement timelines, device-chain specs, automation maps, mix plans, scorecards, and runbooks. |
 | Sample intelligence | Search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
 | Library and set analysis | Scan only approved Ableton roots on demand, index samples/presets/clips/templates, and summarize `.als` files read-only. |
@@ -102,6 +103,17 @@ C:\ProgramData\Ableton\Live 12 Trial
 
 The Ableton install root is read-only. Broad user folders, AppData, browser profiles, credential folders, password stores, raw private-network URLs, non-HTTPS sample URLs, arbitrary shell execution, plugin installers, and broad filesystem scans are rejected.
 
+### Private Experiment Vs Release Candidate
+
+Source review is mode-aware:
+
+| Mode | Behavior |
+| --- | --- |
+| `private_experiment` | Missing license/source info does not block experimentation, but sources are still recorded as `unverified` or `experiment_only` in a manifest. |
+| `release_candidate` | Unverified or experiment-only sources become release blockers or warnings before packaging. |
+
+This is source-policy behavior only. It does not enable downloads, Ableton writes, UI/mouse control, remote HTTP, arbitrary URL scraping, or broad filesystem access.
+
 ## Music Agent Workflow
 
 ![Ableton MCP music agent workflow](docs/assets/music-agent-workflow.svg)
@@ -109,13 +121,14 @@ The Ableton install root is read-only. Broad user folders, AppData, browser prof
 For production agents, the normal loop is:
 
 1. Read the brief and constraints.
-2. Generate a concept plan with musical roles.
-3. Curate legal sample candidates and analyze musical fit.
-4. Build an arrangement and mix plan.
-5. Review the execution action matrix and runbook.
-6. Dry-run every write-capable action.
-7. Execute only after the user enables the relevant gate.
-8. Render, analyze, revise, export stems, and preserve attribution.
+2. Choose `private_experiment` or `release_candidate` source mode.
+3. Parse the brief into mood, tempo, key, hook, layer, and negative-space decisions.
+4. Curate source/sample candidates and analyze musical fit.
+5. Build sound-design, arrangement, automation, and mix plans.
+6. Review the execution action matrix and runbook.
+7. Dry-run every write-capable action.
+8. Execute only after the user enables the relevant gate.
+9. Render, analyze, compare, revise, export stems, and preserve attribution.
 
 Recommended first MCP calls:
 
@@ -125,6 +138,9 @@ ableton_mcp_get_objective_readiness_report
 ableton_mcp_get_launch_readiness_audit
 ableton_get_production_readiness
 ableton_plan_agent_music_session
+ableton_get_project_usage_mode
+ableton_parse_music_brief
+ableton_get_capability_matrix
 ```
 
 The workflow stays useful even when Ableton is closed: concept planning, sample search, set analysis, library search, device-chain planning, mix planning, and dry-run execution reports all work without pretending that live bridge actions succeeded.
@@ -150,10 +166,10 @@ See [Client compatibility](docs/CLIENTS.md) and [Model runtime compatibility](do
 Current verified surface:
 
 ```text
-MCP tools: 248
+MCP tools: 294
 Resources: 3
 Prompts: 2
-Docker MCP default safe tools: 146
+Docker MCP default safe tools: 187
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -265,6 +281,7 @@ The scanner does not run a full library scan at startup. Use explicit scan/searc
 | [Client compatibility](docs/CLIENTS.md) | Codex, Claude, Docker MCP, WSL, OpenClaw, OpenRouter, Gemini, llama.cpp, and private-device setup. |
 | [Tool catalog](docs/TOOL_CATALOG.md) | High-level tool groups and current tool count. |
 | [Tool reference](docs/TOOL_REFERENCE.md) | Inspection commands and MCP context reference. |
+| [Producer brain](docs/PRODUCER_BRAIN.md) | Source usage modes, brief parsing, sound design, render review, mix scoring, revision loops, and handoff tools. |
 | [Concept to music](docs/CONCEPT_TO_MUSIC.md) | Staged production workflow from idea to arrangement plan. |
 | [Natural language to music](docs/NATURAL_LANGUAGE_TO_MUSIC.md) | How agents should translate user requests into musical actions. |
 | [Music production skills](docs/MUSIC_PRODUCTION_SKILLS.md) | Producer-skill roadmap mapped to current and future tools. |
@@ -280,9 +297,9 @@ Latest checked status in this workspace:
 ```text
 Build: passed
 Lint: passed
-Tests: 24 files, 112 tests passed
-MCP verifier: passed, 248 tools, 3 resources, 2 prompts
-Safe sweep: passed, 133 safe calls, 0 unexpected failures
+Tests: 25 files, 118 tests passed
+MCP verifier: passed, 294 tools, 3 resources, 2 prompts
+Safe sweep: passed, 178 safe calls, 0 unexpected failures
 Audit: 0 vulnerabilities
 ```
 

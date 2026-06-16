@@ -16,7 +16,7 @@ npm run verify:mcp
 Current catalog size:
 
 ```text
-248 tools
+294 tools
 3 resources
 2 prompts
 ```
@@ -38,6 +38,11 @@ Primary groups:
 - Named safe UI actions and dry-run action sequences
 - Screenshot and UI tools
 - Legal sample discovery/import
+- Source usage mode for private experiments and release candidates
+- Producer-brain planning for briefs, mood, tempo, harmony, hooks, layer stacks, moments, and negative space
+- Sound-design brain for synth, Operator, Wavetable, Drift, Sampler, granular, rack macro, and patch scoring plans
+- Render/revision/mix analysis for render quality, masking, mud/harshness/sibilance, phase/mono risk, low-end control, balance, translation, stereo depth, and revision passes
+- Capability honesty and handoff tools
 - Plugin/package discovery, validation, and download staging
 - Concept-to-music preset catalog, planning, source-audio transformation plans, mix planning, device-chain specs, indexed device catalog match reports, user-gated UI placement plans, attribution bundles, production scorecards, sample staging, execution action matrices, execution manifests, execution runbooks, arrangement execution, and delivery planning
 - Export and stem planning
@@ -94,6 +99,13 @@ Control-mode tools:
 - `ableton_mcp_get_client_connection_profiles`: returns stdio, local HTTP, private-network, and model-provider host-app connection guidance.
 - `ableton_mcp_get_client_bootstrap_bundle`: returns a one-call safe bootstrap bundle for Codex, Claude, Docker MCP, OpenClaw, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity.
 - `ableton_mcp_get_safe_tool_allowlist`: returns the Docker/OpenClaw safe tool allowlist as structured data plus CSV without changing client configuration.
+- `ableton_set_project_usage_mode` and `ableton_get_project_usage_mode`: switch or read source-review mode. `private_experiment` records unverified sources without blocking iteration; `release_candidate` treats unverified sources as release blockers or warnings.
+- `ableton_create_source_manifest`, `ableton_mark_source_as_user_provided`, `ableton_mark_source_as_experiment_only`, and `ableton_check_release_source_readiness`: create bounded source manifests and distinguish private experimentation from release packaging.
+- `ableton_parse_music_brief`, `ableton_compile_mood_palette`, `ableton_plan_tempo_grid`, `ableton_generate_harmonic_palette`, `ableton_generate_motif_system`, `ableton_score_hook_memorability`, `ableton_plan_layer_stack`, `ableton_create_moment_map`, and `ableton_plan_negative_space`: turn a user brief into executable producer decisions before adding tracks.
+- `ableton_design_synth_patch`, `ableton_design_operator_patch`, `ableton_design_wavetable_patch`, `ableton_design_drift_patch`, `ableton_design_sampler_instrument`, `ableton_design_granular_texture`, `ableton_design_rack_macros`, `ableton_score_sound_design_maturity`, and `ableton_score_patch_against_concept`: plan and score professional sound design without pretending to insert devices.
+- `ableton_score_arrangement_arc`, `ableton_score_arrangement_motion`, `ableton_score_density_curve`, `ableton_generate_automation_curves`, `ableton_generate_revision_pass`, `ableton_generate_next_revision_pass`, and `ableton_compare_render_versions`: keep arrangement and revision work focused on one measurable improvement pass at a time.
+- `ableton_analyze_render_quality`, `ableton_detect_frequency_masking`, `ableton_detect_mud_harshness_sibilance`, `ableton_detect_phase_mono_issues`, `ableton_score_low_end_control`, `ableton_score_mix_balance`, `ableton_score_mix_translation`, `ableton_plan_stereo_depth_stage`, and `ableton_score_depth_image`: analyze renders and stems with ffmpeg-backed facts plus conservative heuristic findings.
+- `ableton_get_capability_matrix`, `ableton_classify_render_failure`, `ableton_create_song_runbook`, `ableton_plan_session_handoff`, `ableton_validate_project_organization`, and `ableton_create_delivery_package`: report capability classes, failure types, handoff state, delivery packaging, and honest limitations.
 
 Additional MCP context:
 
@@ -104,8 +116,10 @@ All file tools enforce allowed roots and reject broad or sensitive paths.
 
 Write-capable tools require `ABLETON_MCP_ENABLE_WRITE=1` and should be called with `dry_run=true` first. `ableton_execute_concept_plan` also requires the matching approval bundle `approval_id`, `approval_confirmed=true`, and a successful bridge preflight before real writes. Real stored-plan execution writes a redacted diagnostic journal under `diagnostics\runtime\concept-executions`. If the bridge returns `unsupported: true` during stored-plan execution, the executor stops with `CONCEPT_EXECUTION_UNSUPPORTED_ACTION` instead of reporting a successful run. LiveAPI operations that are not proven reliable for the current Ableton bridge return `unsupported: true` in dry-run mode with setup hints. UI-driver tools require `ABLETON_MCP_ENABLE_UI_CONTROL=1`. Download/import tools require `ABLETON_MCP_ENABLE_DOWNLOADS=1`.
 
+Use [Producer brain](PRODUCER_BRAIN.md) for the current source-mode, brief parsing, sound-design, render-review, revision, mix, and handoff tool layer.
+
 Use [Music production skills](MUSIC_PRODUCTION_SKILLS.md) when an agent needs to choose tools by musical job instead of reading the raw tool list.
 
 Use [Natural language to music](NATURAL_LANGUAGE_TO_MUSIC.md) when Codex needs to translate a user's plain-language brief into a careful tool sequence.
 
-Planned professional music, synthesis, timing, mix, and revision-loop tools are tracked in [Future patches](FUTURE_PATCHES.md). They are roadmap items until they are implemented and reported by `npm run verify:mcp`.
+Planned professional music, synthesis, timing, mix, and revision-loop tools are tracked in [Future patches](FUTURE_PATCHES.md). Names listed in [Producer brain](PRODUCER_BRAIN.md) are current runtime features because they are implemented and reported by `npm run verify:mcp`.

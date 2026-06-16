@@ -6,6 +6,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { LOCAL_PATHS } from "../src/config.js";
 import { buildLayeredArrangementPlan, planConceptTrack } from "../src/concept.js";
+import { createSourceManifest } from "../src/source-usage.js";
 
 const gzip = promisify(zlib.gzip);
 
@@ -72,6 +73,13 @@ const safeConcept = await planConceptTrack({
   sources: ["local_library"]
 });
 const safeArrangement = await buildLayeredArrangementPlan(safeConcept.plan.id);
+const safeSourceManifest = await createSourceManifest({
+  project_name: `safe-sweep-${Date.now()}`,
+  usage_mode: "private_experiment",
+  sources: [{ title: "safe sweep unverified scratch source", role: "texture" }],
+  dry_run: false
+});
+const safeSourceManifestPath = String(safeSourceManifest.output).replace("%USERPROFILE%", process.env.USERPROFILE ?? "");
 
 const calls: SweepCall[] = [
   { name: "ableton_mcp_health", arguments: {} },
@@ -183,6 +191,12 @@ const calls: SweepCall[] = [
   { name: "ableton_detect_key_bpm_confidence", arguments: { path: fixtures.audioPath, bpm_range: { min: 60, max: 140 }, start_seconds: 0, duration_seconds: 0.1 } },
   { name: "ableton_find_best_loop_points", arguments: { path: fixtures.audioPath, target_bars: 1, bpm: 120, start_seconds: 0, duration_seconds: 0.1 } },
   { name: "ableton_match_samples_to_concept", arguments: { concept: "safe sweep liminal room tone", candidates: [{ path: fixtures.audioPath, title: "safe sweep room tone", tags: ["room", "texture"] }], roles: ["texture", "pulse"] } },
+  { name: "ableton_get_project_usage_mode", arguments: {} },
+  { name: "ableton_set_project_usage_mode", arguments: { mode: "private_experiment", project_name: "safe sweep", dry_run: true } },
+  { name: "ableton_create_source_manifest", arguments: { project_name: "safe sweep draft", usage_mode: "private_experiment", sources: [{ title: "scratch texture", role: "texture" }], dry_run: true } },
+  { name: "ableton_mark_source_as_user_provided", arguments: { project_name: "safe sweep user source", source: { title: "user supplied one-shot", role: "impact" }, dry_run: true } },
+  { name: "ableton_mark_source_as_experiment_only", arguments: { project_name: "safe sweep experiment source", source: { title: "experiment scratch loop", role: "texture" }, dry_run: true } },
+  { name: "ableton_check_release_source_readiness", arguments: { manifest_path: safeSourceManifestPath, usage_mode: "release_candidate" } },
   { name: "ableton_list_internet_archive_audio_files", arguments: { identifier: "opensource_audio", page: 1, pageSize: 5 }, expected: "any" },
   { name: "ableton_preview_remote_sample", arguments: { url: "https://archive.org/download/example/file.wav", license: "CC0" } },
   { name: "ableton_generate_session_plan", arguments: { brief: "safe sweep liminal hallway cue", style: "liminal/backrooms/horror", target_duration_seconds: 120, intensity: 7 } },
@@ -193,6 +207,45 @@ const calls: SweepCall[] = [
   { name: "ableton_suggest_arrangement", arguments: { brief: "safe sweep liminal hallway cue", style: "liminal/backrooms/horror", target_duration_seconds: 120, intensity: 7 } },
   { name: "ableton_suggest_mix_actions", arguments: { issue: "muddy low mids and too much reverb", context: "safe sweep liminal cue", intensity: 7 } },
   { name: "ableton_validate_production_plan", arguments: { plan: { goal: "safe sweep", actions: ["ableton_set_track_volume"], dry_run: true } } },
+  { name: "ableton_parse_music_brief", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
+  { name: "ableton_compile_mood_palette", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
+  { name: "ableton_plan_tempo_grid", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
+  { name: "ableton_generate_harmonic_palette", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", mood: "sad dreamy", complexity: "medium" } },
+  { name: "ableton_generate_motif_system", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", key: "C# minor", bpm: 72, length_beats: 8 } },
+  { name: "ableton_score_hook_memorability", arguments: { motif: [61, 64, 68, 71, 69, 68], concept: "safe sweep hook" } },
+  { name: "ableton_plan_layer_stack", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", section: "full_track", intensity: 7 } },
+  { name: "ableton_create_moment_map", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", duration_seconds: 120, intensity: 7 } },
+  { name: "ableton_plan_negative_space", arguments: { concept: "safe sweep sad liminal vaporwave mall cue", sections: ["intro", "break", "return"], intensity: 7 } },
+  { name: "ableton_design_synth_patch", arguments: { concept: "safe sweep liminal cue", role: "glassy hook memory", brightness: 4, instability: 6 } },
+  { name: "ableton_design_operator_patch", arguments: { concept: "safe sweep liminal cue", role: "glassy hook memory", brightness: 4, instability: 6 } },
+  { name: "ableton_design_wavetable_patch", arguments: { concept: "safe sweep liminal cue", role: "wide choir fog", motion: 5, width: 7 } },
+  { name: "ableton_design_drift_patch", arguments: { concept: "safe sweep liminal cue", role: "warm unstable chord bed", warmth: 7, age: 6, detune: 4 } },
+  { name: "ableton_design_sampler_instrument", arguments: { samples: [{ title: "safe sweep source", root_note: "C3" }], role: "memory sampler", key_range: "C2-C5" } },
+  { name: "ableton_design_granular_texture", arguments: { concept: "safe sweep liminal cue", path: fixtures.audioPath, density: 5, grain_size_ms: 120, movement: 5 } },
+  { name: "ableton_design_rack_macros", arguments: { role: "memory sampler", patch_plan: { device: "Sampler", role: "memory" } } },
+  { name: "ableton_score_sound_design_maturity", arguments: { concept: "safe sweep liminal cue", role: "hook", patch_plan: { macro: true, movement: "slow" } } },
+  { name: "ableton_score_patch_against_concept", arguments: { concept: "safe sweep liminal cue", role: "hook", patch_plan: { role: "hook", macro: true, movement: "slow", filter: "dark lowpass" } } },
+  { name: "ableton_score_arrangement_arc", arguments: { concept: "safe sweep liminal cue", sections: ["intro hook", "development", "negative break", "hook return"], duration_seconds: 120 } },
+  { name: "ableton_score_arrangement_motion", arguments: { concept: "safe sweep liminal cue", arrangement_summary: "intro hook -> filter automation -> negative break -> hook return" } },
+  { name: "ableton_score_density_curve", arguments: { concept: "safe sweep liminal cue", sections: ["intro", "development", "break", "return"] } },
+  { name: "ableton_generate_automation_curves", arguments: { concept: "safe sweep liminal cue", target: "filter_width", section: "return", intensity: 7 } },
+  { name: "ableton_generate_revision_pass", arguments: { concept: "safe sweep liminal cue", current_arrangement: "intro hook -> static middle -> return", findings: ["static arrangement"] } },
+  { name: "ableton_generate_next_revision_pass", arguments: { project_state: { concept: "safe sweep" }, previous_findings: ["static arrangement"] } },
+  { name: "ableton_analyze_render_quality", arguments: { path: fixtures.audioPath, concept: "safe sweep tone", start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_detect_frequency_masking", arguments: { stems: [fixtures.audioPath, fixtures.audioPath], duration_seconds: 0.1 } },
+  { name: "ableton_detect_mud_harshness_sibilance", arguments: { path: fixtures.audioPath, start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_detect_phase_mono_issues", arguments: { path: fixtures.audioPath } },
+  { name: "ableton_score_low_end_control", arguments: { path: fixtures.audioPath, start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_score_mix_balance", arguments: { path: fixtures.audioPath, concept: "safe sweep tone", start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_score_mix_translation", arguments: { path: fixtures.audioPath, start_seconds: 0, duration_seconds: 0.1 } },
+  { name: "ableton_plan_stereo_depth_stage", arguments: { concept: "safe sweep liminal cue", tracks: ["hook", "sub", "texture"] } },
+  { name: "ableton_score_depth_image", arguments: { path: fixtures.audioPath } },
+  { name: "ableton_get_capability_matrix", arguments: {} },
+  { name: "ableton_classify_render_failure", arguments: { findings: ["static arrangement", "cheesy synth"] } },
+  { name: "ableton_create_song_runbook", arguments: { concept: "safe sweep liminal cue", usage_mode: "private_experiment", target_duration_seconds: 120 } },
+  { name: "ableton_plan_session_handoff", arguments: { concept: "safe sweep liminal cue", delivery_target: "review bundle" } },
+  { name: "ableton_validate_project_organization", arguments: { tracks: ["hook memory", "sub pressure"], stems: [fixtures.audioPath], manifest_path: safeSourceManifestPath } },
+  { name: "ableton_create_delivery_package", arguments: { project_name: "safe sweep package", master_path: fixtures.audioPath, stems: [fixtures.audioPath], manifest_path: safeSourceManifestPath, dry_run: true } },
   { name: "ableton_list_concept_presets", arguments: { page: 1, pageSize: 5 } },
   { name: "ableton_plan_reference_audio_intake", arguments: { reference_path: "%USERPROFILE%\\Documents\\Codex\\source-memory.mp3", concept: "safe sweep backrooms source memory", desired_destination_name: "safe-sweep-source-memory.mp3" } },
   { name: "ableton_plan_source_audio_transformation", arguments: { reference_path: "%USERPROFILE%\\Documents\\Codex\\source-memory.mp3", concept: "safe sweep backrooms source memory", target_duration_seconds: 120, intensity: 8, style: "liminal/backrooms/horror", desired_destination_name: "safe-sweep-source-memory.mp3", output_prefix: "safe-sweep-source", format: "wav" } },

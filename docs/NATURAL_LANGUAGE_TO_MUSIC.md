@@ -2,7 +2,7 @@
 
 This tutorial shows Codex how to turn a user's words into careful Ableton MCP work. The goal is not to make one giant prompt and hope. The goal is to preserve the user's intent, translate it into musical decisions, and call the smallest safe MCP tools that move the track forward.
 
-Use this with [Concept to music](CONCEPT_TO_MUSIC.md), [Music production skills](MUSIC_PRODUCTION_SKILLS.md), and the [Tool reference](TOOL_REFERENCE.md).
+Use this with [Producer brain](PRODUCER_BRAIN.md), [Concept to music](CONCEPT_TO_MUSIC.md), [Music production skills](MUSIC_PRODUCTION_SKILLS.md), and the [Tool reference](TOOL_REFERENCE.md).
 
 ## Start By Preserving The User's Words
 
@@ -54,12 +54,12 @@ Map natural-language clues into production choices.
 
 | User Language | Musical Translation | MCP Direction |
 | --- | --- | --- |
-| "catchy" | Strong motif, repeated hook, clear return points | Use concept planning, MIDI motif planning, timeline, hook future tools when available. |
+| "catchy" | Strong motif, repeated hook, clear return points | Use motif generation, hook scoring, concept planning, MIDI motif planning, and timeline review. |
 | "liminal" | Sparse space, long reverb, unstable room tone, ambiguous harmony | Use concept preset, source transformation, mix plan, routing readiness. |
 | "professional" | Role clarity, arrangement arc, clean gain staging, reference checks, revision loop | Use scorecard, mix analysis, delivery plan, reference comparison. |
 | "realistic" | Use real audio textures, restrained effects, believable spaces | Prefer approved source audio, sample curation, device-chain specs, routing plans. |
 | "not cheesy" | Avoid obvious presets, bright leads, stock genre tropes | Use device-chain review, future synthesis scoring, reference profile. |
-| "wildly better" | Diagnose before adding: hook, timing, arrangement, sound palette, mix | Use production scorecard, render analysis, one focused revision pass. |
+| "wildly better" | Diagnose before adding: hook, timing, arrangement, sound palette, mix | Use hook scoring, arrangement scoring, render analysis, mix scoring, and one focused revision pass. |
 | "bad trip" | Unstable timing, pitch drift, phase movement, density changes, surprise restraint | Use automation map, negative space, transition/moment planning. |
 | "singing but haunted" | Vocal texture and melodic memory without clear unsafe messages | Use licensed/user-provided vocal material and vocal-stack planning. |
 
@@ -96,6 +96,15 @@ Choose one primary mode:
 
 Do not jump to Live writes just because the user says "make it." Build a reviewable plan first.
 
+Also choose source usage mode:
+
+| Source Mode | Use When | First Tools |
+| --- | --- | --- |
+| `private_experiment` | User is experimenting privately or using rough source material. Missing source/license data is allowed but recorded. | `ableton_set_project_usage_mode`, `ableton_create_source_manifest`, `ableton_mark_source_as_experiment_only` |
+| `release_candidate` | User wants a shareable package, final export, public upload, client handoff, or release-ready files. | `ableton_set_project_usage_mode`, `ableton_check_release_source_readiness`, `ableton_create_delivery_package` |
+
+Do not treat private-experiment permission as release approval. It only means the agent can keep moving creatively while recording source status honestly.
+
 ### 3. Translate Words Into Parameters
 
 Create a production parameter map:
@@ -120,6 +129,16 @@ For a new track from a text brief, use:
 
 ```text
 ableton_get_production_readiness
+ableton_get_project_usage_mode
+ableton_parse_music_brief
+ableton_compile_mood_palette
+ableton_plan_tempo_grid
+ableton_generate_harmonic_palette
+ableton_generate_motif_system
+ableton_score_hook_memorability
+ableton_plan_layer_stack
+ableton_create_moment_map
+ableton_plan_negative_space
 ableton_plan_agent_music_session
 ableton_plan_concept_track
 ableton_render_concept_timeline
@@ -153,6 +172,14 @@ ableton_render_concept_attribution_bundle
 For review and polish, use:
 
 ```text
+ableton_analyze_render_quality
+ableton_detect_frequency_masking
+ableton_detect_mud_harshness_sibilance
+ableton_detect_phase_mono_issues
+ableton_score_low_end_control
+ableton_score_mix_balance
+ableton_score_mix_translation
+ableton_generate_revision_pass
 ableton_render_concept_production_scorecard
 ableton_analyze_lufs
 ableton_analyze_spectrum
@@ -238,6 +265,16 @@ MCP call order:
 
 ```text
 ableton_get_production_readiness
+ableton_get_project_usage_mode
+ableton_parse_music_brief
+ableton_compile_mood_palette
+ableton_plan_tempo_grid
+ableton_generate_harmonic_palette
+ableton_generate_motif_system
+ableton_score_hook_memorability
+ableton_plan_layer_stack
+ableton_create_moment_map
+ableton_plan_negative_space
 ableton_plan_reference_audio_intake
 ableton_plan_source_audio_transformation
 ableton_plan_concept_track

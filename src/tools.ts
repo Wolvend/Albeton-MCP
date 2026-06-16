@@ -93,6 +93,54 @@ import {
   searchConceptSamples,
   stageConceptSamples
 } from "./concept.js";
+import {
+  appendSourceToManifest,
+  checkReleaseSourceReadiness,
+  createSourceManifest,
+  getProjectUsageMode,
+  setProjectUsageMode
+} from "./source-usage.js";
+import {
+  analyzeRenderQuality,
+  classifyRenderFailure,
+  compareRenderVersions,
+  compileMoodPalette,
+  createDeliveryPackage,
+  createMomentMap,
+  createSongRunbook,
+  designDriftPatch,
+  designGranularTexture,
+  designOperatorPatch,
+  designRackMacros,
+  designSamplerInstrument,
+  designSynthPatch,
+  designWavetablePatch,
+  detectFrequencyMasking,
+  detectMudHarshnessSibilance,
+  detectPhaseMonoIssues,
+  generateAutomationCurves,
+  generateHarmonicPalette,
+  generateMotifSystem,
+  generateNextRevisionPass,
+  generateRevisionPass,
+  parseMusicBrief,
+  planLayerStack,
+  planNegativeSpace,
+  planSessionHandoff,
+  planStereoDepthStage,
+  planTempoGrid,
+  scoreArrangementArc,
+  scoreArrangementMotion,
+  scoreDepthImage,
+  scoreDensityCurve,
+  scoreHookMemorability,
+  scoreLowEndControl,
+  scoreMixBalance,
+  scoreMixTranslation,
+  scorePatchAgainstConcept,
+  scoreSoundDesignMaturity,
+  validateProjectOrganization
+} from "./producer-brain.js";
 
 const Empty = {};
 const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) };
@@ -129,6 +177,17 @@ const BoundedAudioPath = z.string().min(1).max(1000);
 const EffectName = z.string().min(1).max(128);
 const ArrangementClipId = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.:-]+$/);
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
+const SourceUsageMode = z.enum(["private_experiment", "release_candidate"]);
+const SourceStatus = z.enum(["user_provided", "public_domain", "cc_licensed", "generated", "unverified", "experiment_only"]);
+const SourceManifestEntry = z.object({
+  source_path: z.string().min(1).max(1000).optional(),
+  source_url: z.string().url().max(1000).optional(),
+  title: z.string().min(1).max(240).optional(),
+  role: z.string().min(1).max(120).optional(),
+  status: SourceStatus.optional(),
+  attribution: z.string().max(1000).optional(),
+  notes: z.array(z.string().max(400)).max(12).optional()
+});
 const FreeSampleSource = z.enum(FREE_SAMPLE_SOURCE_IDS);
 const BpmRange = z.object({
   min: z.number().min(30).max(300).optional(),
@@ -174,6 +233,16 @@ const MidiNote = z.object({
   velocity_deviation: z.number().min(-127).max(127).optional(),
   release_velocity: z.number().min(0).max(127).optional()
 });
+const BriefSchema = {
+  concept: z.string().min(3).max(3000),
+  style: z.string().max(200).optional(),
+  target_duration_seconds: z.number().int().min(15).max(3600).default(180),
+  intensity: z.number().int().min(1).max(10).default(6)
+};
+const AudioWindowSchema = {
+  start_seconds: z.number().min(0).max(100_000).default(0),
+  duration_seconds: z.number().positive().max(180).default(30)
+};
 const AudioFileExtensions = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg"]);
 const SafeUiActionId = z.enum([
   "focus_window",
@@ -1571,6 +1640,51 @@ async function objectiveReadinessReport(checkBridge: boolean) {
   };
 }
 
+function toolCapabilityClass(tool: ToolDef) {
+  const bridgeTools = new Set(getBridgeCapabilityMatrix().actions.map((action) => action.tool).filter(Boolean));
+  const name = tool.name;
+  if (name.includes("download") || name.includes("stage_concept_samples") || name.includes("import_sample")) return "download_gated";
+  if (name.includes("ui_") || name.includes("window") || name.includes("screenshot") || name.includes("click") || name.includes("type_text") || name.includes("focus_window")) return "ui_gated";
+  if (!tool.annotations.readOnlyHint) return "dry_run_or_write_gated";
+  if (bridgeTools.has(name)) return "liveapi_read_or_bridge";
+  if (name.includes("analyze") || name.includes("detect") || name.includes("score") || name.includes("plan") || name.includes("generate") || name.includes("design") || name.includes("parse") || name.includes("compile")) return "offline_planning_or_analysis";
+  return "read_only";
+}
+
+function capabilityMatrixReport() {
+  const tools = toolDefs.map((tool) => ({
+    name: tool.name,
+    class: toolCapabilityClass(tool),
+    annotations: tool.annotations,
+    gates: {
+      write: !tool.annotations.readOnlyHint ? "ABLETON_MCP_ENABLE_WRITE may be required for real Ableton writes; dry_run first where supported." : null,
+      downloads: toolCapabilityClass(tool) === "download_gated" ? "ABLETON_MCP_ENABLE_DOWNLOADS=1" : null,
+      uiControl: toolCapabilityClass(tool) === "ui_gated" ? "ABLETON_MCP_ENABLE_UI_CONTROL=1" : null
+    }
+  }));
+  const summary = tools.reduce((acc, tool) => {
+    acc[tool.class] = (acc[tool.class] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  return {
+    generatedAt: new Date().toISOString(),
+    summary,
+    flags: {
+      writeEnabled: FLAGS.write,
+      downloadsEnabled: FLAGS.downloads,
+      uiControlEnabled: FLAGS.uiControl
+    },
+    bridge: getBridgeCapabilityMatrix(),
+    tools,
+    honestyRules: [
+      "Read-only and planning tools may produce recommendations, not proof of Live edits.",
+      "Real Ableton writes require explicit gates and dry_run=false where supported.",
+      "Unsupported bridge actions must return unsupported:true or a structured setup error.",
+      "Private experiment source mode does not mean release-safe source status."
+    ]
+  };
+}
+
 const toolDefs: ToolDef[] = [
   { name: "ableton_find_installation", description: "Find configured Ableton Live and Max paths for this host platform.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, installation: (await environmentSnapshot()).paths }) },
   { name: "ableton_get_environment", description: "Report Ableton MCP environment, flags, tools, and redacted allowed roots.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, environment: await environmentSnapshot() as any }) },
@@ -1799,6 +1913,58 @@ toolDefs.push(
   { name: "ableton_click_named_safe_action", description: "Run one reviewed named Ableton UI action when UI control is enabled.", inputSchema: { action: SafeUiActionId, ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_named_safe_action", args) },
   { name: "ableton_click_coordinates", description: "Click explicit coordinates when UI control is enabled.", inputSchema: { x: z.number(), y: z.number(), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("click_coordinates", args) },
   { name: "ableton_type_text", description: "Type text into Ableton when UI control is enabled.", inputSchema: { text: z.string().max(500), ...DryRun }, annotations: rw, handler: async (args) => uiWrite("type_text", args) },
+
+  { name: "ableton_set_project_usage_mode", description: "Set private experiment or release candidate source-review mode for diagnostics and delivery workflows.", inputSchema: { mode: SourceUsageMode, project_name: z.string().min(1).max(160).optional(), dry_run: z.boolean().default(false) }, annotations: rw, handler: async (args) => ({ ok: true, sourceUsage: await setProjectUsageMode(args) as any }) },
+  { name: "ableton_get_project_usage_mode", description: "Read the current source-review mode; defaults to private_experiment when no mode file exists.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, sourceUsage: await getProjectUsageMode() as any }) },
+  { name: "ableton_create_source_manifest", description: "Create a bounded source manifest; private experiments allow unverified sources while recording them for later review.", inputSchema: { project_name: z.string().min(1).max(160), usage_mode: SourceUsageMode.optional(), sources: z.array(SourceManifestEntry).min(1).max(64), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, sourceManifest: await createSourceManifest(args) as any }) },
+  { name: "ableton_mark_source_as_user_provided", description: "Record a source as user-provided in a source manifest or a new one-source manifest.", inputSchema: { manifest_path: z.string().min(1).max(1000).optional(), project_name: z.string().min(1).max(160).optional(), source: SourceManifestEntry, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, sourceManifest: await appendSourceToManifest({ manifest_path: args.manifest_path, project_name: args.project_name, source: args.source, status: "user_provided", dry_run: args.dry_run }) as any }) },
+  { name: "ableton_mark_source_as_experiment_only", description: "Record a source as private-experiment-only so drafting can continue while release review remains blocked.", inputSchema: { manifest_path: z.string().min(1).max(1000).optional(), project_name: z.string().min(1).max(160).optional(), source: SourceManifestEntry, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, sourceManifest: await appendSourceToManifest({ manifest_path: args.manifest_path, project_name: args.project_name, source: args.source, status: "experiment_only", dry_run: args.dry_run }) as any }) },
+  { name: "ableton_check_release_source_readiness", description: "Check a source manifest for release-candidate blockers without blocking private experimentation.", inputSchema: { manifest_path: z.string().min(1).max(1000), usage_mode: SourceUsageMode.optional() }, annotations: ro, handler: async (args) => ({ ok: true, sourceReadiness: await checkReleaseSourceReadiness(args) as any }) },
+
+  { name: "ableton_parse_music_brief", description: "Parse a natural-language music brief into mood, avoid list, tempo/key hints, and next production calls.", inputSchema: BriefSchema, annotations: ro, handler: async (args) => ({ ok: true, brief: parseMusicBrief(args) }) },
+  { name: "ableton_compile_mood_palette", description: "Compile a music concept into approved sounds, forbidden sounds, mix targets, and next production calls.", inputSchema: BriefSchema, annotations: ro, handler: async (args) => ({ ok: true, moodPalette: compileMoodPalette(args) }) },
+  { name: "ableton_plan_tempo_grid", description: "Plan BPM, feel, swing, tempo map, and grid strategy from a concept before writing MIDI or warping samples.", inputSchema: { ...BriefSchema, reference_path: z.string().min(1).max(1000).optional() }, annotations: ro, handler: async (args) => ({ ok: true, tempoGrid: planTempoGrid(args) }) },
+  { name: "ableton_generate_harmonic_palette", description: "Generate key, mode, chord vocabulary, tension rules, and avoid notes from a music concept.", inputSchema: { concept: z.string().min(3).max(3000), mood: z.string().max(300).optional(), complexity: z.enum(["simple", "medium", "advanced"]).default("medium") }, annotations: ro, handler: async (args) => ({ ok: true, harmonicPalette: generateHarmonicPalette(args) }) },
+  { name: "ableton_generate_motif_system", description: "Generate a core motif plus controlled transformations so a track has a memorable identity.", inputSchema: { concept: z.string().min(3).max(3000), key: z.string().max(80).optional(), bpm: z.number().min(20).max(300).optional(), length_beats: z.number().min(2).max(32).default(8) }, annotations: ro, handler: async (args) => ({ ok: true, motifSystem: generateMotifSystem(args) }) },
+  { name: "ableton_score_hook_memorability", description: "Score a numeric motif for repetition, contour, singability, and revision needs.", inputSchema: { motif: z.array(z.number().int().min(0).max(127)).min(1).max(64), concept: z.string().max(3000).optional() }, annotations: ro, handler: async (args) => ({ ok: true, hookScore: scoreHookMemorability(args) }) },
+  { name: "ableton_plan_layer_stack", description: "Plan named production layer roles, frequency ownership, and next sound-design calls.", inputSchema: { concept: z.string().min(3).max(3000), section: z.string().max(120).optional(), intensity: z.number().int().min(1).max(10).default(6) }, annotations: ro, handler: async (args) => ({ ok: true, layerStack: planLayerStack(args) }) },
+  { name: "ableton_create_moment_map", description: "Plan memorable arrangement moments, reveals, dropouts, and motif returns across a track.", inputSchema: { concept: z.string().min(3).max(3000), duration_seconds: z.number().int().min(15).max(3600).default(180), intensity: z.number().int().min(1).max(10).default(6) }, annotations: ro, handler: async (args) => ({ ok: true, momentMap: createMomentMap(args) }) },
+  { name: "ableton_plan_negative_space", description: "Plan intentional silence, mutes, dropouts, and sparse sections before adding more layers.", inputSchema: { concept: z.string().min(3).max(3000), sections: z.array(z.string().min(1).max(120)).max(16).optional(), intensity: z.number().int().min(1).max(10).default(6) }, annotations: ro, handler: async (args) => ({ ok: true, negativeSpace: planNegativeSpace(args) }) },
+
+  { name: "ableton_design_synth_patch", description: "Design a device-agnostic synth patch with role, oscillator/filter/envelope choices, macros, and review calls.", inputSchema: { concept: z.string().min(3).max(3000), role: z.string().min(1).max(200), device_preference: z.string().max(80).optional(), brightness: z.number().min(0).max(10).optional(), instability: z.number().min(0).max(10).optional() }, annotations: ro, handler: async (args) => ({ ok: true, synthPatch: designSynthPatch(args) }) },
+  { name: "ableton_design_operator_patch", description: "Design an Ableton Operator-style FM patch plan with ratios, levels, filter, pitch envelope, and macros.", inputSchema: { concept: z.string().min(3).max(3000), role: z.string().min(1).max(200), brightness: z.number().min(0).max(10).optional(), instability: z.number().min(0).max(10).optional() }, annotations: ro, handler: async (args) => ({ ok: true, operatorPatch: designOperatorPatch(args) }) },
+  { name: "ableton_design_wavetable_patch", description: "Design an Ableton Wavetable-style patch plan with oscillator choices, filter motion, unison, and modulation.", inputSchema: { concept: z.string().min(3).max(3000), role: z.string().min(1).max(200), motion: z.number().min(0).max(10).optional(), width: z.number().min(0).max(10).optional() }, annotations: ro, handler: async (args) => ({ ok: true, wavetablePatch: designWavetablePatch(args) }) },
+  { name: "ableton_design_drift_patch", description: "Design an Ableton Drift-style analog patch plan with warmth, age, detune, and envelope intent.", inputSchema: { concept: z.string().min(3).max(3000), role: z.string().min(1).max(200), warmth: z.number().min(0).max(10).optional(), age: z.number().min(0).max(10).optional(), detune: z.number().min(0).max(10).optional() }, annotations: ro, handler: async (args) => ({ ok: true, driftPatch: designDriftPatch(args) }) },
+  { name: "ableton_design_sampler_instrument", description: "Plan a Sampler/Simpler instrument from manifest-tracked samples with zones, root notes, and loop guidance.", inputSchema: { samples: z.array(z.object({ path: z.string().min(1).max(1000).optional(), title: z.string().max(240).optional(), root_note: z.string().max(16).optional() })).min(1).max(32), role: z.string().min(1).max(200), key_range: z.string().max(40).optional() }, annotations: ro, handler: async (args) => ({ ok: true, samplerInstrument: designSamplerInstrument(args) }) },
+  { name: "ableton_design_granular_texture", description: "Plan granular clouds, smears, frozen pads, and reverse texture from a source without rendering by default.", inputSchema: { path: z.string().min(1).max(1000).optional(), concept: z.string().min(3).max(3000), density: z.number().min(0).max(10).optional(), grain_size_ms: z.number().min(5).max(2000).optional(), movement: z.number().min(0).max(10).optional() }, annotations: ro, handler: async (args) => ({ ok: true, granularTexture: designGranularTexture(args) }) },
+  { name: "ableton_design_rack_macros", description: "Convert a patch plan and role into eight Ableton-rack macro targets and automation ideas.", inputSchema: { patch_plan: z.record(z.unknown()), role: z.string().min(1).max(200) }, annotations: ro, handler: async (args) => ({ ok: true, rackMacros: designRackMacros(args) }) },
+  { name: "ableton_score_sound_design_maturity", description: "Score whether a patch risks cheesy, generic, or underspecified sound design.", inputSchema: { concept: z.string().min(3).max(3000), role: z.string().min(1).max(200), patch_plan: z.record(z.unknown()).optional(), notes: z.string().max(2000).optional() }, annotations: ro, handler: async (args) => ({ ok: true, soundDesignScore: scoreSoundDesignMaturity(args) }) },
+  { name: "ableton_score_patch_against_concept", description: "Score a patch plan against concept fit, role clarity, movement, and mix risk.", inputSchema: { concept: z.string().min(3).max(3000), role: z.string().min(1).max(200), patch_plan: z.record(z.unknown()) }, annotations: ro, handler: async (args) => ({ ok: true, patchScore: scorePatchAgainstConcept(args) }) },
+
+  { name: "ableton_score_arrangement_arc", description: "Score section count, hook return, negative space, and energy arc before adding more tracks.", inputSchema: { concept: z.string().min(3).max(3000), sections: z.array(z.string().min(1).max(160)).min(1).max(24), duration_seconds: z.number().int().min(15).max(3600).default(180) }, annotations: ro, handler: async (args) => ({ ok: true, arrangementArc: scoreArrangementArc(args) }) },
+  { name: "ableton_score_arrangement_motion", description: "Detect static or underdeveloped arrangements from a text summary and return exact changes.", inputSchema: { concept: z.string().min(3).max(3000), arrangement_summary: z.string().min(1).max(5000) }, annotations: ro, handler: async (args) => ({ ok: true, arrangementMotion: scoreArrangementMotion(args) }) },
+  { name: "ableton_score_density_curve", description: "Score whether density rises, drops, and breathes across arrangement sections.", inputSchema: { concept: z.string().min(3).max(3000), arrangement_summary: z.string().max(5000).optional(), sections: z.array(z.string().min(1).max(160)).max(24).optional() }, annotations: ro, handler: async (args) => ({ ok: true, densityCurve: scoreDensityCurve(args) }) },
+  { name: "ableton_generate_automation_curves", description: "Generate normalized automation points and dry-run write templates for musical movement.", inputSchema: { concept: z.string().min(3).max(3000), target: z.string().min(1).max(160), section: z.string().max(160).optional(), curve_type: z.string().max(80).optional(), intensity: z.number().int().min(1).max(10).default(6) }, annotations: ro, handler: async (args) => ({ ok: true, automationCurves: generateAutomationCurves(args) }) },
+  { name: "ableton_generate_revision_pass", description: "Generate one focused next revision pass from a concept, optional render, arrangement, and findings.", inputSchema: { concept: z.string().min(3).max(3000), render_path: z.string().min(1).max(1000).optional(), current_arrangement: z.string().max(5000).optional(), findings: z.array(z.string().max(400)).max(32).optional() }, annotations: ro, handler: async (args) => ({ ok: true, revisionPass: await generateRevisionPass(args) as any }) },
+  { name: "ableton_generate_next_revision_pass", description: "Generate the next revision pass from project state and previous findings without repeating weak moves.", inputSchema: { project_state: z.record(z.unknown()), previous_findings: z.array(z.string().max(400)).max(64).optional(), concept: z.string().max(3000).optional() }, annotations: ro, handler: async (args) => ({ ok: true, nextRevisionPass: generateNextRevisionPass(args) }) },
+  { name: "ableton_compare_render_versions", description: "Compare two allowed local renders and report technical improvements or regressions.", inputSchema: { before_path: z.string().min(1).max(1000), after_path: z.string().min(1).max(1000), concept: z.string().min(3).max(3000) }, annotations: ro, handler: async (args) => ({ ok: true, renderComparison: await compareRenderVersions(args) as any }) },
+
+  { name: "ableton_analyze_render_quality", description: "Run ffmpeg-backed loudness, clipping, spectrum, and quality findings for an allowed local render.", inputSchema: { path: z.string().min(1).max(1000), concept: z.string().min(3).max(3000), ...AudioWindowSchema }, annotations: ro, handler: async (args) => ({ ok: true, renderQuality: await analyzeRenderQuality(args) as any }) },
+  { name: "ableton_detect_frequency_masking", description: "Detect broad-band masking collisions between allowed local stems.", inputSchema: { stems: z.array(z.string().min(1).max(1000)).min(2).max(12), duration_seconds: z.number().positive().max(120).default(20) }, annotations: ro, handler: async (args) => ({ ok: true, masking: await detectFrequencyMasking(args) as any }) },
+  { name: "ableton_detect_mud_harshness_sibilance", description: "Flag broad-band mud, harshness, fizz, and sibilance risk in an allowed local render.", inputSchema: { path: z.string().min(1).max(1000), ...AudioWindowSchema }, annotations: ro, handler: async (args) => ({ ok: true, tonalRisks: await detectMudHarshnessSibilance(args) as any }) },
+  { name: "ableton_detect_phase_mono_issues", description: "Check audio channel layout and mono-safety guidance for an allowed local render.", inputSchema: PathArg, annotations: ro, handler: async (args) => ({ ok: true, phaseMono: await detectPhaseMonoIssues(args) as any }) },
+  { name: "ableton_score_low_end_control", description: "Score sub and bass control from broad-band probes on an allowed local render.", inputSchema: { path: z.string().min(1).max(1000), ...AudioWindowSchema }, annotations: ro, handler: async (args) => ({ ok: true, lowEnd: await scoreLowEndControl(args) as any }) },
+  { name: "ableton_score_mix_balance", description: "Score mix balance using loudness, clipping, and broad-band spectrum checks.", inputSchema: { path: z.string().min(1).max(1000), concept: z.string().max(3000).optional(), ...AudioWindowSchema }, annotations: ro, handler: async (args) => ({ ok: true, mixBalance: await scoreMixBalance(args) as any }) },
+  { name: "ableton_score_mix_translation", description: "Estimate phone/headphone/car/mono translation risk from render analysis.", inputSchema: { path: z.string().min(1).max(1000), ...AudioWindowSchema }, annotations: ro, handler: async (args) => ({ ok: true, mixTranslation: await scoreMixTranslation(args) as any }) },
+  { name: "ableton_plan_stereo_depth_stage", description: "Plan center, width, distance, and mono-critical priorities for tracks or layer roles.", inputSchema: { concept: z.string().min(3).max(3000), tracks: z.array(z.string().min(1).max(120)).max(64).optional(), playback_targets: z.array(z.string().min(1).max(80)).max(12).optional() }, annotations: ro, handler: async (args) => ({ ok: true, stereoDepthStage: planStereoDepthStage(args) }) },
+  { name: "ableton_score_depth_image", description: "Score stereo/depth image readiness for an allowed local render with mono-safety guidance.", inputSchema: { path: z.string().min(1).max(1000), stems: z.array(z.string().min(1).max(1000)).max(64).optional() }, annotations: ro, handler: async (args) => ({ ok: true, depthImage: await scoreDepthImage(args) as any }) },
+
+  { name: "ableton_get_capability_matrix", description: "Report tool classes, safety gates, bridge action support, and honesty rules for agents.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, capabilityMatrix: capabilityMatrixReport() }) },
+  { name: "ableton_classify_render_failure", description: "Classify common render failure modes such as low end, harshness, static arrangement, weak hook, or cheesy sound design.", inputSchema: { findings: z.array(z.string().max(400)).max(64).optional(), notes: z.string().max(3000).optional(), scores: z.record(z.number()).optional() }, annotations: ro, handler: async (args) => ({ ok: true, renderFailure: classifyRenderFailure(args) }) },
+  { name: "ableton_create_song_runbook", description: "Create a safe end-to-end song production runbook from brief to delivery review.", inputSchema: { concept: z.string().min(3).max(3000), usage_mode: SourceUsageMode.default("private_experiment"), target_duration_seconds: z.number().int().min(15).max(3600).default(180) }, annotations: ro, handler: async (args) => ({ ok: true, songRunbook: createSongRunbook(args) }) },
+  { name: "ableton_plan_session_handoff", description: "Plan handoff files, naming, revision notes, and review calls for a human-readable production session.", inputSchema: { concept: z.string().min(3).max(3000), arrangement_id: ArrangementPlanId.optional(), delivery_target: z.string().max(160).optional() }, annotations: ro, handler: async (args) => ({ ok: true, sessionHandoff: planSessionHandoff(args) }) },
+  { name: "ableton_validate_project_organization", description: "Validate track names, stems, source manifest linkage, and handoff readiness.", inputSchema: { tracks: z.array(z.string().min(1).max(160)).max(128).optional(), stems: z.array(z.string().min(1).max(1000)).max(128).optional(), manifest_path: z.string().min(1).max(1000).optional(), arrangement_id: ArrangementPlanId.optional() }, annotations: ro, handler: async (args) => ({ ok: true, organization: validateProjectOrganization(args) }) },
+  { name: "ableton_create_delivery_package", description: "Create a dry-run-first delivery package report linking master, stems, source manifest, notes, and release warnings.", inputSchema: { project_name: z.string().min(1).max(160), master_path: z.string().min(1).max(1000).optional(), stems: z.array(z.string().min(1).max(1000)).max(64).optional(), manifest_path: z.string().min(1).max(1000).optional(), notes: z.string().max(4000).optional(), ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, deliveryPackage: await createDeliveryPackage(args) as any }) },
 
   { name: "ableton_list_free_sample_sources", description: "List approved free/sample-library source policies, license rules, and download modes.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, sampleSources: listFreeSampleSources() }) },
   { name: "ableton_search_free_sample_sources", description: "Search or plan searches across approved free sample sources with license filtering.", inputSchema: { query: z.string().min(1).max(200), sources: z.array(FreeSampleSource).min(1).max(16).optional(), allowed_only: z.boolean().default(true), ...Page }, annotations: webro, handler: async (args) => ({ ok: true, sampleSearch: await searchFreeSampleSources({ query: args.query, sources: args.sources, page: args.page, pageSize: args.pageSize, allowedOnly: args.allowed_only }) }) },

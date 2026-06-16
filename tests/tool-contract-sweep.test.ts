@@ -11,7 +11,8 @@ const fixtures = {
   stagedAudioPath: path.join(process.cwd(), "samples", "staging", "contract-sweep-tone.wav"),
   convertedAudioPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "converted.wav"),
   pluginPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "plugin.zip"),
-  preparedAudioId: "prepared-audio-1111111111111111"
+  preparedAudioId: "prepared-audio-1111111111111111",
+  sourceManifestPath: path.join(process.cwd(), "diagnostics", "runtime", "tool-contract-sweep-test", "source-manifest.json")
 };
 
 describe("all-tool contract sweep", () => {

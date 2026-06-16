@@ -26,6 +26,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Local paths](LOCAL_PATHS.md) | Confirming verified Ableton, Max, library, and database paths. |
 | [Sample policy](SAMPLE_POLICY.md) | Reviewing licensing and attribution rules. |
 | [Sample sources](SAMPLE_SOURCES.md) | Checking approved sample sources and import paths. |
+| [Producer brain](PRODUCER_BRAIN.md) | Using source modes, brief parsing, sound-design planning, render review, mix scoring, revision passes, and delivery handoffs. |
 | [Concept to music](CONCEPT_TO_MUSIC.md) | Using staged concept, sample, arrangement, execution, and delivery tools. |
 | [Natural language to music](NATURAL_LANGUAGE_TO_MUSIC.md) | Teaching Codex how to translate user briefs into safe MCP music workflows. |
 | [Music production skills](MUSIC_PRODUCTION_SKILLS.md) | Mapping producer skills to current Ableton MCP tools and planned gaps. |

@@ -26,6 +26,7 @@ type SweepFixtures = {
   convertedAudioPath: string;
   pluginPath: string;
   preparedAudioId: string;
+  sourceManifestPath: string;
 };
 
 function makeSilentWav() {
@@ -70,6 +71,7 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   const stagedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-tone.wav");
   const convertedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-converted.wav");
   const pluginPath = path.join(dir, "plugin.zip");
+  const sourceManifestPath = path.join(dir, "source-manifest.json");
   const conceptPlanId = sweepConceptPlanId(stagedAudioPath);
   const preparedAudioId = `prepared-audio-${crypto.createHash("sha256").update(JSON.stringify({ conceptPlanId, stagedAudioPath })).digest("hex").slice(0, 16)}`;
 
@@ -80,6 +82,45 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
   await writeIfMissing(stagedAudioPath, makeSilentWav());
   await writeIfMissing(pluginPath, "Ableton MCP plugin package placeholder\n");
+  await fs.writeFile(sourceManifestPath, `${JSON.stringify({
+    schema: "ableton-mcp-source-manifest-v1",
+    projectName: "contract-sweep",
+    usageMode: "private_experiment",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    summary: {
+      total: 1,
+      byStatus: { unverified: 1 },
+      privateExperimentUsable: true,
+      releaseReady: false,
+      releaseReviewNeeded: 1,
+      blockers: [{
+        id: "contract-source-0000000000000000",
+        title: "contract sweep scratch source",
+        status: "unverified",
+        role: "texture"
+      }]
+    },
+    sources: [{
+      id: "contract-source-0000000000000000",
+      title: "contract sweep scratch source",
+      role: "texture",
+      status: "unverified",
+      sourcePath: {
+        requested: audioPath,
+        path: audioPath,
+        rootMode: "readwrite"
+      },
+      sourceUrl: null,
+      attribution: null,
+      canUseForPrivateExperiment: true,
+      releaseNeedsReview: true,
+      notes: [
+        "All-tool contract sweep source manifest fixture.",
+        "Private experiment use is allowed; release candidate review must clear or replace this source."
+      ]
+    }]
+  }, null, 2)}\n`);
   const manifestDir = path.join(LOCAL_PATHS.diagnostics, "runtime", "concept-plans");
   await fs.mkdir(manifestDir, { recursive: true });
   await fs.writeFile(path.join(manifestDir, `${preparedAudioId}.json`), `${JSON.stringify({
@@ -171,7 +212,7 @@ async function ensureFixtures(): Promise<SweepFixtures> {
     notes: ["Contract sweep fixture arrangement for read-only concept report tools."]
   }, null, 2)}\n`);
 
-  return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath, preparedAudioId };
+  return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath, preparedAudioId, sourceManifestPath };
 }
 
 function sweepConceptPlanId(referencePath: string) {
@@ -360,6 +401,52 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_detect_key_bpm_confidence", arguments: { path: fixtures.audioPath, bpm_range: { min: 60, max: 140 }, start_seconds: 0, duration_seconds: 0.1 } },
     { name: "ableton_find_best_loop_points", arguments: { path: fixtures.audioPath, target_bars: 1, bpm: 120, start_seconds: 0, duration_seconds: 0.1 } },
     { name: "ableton_match_samples_to_concept", arguments: { concept: "contract sweep liminal room tone", candidates: [{ path: fixtures.audioPath, title: "contract sweep room tone", tags: ["room", "texture"] }], roles: ["texture", "pulse"] } },
+    { name: "ableton_get_project_usage_mode", arguments: {} },
+    { name: "ableton_set_project_usage_mode", arguments: { mode: "private_experiment", project_name: "contract sweep", dry_run: true } },
+    { name: "ableton_create_source_manifest", arguments: { project_name: "contract sweep draft", usage_mode: "private_experiment", sources: [{ title: "scratch texture", role: "texture" }], dry_run: true } },
+    { name: "ableton_mark_source_as_user_provided", arguments: { manifest_path: fixtures.sourceManifestPath, source: { title: "user supplied one-shot", role: "impact" }, dry_run: true } },
+    { name: "ableton_mark_source_as_experiment_only", arguments: { manifest_path: fixtures.sourceManifestPath, source: { title: "experiment scratch loop", role: "texture" }, dry_run: true } },
+    { name: "ableton_check_release_source_readiness", arguments: { manifest_path: fixtures.sourceManifestPath, usage_mode: "release_candidate" } },
+    { name: "ableton_parse_music_brief", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
+    { name: "ableton_compile_mood_palette", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
+    { name: "ableton_plan_tempo_grid", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
+    { name: "ableton_generate_harmonic_palette", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", mood: "sad dreamy", complexity: "medium" } },
+    { name: "ableton_generate_motif_system", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", key: "C# minor", bpm: 72, length_beats: 8 } },
+    { name: "ableton_score_hook_memorability", arguments: { motif: [61, 64, 68, 71, 69, 68], concept: "contract sweep hook" } },
+    { name: "ableton_plan_layer_stack", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", section: "full_track", intensity: 7 } },
+    { name: "ableton_create_moment_map", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", duration_seconds: 120, intensity: 7 } },
+    { name: "ableton_plan_negative_space", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", sections: ["intro", "break", "return"], intensity: 7 } },
+    { name: "ableton_design_synth_patch", arguments: { concept: "contract sweep liminal cue", role: "glassy hook memory", brightness: 4, instability: 6 } },
+    { name: "ableton_design_operator_patch", arguments: { concept: "contract sweep liminal cue", role: "glassy hook memory", brightness: 4, instability: 6 } },
+    { name: "ableton_design_wavetable_patch", arguments: { concept: "contract sweep liminal cue", role: "wide choir fog", motion: 5, width: 7 } },
+    { name: "ableton_design_drift_patch", arguments: { concept: "contract sweep liminal cue", role: "warm unstable chord bed", warmth: 7, age: 6, detune: 4 } },
+    { name: "ableton_design_sampler_instrument", arguments: { samples: [{ title: "contract sweep source", root_note: "C3" }], role: "memory sampler", key_range: "C2-C5" } },
+    { name: "ableton_design_granular_texture", arguments: { concept: "contract sweep liminal cue", path: fixtures.audioPath, density: 5, grain_size_ms: 120, movement: 5 } },
+    { name: "ableton_design_rack_macros", arguments: { role: "memory sampler", patch_plan: { device: "Sampler", role: "memory" } } },
+    { name: "ableton_score_sound_design_maturity", arguments: { concept: "contract sweep liminal cue", role: "hook", patch_plan: { macro: true, movement: "slow" } } },
+    { name: "ableton_score_patch_against_concept", arguments: { concept: "contract sweep liminal cue", role: "hook", patch_plan: { role: "hook", macro: true, movement: "slow", filter: "dark lowpass" } } },
+    { name: "ableton_score_arrangement_arc", arguments: { concept: "contract sweep liminal cue", sections: ["intro hook", "development", "negative break", "hook return"], duration_seconds: 120 } },
+    { name: "ableton_score_arrangement_motion", arguments: { concept: "contract sweep liminal cue", arrangement_summary: "intro hook -> filter automation -> negative break -> hook return" } },
+    { name: "ableton_score_density_curve", arguments: { concept: "contract sweep liminal cue", sections: ["intro", "development", "break", "return"] } },
+    { name: "ableton_generate_automation_curves", arguments: { concept: "contract sweep liminal cue", target: "filter_width", section: "return", intensity: 7 } },
+    { name: "ableton_generate_revision_pass", arguments: { concept: "contract sweep liminal cue", current_arrangement: "intro hook -> static middle -> return", findings: ["static arrangement"] } },
+    { name: "ableton_generate_next_revision_pass", arguments: { project_state: { concept: "contract sweep" }, previous_findings: ["static arrangement"] } },
+    { name: "ableton_compare_render_versions", arguments: { before_path: fixtures.audioPath, after_path: fixtures.audioPath, concept: "contract sweep tone comparison" } },
+    { name: "ableton_analyze_render_quality", arguments: { path: fixtures.audioPath, concept: "contract sweep tone", start_seconds: 0, duration_seconds: 0.1 } },
+    { name: "ableton_detect_frequency_masking", arguments: { stems: [fixtures.audioPath, fixtures.audioPath], duration_seconds: 0.1 } },
+    { name: "ableton_detect_mud_harshness_sibilance", arguments: { path: fixtures.audioPath, start_seconds: 0, duration_seconds: 0.1 } },
+    { name: "ableton_detect_phase_mono_issues", arguments: { path: fixtures.audioPath } },
+    { name: "ableton_score_low_end_control", arguments: { path: fixtures.audioPath, start_seconds: 0, duration_seconds: 0.1 } },
+    { name: "ableton_score_mix_balance", arguments: { path: fixtures.audioPath, concept: "contract sweep tone", start_seconds: 0, duration_seconds: 0.1 } },
+    { name: "ableton_score_mix_translation", arguments: { path: fixtures.audioPath, start_seconds: 0, duration_seconds: 0.1 } },
+    { name: "ableton_plan_stereo_depth_stage", arguments: { concept: "contract sweep liminal cue", tracks: ["hook", "sub", "texture"] } },
+    { name: "ableton_score_depth_image", arguments: { path: fixtures.audioPath } },
+    { name: "ableton_get_capability_matrix", arguments: {} },
+    { name: "ableton_classify_render_failure", arguments: { findings: ["static arrangement", "cheesy synth"] } },
+    { name: "ableton_create_song_runbook", arguments: { concept: "contract sweep liminal cue", usage_mode: "private_experiment", target_duration_seconds: 120 } },
+    { name: "ableton_plan_session_handoff", arguments: { concept: "contract sweep liminal cue", delivery_target: "review bundle" } },
+    { name: "ableton_validate_project_organization", arguments: { tracks: ["hook memory", "sub pressure"], stems: [fixtures.audioPath], manifest_path: fixtures.sourceManifestPath } },
+    { name: "ableton_create_delivery_package", arguments: { project_name: "contract sweep package", master_path: fixtures.audioPath, stems: [fixtures.audioPath], manifest_path: fixtures.sourceManifestPath, dry_run: true } },
     { name: "ableton_normalize_sample_metadata", arguments: { metadata: { license: "CC0" } } },
     { name: "ableton_import_sample_to_library", arguments: { stagedPath: fixtures.audioPath, attribution: { license: "CC0" } }, expected: "any" },
     { name: "ableton_find_local_samples", arguments: { query: "", page: 1, pageSize: 5 } },
