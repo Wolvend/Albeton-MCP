@@ -1,9 +1,32 @@
 # Final Verification Report
 
 Date: 2026-06-13 local runtime checks
-Updated: 2026-06-16 reference comparison, producer-brain upgrade, and full local verification pass
+Updated: 2026-06-16 balanced-core upgrade, sample intelligence, one-call facade, ready check, and full local verification pass
 
 This report records the latest verification pass for the Ableton MCP production build.
+
+## 2026-06-16 Balanced-Core Upgrade Pass
+
+The latest pass consolidated the production workflow instead of adding raw tool sprawl:
+
+- Added bounded SQLite-backed sample intelligence under `ABLETON_MCP_SAMPLE_LIBRARY_ROOT`.
+- Added `ableton_build_sample_intelligence_index`, `ableton_search_sample_intelligence`, `ableton_get_sample_intelligence_item`, and `ableton_plan_sample_chop_map`.
+- Added `ableton_produce_track_from_brief` as a one-call dry-run facade that composes internal modules directly and returns exact next calls.
+- Added `npm run ready:check` plus `ready` launcher mode for reboot-safe local readiness checks.
+- Strengthened render review with stem metadata and sample-index context when available.
+- Updated Docker/OpenClaw safe allowlist to include the dry-run facade and bounded sample-intelligence tools while keeping writes, downloads, and UI/mouse excluded.
+- Updated agent docs with the required music-production information packet before making music.
+
+Security posture stayed unchanged:
+
+```text
+Writes: disabled by default and dry-run first
+Downloads: disabled by default
+UI/mouse control: disabled by default
+Remote HTTP: disabled by default
+Arbitrary URL scraping/shell/broad scans: not implemented
+Unsupported bridge operations: report unsupported/setup errors, not fake success
+```
 
 ## 2026-06-16 Producer-Brain Upgrade Pass
 
@@ -107,25 +130,27 @@ Mono peak: 0.7399 linear
 ## Current Surface
 
 ```text
-Tools: 301
+Tools: 317
 Resources: 3
 Prompts: 2
-Docker MCP default safe tools: 190
+Docker MCP default safe tools: 206
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
-Latest incremental verification for the producer-brain core:
+Latest incremental verification for the balanced core:
 
 ```text
 Build: passed
-Tests: 25 files, 118 tests passed
 Lint: passed
+Tests: 27 files, 128 tests passed
 Doctor: passed with 0 failures and 1 warning for the optional UI driver listener
+Ready check: passed, 15 checks, 0 failures, 0 warnings, sample root G:\AbletonMCP\SampleLibrary
 Release check: passed
-Safe sweep: passed, 185 safe calls, 0 unexpected failures
-All-tool contract sweep: passed, 301 registered tools, 301 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
-MCP verifier: passed, 301 tools, 3 resources, 2 prompts
+Safe sweep: passed, 201 safe calls, 0 unexpected failures
+All-tool contract sweep: passed, 317 registered tools, 317 safe calls, 0 missing/extra/duplicate specs, 0 unexpected failures
+MCP verifier: passed, 317 tools, 3 resources, 2 prompts
 Audit: 0 vulnerabilities
+git diff --check: passed
 ```
 
 Default gates remained off during verification:

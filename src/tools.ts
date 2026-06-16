@@ -26,6 +26,13 @@ import { AbletonMcpError, requireFlag } from "./errors.js";
 import { paginate } from "./response.js";
 import { getRuntimeReport, runTool, type RuntimeTool, type ToolAnnotations } from "./runtime.js";
 import { getScanStatus, scanLibrary } from "./scanner.js";
+import {
+  buildSampleIntelligenceIndex,
+  getSampleIntelligenceItem,
+  getSampleIntelligenceStatus,
+  planSampleChopMap,
+  searchSampleIntelligence
+} from "./sample-intelligence.js";
 import { queryLibrary } from "./cache.js";
 import {
   generateDrumRackPlan,
@@ -141,6 +148,20 @@ import {
   scoreSoundDesignMaturity,
   validateProjectOrganization
 } from "./producer-brain.js";
+import {
+  advanceProductionSession,
+  createExecutionPlan,
+  createProductionSession,
+  designSignatureSoundPalette,
+  generateSongBlueprint,
+  getProductionSession,
+  listProductionSessions,
+  prepareProductionAssets,
+  produceTrackFromBrief,
+  reviewRenderAndRevise,
+  scoreTrackProfessionalism
+} from "./production-session.js";
+import { getToolPacks } from "./tool-packs.js";
 
 const Empty = {};
 const Page = { page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(25) };
@@ -184,6 +205,10 @@ const EffectName = z.string().min(1).max(128);
 const ArrangementClipId = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.:-]+$/);
 const ConceptSources = z.array(z.enum(["local_library", "internet_archive", "freesound"])).min(1).max(3).default(["local_library", "internet_archive", "freesound"]);
 const SourceUsageMode = z.enum(["private_experiment", "release_candidate"]);
+const ProductionSourcePolicy = z.enum(["procedural_only", "local_only", "metadata_search", "download_gated"]);
+const ProductionPhase = z.enum(["readiness", "blueprint", "sound_palette", "assets", "execution_plan", "render_review", "revision", "delivery"]);
+const ProductionSessionId = z.string().regex(/^prod-[a-f0-9]{16}$/);
+const SampleIntelligenceId = z.string().regex(/^[a-f0-9]{64}$/);
 const SourceStatus = z.enum(["user_provided", "public_domain", "cc_licensed", "generated", "unverified", "experiment_only"]);
 const SourceManifestEntry = z.object({
   source_path: z.string().min(1).max(1000).optional(),
@@ -1752,6 +1777,7 @@ const toolDefs: ToolDef[] = [
   } },
   { name: "ableton_control_mode_status", description: "Report background bridge mode and explicit UI fallback policy.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, control: controlModeStatus() }) },
   { name: "ableton_mcp_get_safe_tool_allowlist", description: "Return the Docker MCP/OpenClaw safe tool allowlist as structured data and CSV without changing client configuration.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, safeToolAllowlist: safeToolAllowlistReport() }) },
+  { name: "ableton_mcp_get_tool_packs", description: "Return smaller recommended tool packs for producer, immersive-producer, sound-design, mix, live-operator, and developer-debug workflows.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, toolPacks: getToolPacks(toolDefs.map((tool) => tool.name)) }) },
   { name: "ableton_mcp_get_objective_readiness_report", description: "Return a read-only objective-level readiness report for secured Ableton MCP use across Docker MCP profiles, Codex, OpenClaw, and other MCP clients.", inputSchema: { check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, objectiveReadiness: await objectiveReadinessReport(args.check_bridge) }) },
   { name: "ableton_mcp_get_launch_readiness_audit", description: "Return a concise read-only launch audit for client profiles, safe defaults, concept workflow readiness, bridge state, and optional UI control gates.", inputSchema: { check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, launchReadiness: await launchReadinessAudit(args.check_bridge) }) },
   { name: "ableton_plan_agent_music_session", description: "Return a safe step-by-step agent workflow for turning a mood/place brief into a layered Ableton production without side effects.", inputSchema: { concept: z.string().min(3).max(2000), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(7), style: z.string().max(160).optional(), reference_path: z.string().min(1).optional(), client: AgentMusicClient, include_sample_search: z.boolean().default(true), include_audio_preparation: z.boolean().default(true), check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, workflow: await agentMusicSessionPlan(args) }) },
@@ -1767,6 +1793,10 @@ const toolDefs: ToolDef[] = [
 
   { name: "ableton_scan_library", description: "Incrementally index an allowed Ableton library path on demand.", inputSchema: { root: z.string().default(LOCAL_PATHS.userLibrary), limit: z.number().int().min(1).max(10000).default(2000) }, annotations: ro, handler: async (args) => ({ ok: true, scan: await scanLibrary(args.root, { limit: args.limit }) }) },
   { name: "ableton_get_scan_status", description: "Get current or last library scan status.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, scan: getScanStatus() }) },
+  { name: "ableton_build_sample_intelligence_index", description: "Build a bounded local sample intelligence index under the configured sample-library root; never runs at startup.", inputSchema: { root: z.string().min(1).max(1000).optional(), limit: z.number().int().min(1).max(5000).default(500), analyze_audio: z.boolean().default(true), include_generated_renders: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, sampleIndex: await buildSampleIntelligenceIndex(args) }) },
+  { name: "ableton_search_sample_intelligence", description: "Search the bounded local sample intelligence index by text, role, source pack, and page.", inputSchema: { query: z.string().max(200).default(""), roles: z.array(z.string().min(1).max(60)).max(12).optional(), source_pack: z.string().min(1).max(160).optional(), ...Page }, annotations: ro, handler: async (args) => ({ ok: true, sampleIntelligence: await searchSampleIntelligence(args) }) },
+  { name: "ableton_get_sample_intelligence_item", description: "Read one sample intelligence row by id with local paths redacted.", inputSchema: { id: SampleIntelligenceId }, annotations: ro, handler: async (args) => ({ ok: true, sample: await getSampleIntelligenceItem(args.id) }) },
+  { name: "ableton_plan_sample_chop_map", description: "Plan musical sample slices/chops from an indexed or allowed local sample without writing audio.", inputSchema: { sample_id: SampleIntelligenceId.optional(), path: z.string().min(1).max(1000).optional(), target_bpm: z.number().min(30).max(300).optional(), bars: z.number().int().min(1).max(64).default(4), slice_count: z.number().int().min(1).max(64).default(8), role: z.string().min(1).max(120).optional() }, annotations: ro, handler: async (args) => ({ ok: true, chopMap: await planSampleChopMap(args) }) },
   { name: "ableton_search_library", description: "Search indexed library items.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args) },
   { name: "ableton_search_samples", description: "Search indexed local samples.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "sample") },
   { name: "ableton_search_presets", description: "Search indexed presets and device racks.", inputSchema: Query, annotations: ro, handler: async (args) => librarySearch(args, "preset") },
@@ -1926,6 +1956,18 @@ toolDefs.push(
   { name: "ableton_mark_source_as_user_provided", description: "Record a source as user-provided in a source manifest or a new one-source manifest.", inputSchema: { manifest_path: z.string().min(1).max(1000).optional(), project_name: z.string().min(1).max(160).optional(), source: SourceManifestEntry, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, sourceManifest: await appendSourceToManifest({ manifest_path: args.manifest_path, project_name: args.project_name, source: args.source, status: "user_provided", dry_run: args.dry_run }) as any }) },
   { name: "ableton_mark_source_as_experiment_only", description: "Record a source as private-experiment-only so drafting can continue while release review remains blocked.", inputSchema: { manifest_path: z.string().min(1).max(1000).optional(), project_name: z.string().min(1).max(160).optional(), source: SourceManifestEntry, ...DryRun }, annotations: rw, handler: async (args) => ({ ok: true, sourceManifest: await appendSourceToManifest({ manifest_path: args.manifest_path, project_name: args.project_name, source: args.source, status: "experiment_only", dry_run: args.dry_run }) as any }) },
   { name: "ableton_check_release_source_readiness", description: "Check a source manifest for release-candidate blockers without blocking private experimentation.", inputSchema: { manifest_path: z.string().min(1).max(1000), usage_mode: SourceUsageMode.optional() }, annotations: ro, handler: async (args) => ({ ok: true, sourceReadiness: await checkReleaseSourceReadiness(args) as any }) },
+
+  { name: "ableton_create_production_session", description: "Create a bounded stateful producer-facade session from a music brief without Ableton writes, downloads, or UI control.", inputSchema: { brief: z.string().min(3).max(4000), title: z.string().min(1).max(160).optional(), style: z.string().max(160).optional(), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(6), usage_mode: SourceUsageMode.default("private_experiment"), source_policy: ProductionSourcePolicy.default("local_only"), check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, productionSession: await createProductionSession(args) as any }) },
+  { name: "ableton_get_production_session", description: "Read one stored producer-facade session with redacted local paths.", inputSchema: { session_id: ProductionSessionId }, annotations: ro, handler: async (args) => ({ ok: true, productionSession: await getProductionSession(args.session_id) as any }) },
+  { name: "ableton_list_production_sessions", description: "List stored producer-facade sessions from the bounded diagnostics session store.", inputSchema: Page, annotations: ro, handler: async (args) => ({ ok: true, productionSessions: await listProductionSessions(args) as any }) },
+  { name: "ableton_generate_song_blueprint", description: "Generate and store a compact song blueprint: brief parse, mood, tempo, harmony, motif, layer roles, and concept plan.", inputSchema: { session_id: ProductionSessionId }, annotations: ro, handler: async (args) => ({ ok: true, blueprint: await generateSongBlueprint(args) as any }) },
+  { name: "ableton_design_signature_sound_palette", description: "Generate and store a role-based signature sound palette for a production session.", inputSchema: { session_id: ProductionSessionId }, annotations: ro, handler: async (args) => ({ ok: true, soundPalette: await designSignatureSoundPalette(args) as any }) },
+  { name: "ableton_prepare_production_assets", description: "Plan production asset handling for a session without downloads or imports unless separate gates are used later.", inputSchema: { session_id: ProductionSessionId }, annotations: ro, handler: async (args) => ({ ok: true, assetPlan: await prepareProductionAssets(args) as any }) },
+  { name: "ableton_create_execution_plan", description: "Create and store a dry-run Ableton execution plan from a production session without executing Live writes.", inputSchema: { session_id: ProductionSessionId, check_bridge: z.boolean().default(false) }, annotations: ro, handler: async (args) => ({ ok: true, executionPlan: await createExecutionPlan(args) as any }) },
+  { name: "ableton_advance_production_session", description: "Advance a production session through a bounded producer workflow phase while preserving dry-run defaults and gates.", inputSchema: { session_id: ProductionSessionId, phase: ProductionPhase, render_path: z.string().min(1).max(1000).optional(), stem_paths: z.array(z.string().min(1).max(1000)).max(12).optional(), max_internal_steps: z.number().int().min(1).max(8).default(4), ...DryRun }, annotations: ro, handler: async (args) => ({ ok: true, productionAdvance: await advanceProductionSession(args) as any }) },
+  { name: "ableton_review_render_and_revise", description: "Analyze an allowed local render/stems for a production session and store one focused revision pass.", inputSchema: { session_id: ProductionSessionId, render_path: z.string().min(1).max(1000), stem_paths: z.array(z.string().min(1).max(1000)).max(12).optional(), duration_seconds: z.number().positive().max(120).default(30) }, annotations: ro, handler: async (args) => ({ ok: true, renderReview: await reviewRenderAndRevise(args) as any }) },
+  { name: "ableton_score_track_professionalism", description: "Score planning completeness and optional render quality for a production session.", inputSchema: { session_id: ProductionSessionId, render_path: z.string().min(1).max(1000).optional(), stem_paths: z.array(z.string().min(1).max(1000)).max(12).optional(), duration_seconds: z.number().positive().max(120).default(30) }, annotations: ro, handler: async (args) => ({ ok: true, professionalism: await scoreTrackProfessionalism(args) as any }) },
+  { name: "ableton_produce_track_from_brief", description: "One-call dry-run producer facade from brief to blueprint, sample plan, sound palette, execution summary, and exact next calls.", inputSchema: { brief: z.string().min(3).max(4000), title: z.string().min(1).max(160).optional(), style: z.string().max(160).optional(), target_duration_seconds: z.number().int().min(30).max(900).default(180), intensity: z.number().int().min(1).max(10).default(6), usage_mode: SourceUsageMode.default("private_experiment"), source_policy: ProductionSourcePolicy.default("local_only"), check_bridge: z.boolean().default(false), max_internal_steps: z.number().int().min(1).max(8).default(6), ...DryRun }, annotations: ro, handler: async (args) => ({ ok: true, producerFacade: await produceTrackFromBrief(args) as any }) },
 
   { name: "ableton_parse_music_brief", description: "Parse a natural-language music brief into mood, avoid list, tempo/key hints, and next production calls.", inputSchema: BriefSchema, annotations: ro, handler: async (args) => ({ ok: true, brief: parseMusicBrief(args) }) },
   { name: "ableton_compile_mood_palette", description: "Compile a music concept into approved sounds, forbidden sounds, mix targets, and next production calls.", inputSchema: BriefSchema, annotations: ro, handler: async (args) => ({ ok: true, moodPalette: compileMoodPalette(args) }) },
@@ -2108,7 +2150,7 @@ toolDefs.push(
   { name: "ableton_suggest_mix_actions", description: "Suggest non-destructive mix actions with read-tool probes and safety gates.", inputSchema: { issue: z.string().min(1).max(1000), context: z.string().max(1000).optional(), intensity: z.number().int().min(1).max(10).default(6) }, annotations: ro, handler: async (args) => ({ ok: true, mixActions: suggestMixActions(args) }) },
   { name: "ableton_validate_production_plan", description: "Validate a production plan for write/download/UI/network gates and unsafe execution patterns.", inputSchema: { plan: z.record(z.unknown()) }, annotations: ro, handler: async (args) => ({ ok: true, validation: validateProductionPlan(args.plan) }) },
 
-  { name: "ableton_mcp_health", description: "Health check for the MCP server.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, health: { started: true, roots: rootsForReport(), scan: getScanStatus() } }) },
+  { name: "ableton_mcp_health", description: "Health check for the MCP server.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, health: { started: true, roots: rootsForReport(), scan: getScanStatus(), sampleIntelligence: getSampleIntelligenceStatus() } }) },
   { name: "ableton_mcp_get_client_connection_profiles", description: "Return safe connection profiles for Codex, Claude, Docker MCP, WSL, remote devices, and model-provider host apps.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, profiles: clientConnectionProfiles() }) },
   { name: "ableton_mcp_get_client_bootstrap_bundle", description: "Return one safe machine-readable bootstrap bundle for Codex, Claude, Docker MCP, OpenClaw, OpenRouter host apps, Gemini host apps, llama.cpp wrappers, and Antigravity.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, bootstrap: clientBootstrapBundle() }) },
   { name: "ableton_mcp_list_capabilities", description: "List registered MCP tool capabilities.", inputSchema: Empty, annotations: ro, handler: async () => ({ ok: true, toolCount: toolDefs.length, tools: toolDefs.map((tool) => ({ name: tool.name, annotations: tool.annotations })) }) },

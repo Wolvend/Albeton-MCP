@@ -24,6 +24,7 @@ Run first-run diagnostics:
 
 ```powershell
 npm run doctor
+npm run ready:check
 ```
 
 Run release packaging checks:
@@ -78,10 +79,11 @@ Native WSL Node can verify the MCP server, but it may not reach the Windows-only
 Expected current results:
 
 ```text
-Tests: 25 files, 118 tests passed
-MCP verifier: 294 tools, 3 resources, 2 prompts
-Safe sweep: 178 safe calls, 0 unexpected failures
-All-tool contract sweep: 294 registered tools, 294 contract calls
+Tests: 27 files, 128 tests passed
+Ready check: 15 checks, 0 failures, 0 warnings
+MCP verifier: 317 tools, 3 resources, 2 prompts
+Safe sweep: 201 safe calls, 0 unexpected failures
+All-tool contract sweep: 317 registered tools, 317 contract calls
 Audit: 0 vulnerabilities
 ```
 
@@ -109,7 +111,7 @@ If the bridge is not loaded, these tools should return `BRIDGE_UNREACHABLE` with
 
 The live-ready workflow can optionally call `ableton_open_bridge_device` behavior through `-OpenBridge` / `--open-bridge`. This opens the installed `.amxd` preset through the host OS/Ableton association and then re-checks `127.0.0.1:17364`; it does not move the mouse or enable MCP write tools, but Ableton may still prompt or alter the current set by loading the bridge device.
 
-The live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_setup_status` with `check_bridge=true`, `ableton_bridge_ping`, `ableton_get_live_state`, bounded track/detail/scene/device reads, `ableton_control_mode_status`, and one `dry_run=true` write probe. It also attempts `ableton_get_routing_overview` as an optional deep routing probe because very dense Live Sets can make full routing enumeration slow. It reports objective status, launch mode, safe tool count, bridge setup status, LiveAPI control coverage, bridge capability summary, track/scene/device counts, and optional send-matrix row counts when available. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
+The default live-smoke workflow calls `ableton_mcp_get_objective_readiness_report`, `ableton_mcp_get_launch_readiness_audit`, `ableton_get_bridge_capabilities`, `ableton_live_status`, `ableton_bridge_status`, `ableton_bridge_setup_status` with `check_bridge=true`, `ableton_bridge_ping`, `ableton_get_live_state`, bounded track/detail/scene reads, `ableton_control_mode_status`, and one `dry_run=true` write probe. Device enumeration is a deep probe only: run `npm run live-smoke -- --deep` when you intentionally want to stress-test LiveAPI device reads. If any LiveAPI read times out, live-smoke stops queuing further bridge reads, sets `bridgeNeedsReload: true`, and reports that the Max for Live bridge device should be reloaded before retrying. It should never move the mouse, enable downloads, expose HTTP remotely, or perform real writes.
 
 ## Check the UI driver
 

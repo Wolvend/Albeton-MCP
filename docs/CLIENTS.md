@@ -9,6 +9,8 @@ The safest default is stdio on the same machine.
 
 For music-production agents, start with `ableton_mcp_get_client_bootstrap_bundle`, then call `ableton_mcp_get_objective_readiness_report` and `ableton_mcp_get_launch_readiness_audit` with `check_bridge=false`. The recommended workflow includes concept planning, sample curation, arrangement planning, execution action review, execution manifest review, execution runbook rehearsal, device-chain review, indexed device catalog matching, and dry-run execution before any approval-gated write.
 
+For lower token use, call `ableton_mcp_get_tool_packs` and prefer the `minimal_producer` pack. The preferred high-level path is `ableton_create_production_session` -> `ableton_generate_song_blueprint` -> `ableton_design_signature_sound_palette` -> `ableton_prepare_production_assets` -> `ableton_create_execution_plan` -> `ableton_review_render_and_revise` after a render exists. These facade tools store bounded session state and do not bypass write, download, UI/mouse, bridge, or approval gates.
+
 For local Ollama/llama.cpp smoke-test status and current Claude, Gemini, and OpenRouter connection proof points, see [Model runtime compatibility](MODEL_RUNTIME_COMPATIBILITY.md).
 
 ## Automatic Setup

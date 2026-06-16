@@ -157,6 +157,7 @@ Modes:
   install          Build and install Ableton Max for Live bridge files only.
   verify           Build and run MCP verifier.
   check            Build, test, lint, doctor, release check, sweeps, verifier, audit.
+  ready            Read-only reboot-ready check for local MCP startup and sample-root config.
   doctor           Run environment and listener checks.
   test, lint       Run unit tests or lint.
   build            Build TypeScript only.
@@ -165,6 +166,7 @@ Modes:
   live-ready       Report host/Ableton/bridge readiness; optionally start Ableton or open the bridge preset.
   live-smoke       Run safe Ableton bridge live smoke checks without real writes.
   concept-demo     Run a side-effect-free concept-to-music MCP client dry run.
+  producer-demo    Run the small producer-facade MCP client dry run.
   inspect          List MCP tools with MCP Inspector.
   ui-driver        Start user-chosen foreground Ableton UI driver.
   bridge-status    Report bridge install freshness, Ableton process state, and listener status.
@@ -239,6 +241,10 @@ case "$MODE" in
     npm run verify:mcp
     npm audit --audit-level=moderate
     ;;
+  ready)
+    run_setup
+    npm run ready:check
+    ;;
   doctor)
     run_setup
     npm run doctor
@@ -278,6 +284,10 @@ case "$MODE" in
   concept-demo)
     run_setup
     npm run demo:concept
+    ;;
+  producer-demo)
+    run_setup
+    npm run demo:producer
     ;;
   inspect)
     run_setup

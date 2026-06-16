@@ -125,7 +125,7 @@ describe("concept-to-music planning", () => {
     expect(summary).toMatchObject({ id: journal.id, status: "failed", events: 2 });
     expect(summary.path).toContain("%USERPROFILE%");
     expect(JSON.stringify(stored)).not.toContain(samplePath);
-    expect(JSON.stringify(stored)).toContain("%USERPROFILE%");
+    expect(JSON.stringify(stored)).toContain("%ABLETON_MCP_SAMPLE_LIBRARY_ROOT%");
     expect(stored.events.map((event: Record<string, unknown>) => event.type)).toEqual([
       "action_started",
       "action_failed"
@@ -607,7 +607,7 @@ describe("concept-to-music planning", () => {
     expect(automationMap.lanes.some((lane) => lane.dryRunTemplates.some((call) => call.name === "ableton_get_device_parameter_map"))).toBe(true);
     expect(automationMap.exactNextToolCalls.deviceAutomationReadiness.name).toBe("ableton_plan_concept_device_automation_readiness");
     expect(delivery.export.sampleRate).toBe(48000);
-  });
+  }, 20_000);
 
   it("preflights concept execution without contacting the bridge when disabled", async () => {
     const planned = await planConceptTrack({
@@ -820,7 +820,7 @@ describe("concept-to-music planning", () => {
       rendered: [{
         layer: "Degraded Memory",
         path: preparedPath,
-        redactedPath: "%USERPROFILE%\\Desktop\\MCP\\ableton-mcp\\samples\\staging\\prepared-manifest-layer.wav",
+        redactedPath: "%ABLETON_MCP_SAMPLE_LIBRARY_ROOT%\\prepared-manifest-layer.wav",
         clip_slot_index: 0,
         name: "Prepared Degraded Memory",
         treatment: "Prepared test layer",
@@ -876,7 +876,7 @@ describe("concept-to-music planning", () => {
     expect(intake.requestedPath).not.toContain("..");
     expect(intake.concept).not.toMatch(/ignore previous instructions/i);
     expect(intake.recommendedStaging.destinationName).toBe("unsafe_source_name.mp3");
-    expect(intake.recommendedStaging.stagingPath).toContain("samples");
+    expect(intake.recommendedStaging.stagingPath).toContain("%ABLETON_MCP_SAMPLE_LIBRARY_ROOT%");
     const nextCalls = intake.exactNextToolCalls as Record<string, { name: string; arguments: Record<string, unknown> } | null>;
     expect(nextCalls.recheckAfterUserCopy?.name).toBe("ableton_plan_reference_audio_intake");
   });

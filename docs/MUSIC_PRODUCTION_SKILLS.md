@@ -11,6 +11,21 @@ Use this loop for serious production work:
 ```text
 brief
 -> readiness and control-mode check
+-> create production session
+-> song blueprint
+-> signature sound palette
+-> production assets
+-> dry-run execution plan
+-> render review
+-> focused revision pass
+-> delivery readiness
+```
+
+Use `ableton_create_production_session` first when a client needs fewer calls and persistent state. Use the lower-level loop below when debugging, changing one subsystem, or inspecting why the facade chose a recommendation:
+
+```text
+brief
+-> readiness and control-mode check
 -> concept plan
 -> source and sample selection
 -> tempo, key, groove, and motif decisions

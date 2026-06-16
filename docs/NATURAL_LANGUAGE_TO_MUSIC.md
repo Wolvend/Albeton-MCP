@@ -48,6 +48,33 @@ Convert that into a structured intent record:
 
 Do not compress the user's taste into one genre label. "Backrooms horror" is not enough. Keep the concrete details that make the request specific.
 
+## Build The Information Packet First
+
+Before calling production or execution tools, fill this packet. If the user did not specify a field and the default is low-risk, record the assumption instead of stopping.
+
+| Packet Field | Agent Decision |
+| --- | --- |
+| Concept | What place, feeling, story, or function the track serves. |
+| References | Quality targets and influence notes, with non-copying boundaries. |
+| Must avoid | Genres, timbres, rhythms, samples, UI modes, or workflow paths the user rejected. |
+| Duration and format | Target length, stems/master needs, and delivery location. |
+| Usage mode | `private_experiment` for sketching, `release_candidate` for packaging. |
+| Source plan | Procedural-only, local-only, metadata search, or gated download workflow. |
+| Sample role needs | Human, room, machinery, percussion, harmonic memory, texture, impact, transition. |
+| Tempo/key/groove | BPM range, time feel, swing/humanization, harmonic center. |
+| Hook/motif | The repeatable memory or identity of the piece. |
+| Arrangement arc | Section order, tension/release, negative space, payoff moments. |
+| Mix target | Loudness/headroom, stereo width, low-end behavior, translation priorities. |
+| Safety gates | Writes, downloads, UI/mouse, and remote HTTP must remain off unless explicitly chosen. |
+
+For a normal agent, the fastest safe first call is:
+
+```text
+ableton_produce_track_from_brief with dry_run=true
+```
+
+If the response says `needs_index: true`, build the local sample intelligence index with the exact returned `ableton_build_sample_intelligence_index` call before selecting local samples.
+
 ## Extract Music Decisions From Plain Language
 
 Map natural-language clues into production choices.
@@ -130,6 +157,14 @@ For a new track from a text brief, use:
 ```text
 ableton_get_production_readiness
 ableton_get_project_usage_mode
+ableton_produce_track_from_brief with dry_run=true
+```
+
+Use the lower-level tools when you need manual control or want to inspect each step:
+
+```text
+ableton_get_production_readiness
+ableton_get_project_usage_mode
 ableton_parse_music_brief
 ableton_compile_mood_palette
 ableton_plan_tempo_grid
@@ -163,6 +198,9 @@ ableton_build_arrangement_from_prepared_audio
 For sample-based work, insert:
 
 ```text
+ableton_build_sample_intelligence_index
+ableton_search_sample_intelligence
+ableton_plan_sample_chop_map
 ableton_search_concept_samples
 ableton_curate_concept_samples
 ableton_stage_concept_samples with dry_run=true

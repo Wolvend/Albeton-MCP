@@ -34,7 +34,9 @@ type PublicSmokeResult = {
 export type LiveSmokeReport = {
   ok: boolean;
   bridgeReachable: boolean;
+  bridgeNeedsReload: boolean;
   dryRunWriteConfirmed: boolean;
+  deepProbe: boolean;
   objectiveReadiness: {
     overallStatus: string | null;
     okForDefaultClientUse: boolean | null;
@@ -84,7 +86,6 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_list_tracks_compact", arguments: { page: 1, pageSize: 16 }, required: true },
   { name: "ableton_get_track_detail", arguments: { track_index: 0, include_mixer: true, include_devices: false, include_clip_slots: false, page: 1, pageSize: 8 }, required: true },
   { name: "ableton_list_scenes", arguments: {}, required: true },
-  { name: "ableton_list_devices", arguments: { track_index: 0, page: 1, pageSize: 16 }, required: true },
   {
     name: "ableton_duplicate_clip",
     arguments: { track_index: 0, clip_slot_index: 0, destination_clip_slot_index: 1, dry_run: true },
@@ -93,13 +94,20 @@ export const liveSmokeCalls: SmokeCall[] = [
   { name: "ableton_control_mode_status", arguments: {}, required: true }
 ];
 
-const skipWhenBridgePingFails = new Set([
+export const liveSmokeDeepCalls: SmokeCall[] = [
+  { name: "ableton_list_devices", arguments: { track_index: 0, page: 1, pageSize: 1 }, required: false }
+];
+
+const bridgeReadCalls = new Set([
   "ableton_get_live_state",
   "ableton_list_tracks_compact",
   "ableton_get_track_detail",
   "ableton_list_scenes",
   "ableton_list_devices"
 ]);
+
+const skipWhenBridgePingFails = bridgeReadCalls;
+const reloadTimeoutCalls = new Set([...bridgeReadCalls, "ableton_bridge_ping"]);
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
@@ -159,6 +167,11 @@ function resultByName(results: SmokeResult[], name: string) {
   return results.find((result) => result.name === name);
 }
 
+function isTimeoutError(result: SmokeResult) {
+  const error = publicError(result) ?? "";
+  return /BRIDGE_TIMEOUT|LIVEAPI_TIMEOUT|timed out/i.test(error);
+}
+
 export function chooseDeviceProbeTrackIndex(results: SmokeResult[]) {
   const tracks = getNested(resultByName(results, "ableton_list_tracks_compact")?.structuredContent, ["bridge", "data", "tracks"]);
   if (!Array.isArray(tracks)) return 0;
@@ -215,6 +228,9 @@ function collectSetupHints(results: SmokeResult[]) {
         for (const hint of setupHints) if (typeof hint === "string") addHint(hint);
       }
     }
+    if (isTimeoutError(result)) {
+      addHint("Reload the Ableton MCP Bridge Max for Live device, then rerun npm run live-smoke.");
+    }
     if (result.ok || result.required === false) continue;
     const directHints = structured?.nextSteps ?? structured?.nextStep;
     if (Array.isArray(directHints)) {
@@ -239,7 +255,7 @@ function publicError(result: SmokeResult) {
   return message ?? code ?? undefined;
 }
 
-export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
+export function buildLiveSmokeReport(results: SmokeResult[], options: { deep?: boolean } = {}): LiveSmokeReport {
   const objectiveReadiness = resultByName(results, "ableton_mcp_get_objective_readiness_report")?.structuredContent;
   const launchReadiness = resultByName(results, "ableton_mcp_get_launch_readiness_audit")?.structuredContent;
   const bridgeCapabilities = resultByName(results, "ableton_get_bridge_capabilities")?.structuredContent;
@@ -264,14 +280,17 @@ export function buildLiveSmokeReport(results: SmokeResult[]): LiveSmokeReport {
 
   const bridgePing = resultByName(results, "ableton_bridge_ping");
   const bridgeReachable = Boolean(bridgePing?.ok);
+  const bridgeNeedsReload = results.some((result) => reloadTimeoutCalls.has(result.name) && isTimeoutError(result));
   const dryRunWriteConfirmed = getNested(dryRun, ["dry_run"]) === true
     || getNested(dryRun, ["runtime", "tool"]) === "ableton_duplicate_clip";
   const requiredFailures = results.filter((result) => result.required !== false && !result.ok).map((result) => result.name);
 
   return {
-    ok: requiredFailures.length === 0 && bridgeReachable && dryRunWriteConfirmed,
+    ok: requiredFailures.length === 0 && bridgeReachable && dryRunWriteConfirmed && !bridgeNeedsReload,
     bridgeReachable,
+    bridgeNeedsReload,
     dryRunWriteConfirmed,
+    deepProbe: Boolean(options.deep),
     objectiveReadiness: {
       overallStatus: stringAt(objectiveReadiness, [["objectiveReadiness", "overallStatus"]]),
       okForDefaultClientUse: booleanAt(objectiveReadiness, [["objectiveReadiness", "okForDefaultClientUse"]]),
@@ -346,7 +365,23 @@ function skippedBridgeResult(call: SmokeCall): SmokeResult {
   };
 }
 
-export async function runLiveSmoke() {
+function skippedBridgeTimeoutResult(call: SmokeCall): SmokeResult {
+  return {
+    name: call.name,
+    ok: false,
+    isError: true,
+    required: call.required,
+    error: "SKIPPED_BRIDGE_TIMEOUT: a previous LiveAPI read timed out, so remaining bridge read probes were not queued. Reload the Ableton MCP Bridge Max for Live device."
+  };
+}
+
+export function parseLiveSmokeArgs(argv = process.argv.slice(2)) {
+  return {
+    deep: argv.includes("--deep")
+  };
+}
+
+export async function runLiveSmoke(options: { deep?: boolean } = {}) {
   const transport = new StdioClientTransport({
     command: "node",
     args: ["dist/src/index.js"],
@@ -363,9 +398,15 @@ export async function runLiveSmoke() {
   try {
     const results = [];
     let bridgePingFailed = false;
-    for (const baseCall of liveSmokeCalls) {
+    let bridgeReadTimedOut = false;
+    const calls = options.deep ? [...liveSmokeCalls, ...liveSmokeDeepCalls] : liveSmokeCalls;
+    for (const baseCall of calls) {
       if (bridgePingFailed && skipWhenBridgePingFails.has(baseCall.name)) {
         results.push(skippedBridgeResult(baseCall));
+        continue;
+      }
+      if (bridgeReadTimedOut && bridgeReadCalls.has(baseCall.name)) {
+        results.push(skippedBridgeTimeoutResult(baseCall));
         continue;
       }
       let call: SmokeCall = baseCall;
@@ -381,15 +422,16 @@ export async function runLiveSmoke() {
       const result = await callTool(client, call);
       results.push(result);
       if (baseCall.name === "ableton_bridge_ping" && !result.ok) bridgePingFailed = true;
+      if (bridgeReadCalls.has(baseCall.name) && isTimeoutError(result)) bridgeReadTimedOut = true;
     }
-    return buildLiveSmokeReport(results);
+    return buildLiveSmokeReport(results, options);
   } finally {
     await client.close();
   }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const report = await runLiveSmoke();
+  const report = await runLiveSmoke(parseLiveSmokeArgs());
   console.log(JSON.stringify(report, null, 2));
   if (!report.ok) process.exitCode = 1;
 }

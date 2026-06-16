@@ -1,6 +1,6 @@
 # Ableton MCP
 
-![Ableton MCP hero](docs/assets/ableton-mcp-hero.svg)
+![Ableton MCP production console](docs/assets/ableton-mcp-production-console.png)
 
 Production-grade local MCP server for Ableton Live. Ableton MCP gives Codex, Claude, Docker MCP, WSL, OpenClaw, and other MCP-capable agents a secure way to inspect Ableton projects, reason about music production, stage samples, plan arrangements, and control Live through a Max for Live bridge.
 
@@ -10,7 +10,7 @@ The design goal is simple: **let an AI agent help produce music without turning 
 [![TypeScript](https://img.shields.io/badge/ts-strict-76a7ff?style=flat-square&logo=typescript&logoColor=white)](tsconfig.json)
 [![MCP](https://img.shields.io/badge/mcp-stdio%20%2B%20http-f2c35b?style=flat-square)](docs/CLIENTS.md)
 [![Security](https://img.shields.io/badge/security-read--only-8bd9c7?style=flat-square)](SECURITY.md)
-[![Tools](https://img.shields.io/badge/tools-301-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
+[![Tools](https://img.shields.io/badge/tools-317-9fb8ff?style=flat-square)](docs/TOOL_CATALOG.md)
 
 > This project is an independent local automation layer.
 
@@ -22,9 +22,10 @@ Ableton MCP is a TypeScript/Node MCP server with a local Max for Live LiveAPI br
 | --- | --- |
 | Live inspection | Read transport, tracks, scenes, clips, devices, Browser trees, Arrangement clips, mixer, sends, routing, notes, snapshots, and bridge status when the Max for Live device is loaded. |
 | Gated Live control | Dry-run first write tools for tempo, scenes, clips, mixer moves, markers, MIDI notes, sample loading, Arrangement view/time helpers, and selected clip operations. |
+| Producer facade | Stateful session workflow and one-call dry-run facade for brief -> blueprint -> sound palette -> assets -> execution plan -> render review -> revision -> delivery readiness through a small tool surface. |
 | Producer brain | Parse briefs into tempo/key/hook/layer decisions, source usage mode, sound-design patches, arrangement moments, render review, mix scoring, revision passes, and delivery handoffs. |
 | Music planning | Turn a mood/place/reference into concept plans, sample roles, arrangement timelines, device-chain specs, automation maps, mix plans, scorecards, and runbooks. |
-| Sample intelligence | Search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
+| Sample intelligence | Build a bounded local sample index, search source packs by role, plan sample chops, search free-source registries, inspect Internet Archive/Freesound metadata, stage only approved downloads, preserve attribution, analyze key/BPM/features, and suggest loop points. |
 | Library and set analysis | Scan only approved Ableton roots on demand, index samples/presets/clips/templates, and summarize `.als` files read-only. |
 | UI fallback | Optional ChromeDriver-style Ableton-window focus, screenshots, clicks, and typing when LiveAPI cannot reach a control. Disabled by default. |
 | Client setup | Generate configs for Codex, Claude Desktop, Cursor, Docker MCP, WSL, OpenClaw, localhost HTTP, and private-network HTTP. |
@@ -57,9 +58,11 @@ First setup installs dependencies if needed, builds `dist`, installs the Max for
 | Setup | `.\launch.ps1 setup` | Build, install bridge files, and generate client configs. |
 | Verify | `.\launch.ps1 verify` | Build and run the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Build, lint, tests, doctor, release check, sweeps, verifier, and audit. |
+| Ready check | `.\launch.ps1 ready -SkipSetup` | Reboot-safe readiness JSON for Node/npm, ffmpeg, build output, MCP tools, generated configs, sample root, doctor/verifier expectations, and bridge listener status. |
 | Bridge status | `.\launch.ps1 bridge-status -SkipSetup` | Check bridge files, Ableton process, and listener state. |
 | Live smoke | `.\launch.ps1 live-smoke -SkipSetup` | Read-only/dry-run bridge confidence report. |
 | Concept demo | `.\launch.ps1 concept-demo -SkipSetup` | No-write concept-to-arrangement MCP workflow. |
+| Producer demo | `.\launch.ps1 producer-demo -SkipSetup` | No-write producer-facade MCP workflow with session, blueprint, palette, execution plan, and score. |
 | UI driver | `.\launch.ps1 ui-driver` | Optional foreground Ableton UI control lane. |
 
 ## Architecture
@@ -84,6 +87,7 @@ ABLETON_MCP_ENABLE_WRITE=0
 ABLETON_MCP_ENABLE_UI_CONTROL=0
 ABLETON_MCP_ENABLE_DOWNLOADS=0
 ABLETON_MCP_HTTP_ALLOW_REMOTE=0
+ABLETON_MCP_SAMPLE_LIBRARY_ROOT=
 ```
 
 | Gate | Default | Enables |
@@ -92,6 +96,7 @@ ABLETON_MCP_HTTP_ALLOW_REMOTE=0
 | `ABLETON_MCP_ENABLE_UI_CONTROL=1` | Off | Foreground UI-driver focus, screenshots, clicks, and typing. |
 | `ABLETON_MCP_ENABLE_DOWNLOADS=1` | Off | Approved sample/package staging with attribution metadata. |
 | `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` | Off | Private-network HTTP binding with a bearer token. |
+| `ABLETON_MCP_SAMPLE_LIBRARY_ROOT=<path>` | `samples/staging` | Optional external sample library root for large staged sample packs. |
 
 Allowed roots are intentionally narrow:
 
@@ -99,6 +104,7 @@ Allowed roots are intentionally narrow:
 C:\Users\LIZ\Desktop\MCP\ableton-mcp
 C:\Users\LIZ\Documents\Ableton
 C:\ProgramData\Ableton\Live 12 Trial
+optional: ABLETON_MCP_SAMPLE_LIBRARY_ROOT
 ```
 
 The Ableton install root is read-only. Broad user folders, AppData, browser profiles, credential folders, password stores, raw private-network URLs, non-HTTPS sample URLs, arbitrary shell execution, plugin installers, and broad filesystem scans are rejected.
@@ -123,12 +129,13 @@ For production agents, the normal loop is:
 1. Read the brief and constraints.
 2. Choose `private_experiment` or `release_candidate` source mode.
 3. Parse the brief into mood, tempo, key, hook, layer, and negative-space decisions.
-4. Curate source/sample candidates and analyze musical fit.
-5. Build sound-design, arrangement, automation, and mix plans.
-6. Review the execution action matrix and runbook.
-7. Dry-run every write-capable action.
-8. Execute only after the user enables the relevant gate.
-9. Render, analyze, compare, revise, export stems, and preserve attribution.
+4. Build or search sample intelligence when local samples are needed.
+5. Curate source/sample candidates and analyze musical fit.
+6. Build sound-design, arrangement, automation, and mix plans.
+7. Review the execution action matrix and runbook.
+8. Dry-run every write-capable action.
+9. Execute only after the user enables the relevant gate.
+10. Render, analyze, compare, revise, export stems, and preserve attribution.
 
 Recommended first MCP calls:
 
@@ -137,6 +144,7 @@ ableton_mcp_get_client_bootstrap_bundle
 ableton_mcp_get_objective_readiness_report
 ableton_mcp_get_launch_readiness_audit
 ableton_get_production_readiness
+ableton_produce_track_from_brief
 ableton_plan_agent_music_session
 ableton_get_project_usage_mode
 ableton_parse_music_brief
@@ -166,10 +174,10 @@ See [Client compatibility](docs/CLIENTS.md) and [Model runtime compatibility](do
 Current verified surface:
 
 ```text
-MCP tools: 301
+MCP tools: 317
 Resources: 3
 Prompts: 2
-Docker MCP default safe tools: 190
+Docker MCP default safe tools: 206
 Default HTTP endpoint: http://127.0.0.1:17366/mcp
 ```
 
@@ -239,12 +247,16 @@ The repository includes local render/source-staging scripts used for verificatio
 | --- | --- |
 | `npm run stage:mall-at-the-end-of-sleep:sources` | Stage fixed Public Domain Mark Internet Archive source WAVs for the Mall project. |
 | `npm run render:mall-at-the-end-of-sleep` | Render a 1980s mall dream track with fresh sources plus original synthesis. |
+| `npm run render:spy-radio-horror` | Render a single-source backrooms horror track from the provided `spy-radio-station-34545 - evil chopped reverse edit.mp3`. |
+| `npm run render:the-atrium-below-the-world` | Render a fully procedural 1980s mallcore / underwater vaporwave track with no reused sources. |
 | `npm run render:the-road-has-no-horizon` | Render a fully procedural horror track with no source samples. |
 | `npm run render:infinite-nowhere-protocol` | Render a separate horror track project from staged public-domain sources. |
 
 Project notes:
 
 - [Mall at the End of Sleep](docs/MALL_AT_THE_END_OF_SLEEP.md)
+- [Spy Radio: Bad Trip Station](docs/SPY_RADIO_HORROR.md)
+- [The Atrium Below The World](docs/THE_ATRIUM_BELOW_THE_WORLD.md)
 - [The Road Has No Horizon](docs/THE_ROAD_HAS_NO_HORIZON.md)
 - [Infinite Nowhere Protocol](docs/INFINITE_NOWHERE_PROTOCOL.md)
 
@@ -298,9 +310,11 @@ Latest checked status in this workspace:
 ```text
 Build: passed
 Lint: passed
-Tests: 25 files, 118 tests passed
-MCP verifier: passed, 301 tools, 3 resources, 2 prompts
-Safe sweep: passed, 185 safe calls, 0 unexpected failures
+Tests: 27 files, 128 tests passed
+MCP verifier: passed, 317 tools, 3 resources, 2 prompts
+Ready check: passed, sample root G:\AbletonMCP\SampleLibrary, 618.29 GB free
+Safe sweep: passed, 201 safe calls, 0 unexpected failures
+All-tool sweep: passed, 317 calls, 0 unexpected failures
 Audit: 0 vulnerabilities
 ```
 

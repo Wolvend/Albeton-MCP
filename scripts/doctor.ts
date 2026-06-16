@@ -52,6 +52,11 @@ const checks = [
     detail: `${env.paths.userLibrary.path}`
   },
   {
+    name: "sample_library_root",
+    status: status(Boolean(env.paths.staging.exists), true),
+    detail: `${env.paths.staging.path}`
+  },
+  {
     name: "bridge_sources",
     status: status(bridgeInstall.missingSources.length === 0),
     detail: bridgeInstall.missingSources.length ? `missing: ${bridgeInstall.missingSources.join(", ")}` : "all required bridge source files found"

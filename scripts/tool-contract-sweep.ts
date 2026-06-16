@@ -27,6 +27,8 @@ type SweepFixtures = {
   pluginPath: string;
   preparedAudioId: string;
   sourceManifestPath: string;
+  sampleIntelligenceDir: string;
+  sampleIntelligenceAudioPath: string;
 };
 
 function makeSilentWav() {
@@ -72,6 +74,8 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   const convertedAudioPath = path.join(LOCAL_PATHS.staging, "contract-sweep-converted.wav");
   const pluginPath = path.join(dir, "plugin.zip");
   const sourceManifestPath = path.join(dir, "source-manifest.json");
+  const sampleIntelligenceDir = path.join(LOCAL_PATHS.sampleLibraryRoot, "contract-sweep-sample-intelligence", "pack-a");
+  const sampleIntelligenceAudioPath = path.join(sampleIntelligenceDir, "contract-sweep-texture-pad.wav");
   const conceptPlanId = sweepConceptPlanId(stagedAudioPath);
   const preparedAudioId = `prepared-audio-${crypto.createHash("sha256").update(JSON.stringify({ conceptPlanId, stagedAudioPath })).digest("hex").slice(0, 16)}`;
 
@@ -80,7 +84,9 @@ async function ensureFixtures(): Promise<SweepFixtures> {
   await writeIfMissing(textPath, "Ableton MCP all-tool contract sweep fixture\n");
   await writeIfMissing(audioPath, makeSilentWav());
   await fs.mkdir(LOCAL_PATHS.staging, { recursive: true });
+  await fs.mkdir(sampleIntelligenceDir, { recursive: true });
   await writeIfMissing(stagedAudioPath, makeSilentWav());
+  await writeIfMissing(sampleIntelligenceAudioPath, makeSilentWav());
   await writeIfMissing(pluginPath, "Ableton MCP plugin package placeholder\n");
   await fs.writeFile(sourceManifestPath, `${JSON.stringify({
     schema: "ableton-mcp-source-manifest-v1",
@@ -212,7 +218,7 @@ async function ensureFixtures(): Promise<SweepFixtures> {
     notes: ["Contract sweep fixture arrangement for read-only concept report tools."]
   }, null, 2)}\n`);
 
-  return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath, preparedAudioId, sourceManifestPath };
+  return { dir, setPath, textPath, audioPath, stagedAudioPath, convertedAudioPath, pluginPath, preparedAudioId, sourceManifestPath, sampleIntelligenceDir, sampleIntelligenceAudioPath };
 }
 
 function sweepConceptPlanId(referencePath: string) {
@@ -260,6 +266,10 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_get_scan_status", arguments: {} },
     { name: "ableton_search_library", arguments: { query: "", page: 1, pageSize: 5 } },
     { name: "ableton_search_samples", arguments: { query: "", page: 1, pageSize: 5 } },
+    { name: "ableton_build_sample_intelligence_index", arguments: { root: fixtures.sampleIntelligenceDir, limit: 5, analyze_audio: false } },
+    { name: "ableton_search_sample_intelligence", arguments: { query: "texture pad", roles: ["texture", "pad"], page: 1, pageSize: 5 } },
+    { name: "ableton_get_sample_intelligence_item", arguments: { id: "0000000000000000000000000000000000000000000000000000000000000000" }, expected: "any" },
+    { name: "ableton_plan_sample_chop_map", arguments: { path: fixtures.sampleIntelligenceAudioPath, target_bpm: 80, bars: 1, slice_count: 2, role: "texture" } },
     { name: "ableton_search_presets", arguments: { query: "", page: 1, pageSize: 5 } },
     { name: "ableton_search_templates", arguments: { query: "", page: 1, pageSize: 5 } },
     { name: "ableton_search_clips", arguments: { query: "", page: 1, pageSize: 5 } },
@@ -414,6 +424,18 @@ export function buildContractSweepCalls(fixtures: SweepFixtures): ContractSweepC
     { name: "ableton_mark_source_as_user_provided", arguments: { manifest_path: fixtures.sourceManifestPath, source: { title: "user supplied one-shot", role: "impact" }, dry_run: true } },
     { name: "ableton_mark_source_as_experiment_only", arguments: { manifest_path: fixtures.sourceManifestPath, source: { title: "experiment scratch loop", role: "texture" }, dry_run: true } },
     { name: "ableton_check_release_source_readiness", arguments: { manifest_path: fixtures.sourceManifestPath, usage_mode: "release_candidate" } },
+    { name: "ableton_mcp_get_tool_packs", arguments: {} },
+    { name: "ableton_create_production_session", arguments: { brief: "contract sweep producer facade liminal mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7, usage_mode: "private_experiment", source_policy: "local_only", check_bridge: false } },
+    { name: "ableton_produce_track_from_brief", arguments: { brief: "contract sweep one-call dry-run liminal mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7, usage_mode: "private_experiment", source_policy: "procedural_only", check_bridge: false, max_internal_steps: 4, dry_run: true } },
+    { name: "ableton_get_production_session", arguments: { session_id: "prod-0000000000000000" } },
+    { name: "ableton_list_production_sessions", arguments: { page: 1, pageSize: 5 } },
+    { name: "ableton_generate_song_blueprint", arguments: { session_id: "prod-0000000000000000" } },
+    { name: "ableton_design_signature_sound_palette", arguments: { session_id: "prod-0000000000000000" } },
+    { name: "ableton_prepare_production_assets", arguments: { session_id: "prod-0000000000000000" } },
+    { name: "ableton_create_execution_plan", arguments: { session_id: "prod-0000000000000000", check_bridge: false } },
+    { name: "ableton_advance_production_session", arguments: { session_id: "prod-0000000000000000", phase: "execution_plan", max_internal_steps: 4, dry_run: true } },
+    { name: "ableton_review_render_and_revise", arguments: { session_id: "prod-0000000000000000", render_path: fixtures.audioPath, stem_paths: [fixtures.audioPath], duration_seconds: 0.1 } },
+    { name: "ableton_score_track_professionalism", arguments: { session_id: "prod-0000000000000000", render_path: fixtures.audioPath, duration_seconds: 0.1 } },
     { name: "ableton_parse_music_brief", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
     { name: "ableton_compile_mood_palette", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
     { name: "ableton_plan_tempo_grid", arguments: { concept: "contract sweep sad liminal vaporwave mall cue", style: "dreamcore", target_duration_seconds: 120, intensity: 7 } },
@@ -572,18 +594,26 @@ async function main() {
 
   const results = [];
   let conceptArrangementId: string | null = null;
+  let productionSessionId: string | null = null;
   if (coverage.missingSpecs.length === 0 && coverage.extraSpecs.length === 0 && coverage.duplicateSpecs.length === 0) {
     for (const call of calls) {
       try {
-        const callArguments = (call.name === "ableton_execute_concept_plan" || call.name === "ableton_get_arrangement_plan" || call.name === "ableton_preflight_concept_execution" || call.name === "ableton_create_concept_execution_approval_bundle" || call.name === "ableton_render_concept_execution_manifest" || call.name === "ableton_render_concept_execution_runbook" || call.name === "ableton_render_concept_attribution_bundle" || call.name === "ableton_render_concept_production_scorecard" || call.name === "ableton_plan_concept_routing_readiness" || call.name === "ableton_plan_concept_device_automation_readiness" || call.name === "ableton_render_concept_device_chain_spec" || call.name === "ableton_render_concept_device_catalog_matches" || call.name === "ableton_plan_concept_device_ui_placement") && conceptArrangementId
+        const baseArguments = (call.name === "ableton_execute_concept_plan" || call.name === "ableton_get_arrangement_plan" || call.name === "ableton_preflight_concept_execution" || call.name === "ableton_create_concept_execution_approval_bundle" || call.name === "ableton_render_concept_execution_manifest" || call.name === "ableton_render_concept_execution_runbook" || call.name === "ableton_render_concept_attribution_bundle" || call.name === "ableton_render_concept_production_scorecard" || call.name === "ableton_plan_concept_routing_readiness" || call.name === "ableton_plan_concept_device_automation_readiness" || call.name === "ableton_render_concept_device_chain_spec" || call.name === "ableton_render_concept_device_catalog_matches" || call.name === "ableton_plan_concept_device_ui_placement") && conceptArrangementId
           ? { ...call.arguments, arrangement_id: conceptArrangementId }
           : call.arguments;
+        const callArguments = productionSessionId
+          ? Object.fromEntries(Object.entries(baseArguments).map(([key, value]) => [key, value === "prod-0000000000000000" ? productionSessionId : value]))
+          : baseArguments;
         const result = await client.callTool({ name: call.name, arguments: callArguments });
         const expected = call.expected ?? "ok";
         const isError = Boolean(result.isError);
         if (call.name === "ableton_build_layered_arrangement_plan" && !isError) {
           const id = (result as any).structuredContent?.arrangement?.arrangement?.id;
           if (typeof id === "string") conceptArrangementId = id;
+        }
+        if (call.name === "ableton_create_production_session" && !isError) {
+          const id = (result as any).structuredContent?.productionSession?.session?.id;
+          if (typeof id === "string") productionSessionId = id;
         }
         results.push({ name: call.name, ok: !isError || expected === "any", isError, expected });
       } catch (error) {

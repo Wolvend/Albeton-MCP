@@ -2,6 +2,47 @@
 
 Ableton MCP now includes a producer-brain layer: read-only and dry-run-first tools that help an agent turn a plain-language music brief into concrete musical decisions, then review renders and generate focused revision passes. These tools do not replace the Max for Live bridge. They sit before it, so agents can plan better before asking Ableton to change anything.
 
+## Producer Facade
+
+Default agents should start with the facade instead of choosing from the full raw catalog:
+
+1. `ableton_produce_track_from_brief` for a one-call dry-run plan, or `ableton_create_production_session` when the agent needs manual phase control.
+2. `ableton_generate_song_blueprint`
+3. `ableton_design_signature_sound_palette`
+4. `ableton_prepare_production_assets`
+5. `ableton_create_execution_plan`
+6. `ableton_review_render_and_revise`
+7. `ableton_score_track_professionalism`
+
+Sessions are stored under `diagnostics/runtime/production-sessions` with redacted local paths. The facade may write bounded diagnostics, but it does not write Ableton state, download files, use UI/mouse control, or bypass approval gates. `ableton_produce_track_from_brief` composes the same internal modules directly and returns parsed brief, mood palette, tempo/key plan, motif plan, sample-search plan, sound palette, arrangement map, execution summary, exact next calls, stop criteria, and safety gates. Use `ableton_mcp_get_tool_packs` to retrieve the smaller `minimal_producer`, `immersive_producer`, `sound_designer`, `mix_engineer`, `live_operator`, and `developer_debug` surfaces.
+
+## Required Information Packet
+
+Before producing a track, an agent should gather or infer this packet and record assumptions when the user is moving fast:
+
+| Field | Why it matters |
+| --- | --- |
+| Concept and emotional target | Prevents generic genre output and keeps revisions tied to intent. |
+| References and avoid rules | Translates taste into quality targets without copying protected expression. |
+| Target duration and energy arc | Sets section count, density curve, and arrangement pacing. |
+| Source usage mode and sample policy | Separates private experimentation from release readiness. |
+| Sample role needs | Determines whether to build/search sample intelligence before arranging. |
+| Tempo, key, groove, and motif | Creates musical identity before adding layers. |
+| Arrangement moments and negative space | Keeps the track from becoming a static loop. |
+| Mix target and delivery format | Controls loudness, headroom, stems, and translation checks. |
+| Safety gates | Confirms whether writes, downloads, UI/mouse, or remote HTTP are intentionally enabled. |
+
+If local samples are required and the sample index is empty, call `ableton_build_sample_intelligence_index` first or let `ableton_produce_track_from_brief` return `needs_index: true` with the exact next call.
+
+## Sample Intelligence Tools
+
+| Tool | Use |
+| --- | --- |
+| `ableton_build_sample_intelligence_index` | Build a bounded index under `ABLETON_MCP_SAMPLE_LIBRARY_ROOT`; it skips generated render folders, archives, hidden system folders, AppData, browser profiles, credential paths, and broad user folders. |
+| `ableton_search_sample_intelligence` | Find indexed samples by text, role, source pack, and page with redacted paths. |
+| `ableton_get_sample_intelligence_item` | Inspect one indexed item by id, including duration/rate/channel facts and attribution sidecar state. |
+| `ableton_plan_sample_chop_map` | Create a dry-run slicing/chop map for an indexed or allowed local sample. |
+
 ## Private Experiment Vs Release Candidate
 
 Source checks use two modes:

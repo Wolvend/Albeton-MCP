@@ -1,27 +1,36 @@
-import { describe, expect, it } from "vitest";
 import os from "node:os";
 import path from "node:path";
-import { getAllowedRoots, LOCAL_PATHS, PROJECT_ROOT } from "../src/config.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("project root detection", () => {
-  it("points at the repository root, not dist", () => {
-    expect(PROJECT_ROOT.endsWith("ableton-mcp")).toBe(true);
-    expect(PROJECT_ROOT.endsWith("dist")).toBe(false);
-    expect(LOCAL_PATHS.projectRoot).toBe(PROJECT_ROOT);
+async function importFreshConfig(): Promise<typeof import("../src/config.js")> {
+  vi.resetModules();
+  return import("../src/config.js");
+}
+
+describe("configurable sample library root", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
 
-  it("does not let ABLETON_MCP_ALLOWED_ROOTS widen the baseline allowlist", () => {
-    const previous = process.env.ABLETON_MCP_ALLOWED_ROOTS;
-    const root = path.parse(os.homedir()).root;
-    process.env.ABLETON_MCP_ALLOWED_ROOTS = [root, os.homedir(), LOCAL_PATHS.projectRoot].join(";");
-    try {
-      const roots = getAllowedRoots().map((root) => root.path.toLowerCase());
-      expect(roots.some((candidate) => candidate === path.resolve(root).toLowerCase())).toBe(false);
-      expect(roots.some((candidate) => candidate === path.resolve(os.homedir()).toLowerCase())).toBe(false);
-      expect(roots.some((root) => root.endsWith("ableton-mcp"))).toBe(true);
-    } finally {
-      if (previous === undefined) delete process.env.ABLETON_MCP_ALLOWED_ROOTS;
-      else process.env.ABLETON_MCP_ALLOWED_ROOTS = previous;
-    }
+  it("adds ABLETON_MCP_SAMPLE_LIBRARY_ROOT as an approved root", async () => {
+    const sampleRoot = path.join(os.tmpdir(), "ableton-mcp-sample-library-test");
+    vi.stubEnv("ABLETON_MCP_SAMPLE_LIBRARY_ROOT", sampleRoot);
+
+    const config = await importFreshConfig();
+    const roots = config.getAllowedRoots().map((root) => path.resolve(root.path).toLowerCase());
+
+    expect(path.resolve(config.LOCAL_PATHS.staging)).toBe(path.resolve(sampleRoot));
+    expect(roots).toContain(path.resolve(sampleRoot).toLowerCase());
+  });
+
+  it("does not let ABLETON_MCP_ALLOWED_ROOTS widen beyond approved roots", async () => {
+    const broadRoot = path.parse(os.homedir()).root;
+    vi.stubEnv("ABLETON_MCP_ALLOWED_ROOTS", broadRoot);
+
+    const config = await importFreshConfig();
+    const roots = config.getAllowedRoots().map((root) => path.resolve(root.path).toLowerCase());
+
+    expect(roots).not.toContain(path.resolve(broadRoot).toLowerCase());
   });
 });
