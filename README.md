@@ -1,6 +1,6 @@
 # Ableton MCP
 
-![Ableton MCP hero](docs/assets/ableton-mcp-hero.svg)
+![Ableton MCP production console](docs/assets/ableton-mcp-production-console.png)
 
 Production-grade local MCP server for Ableton Live. Ableton MCP gives Codex, Claude, Docker MCP, WSL, OpenClaw, and other MCP-capable agents a secure way to inspect Ableton projects, reason about music production, stage samples, plan arrangements, and control Live through a Max for Live bridge.
 
