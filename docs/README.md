@@ -35,6 +35,7 @@ Start with the root [README](../README.md) for setup, safety defaults, control m
 | [Infinite Nowhere Protocol](INFINITE_NOWHERE_PROTOCOL.md) | Original offline horror track project, render command, outputs, stems, and safety boundary. |
 | [The Road Has No Horizon](THE_ROAD_HAS_NO_HORIZON.md) | Fully procedural horror track with no reused source samples or prior stems. |
 | [Mall at the End of Sleep](MALL_AT_THE_END_OF_SLEEP.md) | 1980s mall dream track using original synthesis plus fresh public-domain sources, with no user source audio. |
+| [The Atrium Below The World](THE_ATRIUM_BELOW_THE_WORLD.md) | Fully procedural 1980s mallcore / underwater vaporwave track with no reused sources. |
 | [Future patches](FUTURE_PATCHES.md) | Planning professional music, synthesis, groove, mix, and revision-loop tools. |
 | [Plugin policy](PLUGIN_POLICY.md) | Checking plugin/package download staging and no-install safety rules. |
 

@@ -241,12 +241,14 @@ The repository includes local render/source-staging scripts used for verificatio
 | --- | --- |
 | `npm run stage:mall-at-the-end-of-sleep:sources` | Stage fixed Public Domain Mark Internet Archive source WAVs for the Mall project. |
 | `npm run render:mall-at-the-end-of-sleep` | Render a 1980s mall dream track with fresh sources plus original synthesis. |
+| `npm run render:the-atrium-below-the-world` | Render a fully procedural 1980s mallcore / underwater vaporwave track with no reused sources. |
 | `npm run render:the-road-has-no-horizon` | Render a fully procedural horror track with no source samples. |
 | `npm run render:infinite-nowhere-protocol` | Render a separate horror track project from staged public-domain sources. |
 
 Project notes:
 
 - [Mall at the End of Sleep](docs/MALL_AT_THE_END_OF_SLEEP.md)
+- [The Atrium Below The World](docs/THE_ATRIUM_BELOW_THE_WORLD.md)
 - [The Road Has No Horizon](docs/THE_ROAD_HAS_NO_HORIZON.md)
 - [Infinite Nowhere Protocol](docs/INFINITE_NOWHERE_PROTOCOL.md)
 
