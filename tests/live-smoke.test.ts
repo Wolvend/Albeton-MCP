@@ -220,6 +220,24 @@ describe("live smoke workflow", () => {
     expect(report.setupHints.join(" ")).toMatch(/Load Ableton MCP Bridge/);
   });
 
+  it("marks bridge reload needed when bridge ping times out", () => {
+    const results = liveSmokeCalls.map((call) => ({
+      name: call.name,
+      ok: call.name !== "ableton_bridge_ping",
+      isError: call.name === "ableton_bridge_ping",
+      required: call.required,
+      structuredContent: call.name === "ableton_duplicate_clip" ? { ok: true, dry_run: true } : { ok: true },
+      ...(call.name === "ableton_bridge_ping" ? { error: "BRIDGE_TIMEOUT: Ableton bridge request timed out." } : {})
+    }));
+
+    const report = buildLiveSmokeReport(results);
+
+    expect(report.ok).toBe(false);
+    expect(report.bridgeReachable).toBe(false);
+    expect(report.bridgeNeedsReload).toBe(true);
+    expect(report.setupHints.join(" ")).toMatch(/Reload the Ableton MCP Bridge/);
+  });
+
   it("marks bridge reload needed and fails fast after a LiveAPI timeout", () => {
     const results = [
       ...liveSmokeCalls.map((call) => ({

@@ -107,6 +107,7 @@ const bridgeReadCalls = new Set([
 ]);
 
 const skipWhenBridgePingFails = bridgeReadCalls;
+const reloadTimeoutCalls = new Set([...bridgeReadCalls, "ableton_bridge_ping"]);
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
@@ -279,7 +280,7 @@ export function buildLiveSmokeReport(results: SmokeResult[], options: { deep?: b
 
   const bridgePing = resultByName(results, "ableton_bridge_ping");
   const bridgeReachable = Boolean(bridgePing?.ok);
-  const bridgeNeedsReload = results.some((result) => bridgeReadCalls.has(result.name) && isTimeoutError(result));
+  const bridgeNeedsReload = results.some((result) => reloadTimeoutCalls.has(result.name) && isTimeoutError(result));
   const dryRunWriteConfirmed = getNested(dryRun, ["dry_run"]) === true
     || getNested(dryRun, ["runtime", "tool"]) === "ableton_duplicate_clip";
   const requiredFailures = results.filter((result) => result.required !== false && !result.ok).map((result) => result.name);
