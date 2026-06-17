@@ -1,5 +1,6 @@
 import http from "node:http";
 import { AbletonMcpError } from "./errors.js";
+import { getUiDriverAuthRuntimeState, readUiDriverClientToken } from "./ui-driver-auth.js";
 
 export type UiDriverRequest = {
   action: string;
@@ -25,9 +26,16 @@ function assertSafeUiAction(action: string) {
   }
 }
 
-function uiDriverCall<T>(request: UiDriverRequest, timeoutMs = 5_000): Promise<T> {
+async function uiDriverCall<T>(request: UiDriverRequest, timeoutMs = 5_000): Promise<T> {
   assertSafeUiAction(request.action);
   const body = JSON.stringify({ id: crypto.randomUUID(), ...request });
+  const token = await readUiDriverClientToken();
+  const headers: http.OutgoingHttpHeaders = {
+    "content-type": "application/json",
+    "content-length": Buffer.byteLength(body)
+  };
+  if (token) headers.authorization = `Bearer ${token}`;
+
   return new Promise((resolve, reject) => {
     const req = http.request({
       host: uiDriverHost,
@@ -35,10 +43,7 @@ function uiDriverCall<T>(request: UiDriverRequest, timeoutMs = 5_000): Promise<T
       method: "POST",
       path: "/ableton-ui-driver",
       timeout: timeoutMs,
-      headers: {
-        "content-type": "application/json",
-        "content-length": Buffer.byteLength(body)
-      }
+      headers
     }, (res) => {
       const chunks: Buffer[] = [];
       let bytes = 0;
@@ -52,6 +57,14 @@ function uiDriverCall<T>(request: UiDriverRequest, timeoutMs = 5_000): Promise<T
       });
       res.on("end", () => {
         const text = Buffer.concat(chunks).toString("utf8");
+        if (res.statusCode === 401) {
+          reject(new AbletonMcpError(
+            "Ableton UI driver rejected the local bearer token.",
+            "UI_DRIVER_UNAUTHORIZED",
+            ["Restart .\\launch.ps1 ui-driver so the local UI driver session token is regenerated.", "Remove a stale diagnostics/runtime/ui-driver/session-token.json file and retry.", "If ABLETON_MCP_UI_DRIVER_TOKEN is set manually, use the same 32+ character value for both processes."]
+          ));
+          return;
+        }
         if ((res.statusCode ?? 500) >= 400) {
           reject(new AbletonMcpError(`Ableton UI driver returned HTTP ${res.statusCode}: ${text}`, "UI_DRIVER_HTTP_ERROR", ["Confirm the Ableton UI driver is attached and listening on loopback."]));
           return;
@@ -113,6 +126,7 @@ export function getUiDriverRuntimeState() {
     port: uiDriverPort,
     endpoint: "/ableton-ui-driver",
     protocol: "ableton-ui-driver-v1",
+    ...getUiDriverAuthRuntimeState(),
     queueDepth: uiQueueDepth,
     serialized: true,
     queueTimeoutMs: UI_DRIVER_QUEUE_TIMEOUT_MS,

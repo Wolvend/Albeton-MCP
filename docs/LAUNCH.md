@@ -52,7 +52,7 @@ ABLETON_MCP_USE_BASH_NODE=1 ./launch.sh verify
 | `concept-demo` | `.\launch.ps1 concept-demo` | Runs a side-effect-free MCP client workflow from concept brief to stored arrangement, action matrix, approval dry-run, and delivery plan. |
 | `producer-demo` | `.\launch.ps1 producer-demo` | Runs the small producer-facade workflow from brief to session, blueprint, sound palette, dry-run execution plan, and professionalism score. |
 | `inspect` | `.\launch.ps1 inspect` | Lists tools through MCP Inspector. |
-| `ui-driver` | `.\launch.ps1 ui-driver` | Enables `ABLETON_MCP_ENABLE_UI_CONTROL=1` and starts the foreground Ableton UI driver. |
+| `ui-driver` | `.\launch.ps1 ui-driver` | Enables `ABLETON_MCP_ENABLE_UI_CONTROL=1` and starts the foreground Ableton UI driver with loopback-only bearer-token auth. |
 | `bridge-listener` | `.\launch.ps1 bridge-listener` | Starts the local bridge setup listener. |
 | `help` | `.\launch.ps1 help` | Prints launcher usage. |
 
@@ -124,6 +124,8 @@ INSTALL_SUMMARY.md
 `remote-http.env` contains a generated bearer token when setup is run through the launcher. The token is not printed in terminal output and should not be committed.
 
 Remote HTTP remains disabled unless `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` is set or the launcher is started with `-RemoteHttp` / `--remote-http`. Prefer Tailscale or another private VPN, keep the bearer token private, and verify actual firewall/listener exposure before connecting another device.
+
+The `ui-driver` launcher mode also uses bearer-token auth. If `ABLETON_MCP_UI_DRIVER_TOKEN` is unset, the driver generates a per-session token under ignored runtime state at `diagnostics/runtime/ui-driver/session-token.json`; the MCP UI client reads that file automatically and never prints the token.
 
 ## MCP stdio safety
 

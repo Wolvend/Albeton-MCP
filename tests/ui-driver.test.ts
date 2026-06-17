@@ -13,6 +13,8 @@ describe("Ableton UI driver contract", () => {
     expect(state.endpoint).toBe("/ableton-ui-driver");
     expect(state.protocol).toBe("ableton-ui-driver-v1");
     expect(state.serialized).toBe(true);
+    expect(state.authRequired).toBe(true);
+    expect(JSON.stringify(state)).not.toContain(process.env.ABLETON_MCP_UI_DRIVER_TOKEN ?? "not-set");
   });
 
   it("rejects unsafe UI action identifiers before network I/O", async () => {
@@ -22,6 +24,8 @@ describe("Ableton UI driver contract", () => {
   it("keeps the standalone UI driver explicitly loopback-only", async () => {
     const source = await fs.readFile(path.join(LOCAL_PATHS.projectRoot, "scripts", "ableton-ui-driver.ts"), "utf8");
     expect(source).toContain("isLoopbackRemote");
+    expect(source).toContain("isAuthorizedUiDriverRequest");
+    expect(source).toContain("uiDriverUnauthorizedResponse");
     expect(source).toContain("Ableton UI driver accepts loopback requests only.");
   });
 });

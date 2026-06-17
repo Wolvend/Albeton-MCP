@@ -8,6 +8,7 @@ Use it like ChromeDriver:
 
 - A dedicated local driver owns Ableton window discovery, screenshots, clicks, typing, and recovery.
 - MCP talks to the driver over loopback only.
+- MCP includes a per-session bearer token for every driver request.
 - MCP sends fixed action IDs with request IDs and bounded payloads.
 - The driver returns structured JSON with matching IDs, status, errors, and artifacts.
 - MCP serializes UI driver calls so mouse/keyboard operations do not overlap.
@@ -82,6 +83,10 @@ Run the driver:
 
 Use this driver only when `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
 
+The launcher flow auto-generates a local bearer token when `ABLETON_MCP_UI_DRIVER_TOKEN` is not set. The generated token is written under ignored runtime state at `diagnostics/runtime/ui-driver/session-token.json`; it is not printed and should never be committed. Advanced/manual workflows may set the same 32+ character `ABLETON_MCP_UI_DRIVER_TOKEN` for both the MCP server and the UI driver.
+
+If UI calls return `UI_DRIVER_UNAUTHORIZED`, restart `.\launch.ps1 ui-driver`. If the problem persists, remove the stale `diagnostics/runtime/ui-driver/session-token.json` file and start the UI driver again.
+
 Before clicking or typing, use:
 
 ```text
@@ -95,7 +100,7 @@ ableton_capture_screenshot
 
 The UI driver is disabled unless `ABLETON_MCP_ENABLE_UI_CONTROL=1`.
 
-It binds only to `127.0.0.1`, targets only Ableton Live windows, rejects unknown actions, bounds payload sizes, and keeps a single command queue. Do not run UI driver operations while bridge write commands are active.
+It binds only to `127.0.0.1`, requires a local bearer token, targets only Ableton Live windows, rejects unknown actions, bounds payload sizes, and keeps a single command queue. Do not run UI driver operations while bridge write commands are active.
 
 `click_coordinates` and `capture_region` use Ableton-window-relative coordinates, not whole-desktop coordinates. `type_text` rejects SendKeys control characters until a literal text injector is added.
 

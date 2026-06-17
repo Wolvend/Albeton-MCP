@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
 import { LOCAL_PATHS, TOOL_PATHS } from "../src/config.js";
+import { ensureUiDriverServerToken, getUiDriverAuthRuntimeState, isAuthorizedUiDriverRequest, uiDriverUnauthorizedResponse } from "../src/ui-driver-auth.js";
 import { findSafeUiAction, getSafeUiActions, planSafeUiActionSequence } from "./ui-safe-actions.js";
 
 const execFileAsync = promisify(execFile);
@@ -11,6 +12,8 @@ const configuredPort = Number(process.env.ABLETON_MCP_UI_DRIVER_PORT ?? "17365")
 const port = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65535 ? configuredPort : 17365;
 const MAX_REQUEST_BYTES = 64_000;
 const startedAt = new Date().toISOString();
+const auth = await ensureUiDriverServerToken();
+const authRuntime = getUiDriverAuthRuntimeState(auth.tokenFile);
 let requestCount = 0;
 let lastAction: { action: string; at: string; ok: boolean; durationMs: number } | null = null;
 
@@ -328,8 +331,8 @@ async function runSafeUiAction(id: string, payload: Record<string, unknown>) {
 }
 
 async function dispatch(action: string, payload: Record<string, unknown>) {
-  if (action === "ping") return { startedAt, protocol: "ableton-ui-driver-v1" };
-  if (action === "status") return { startedAt, requestCount, lastAction, windows: await listAbletonWindows() };
+  if (action === "ping") return { startedAt, protocol: "ableton-ui-driver-v1", authRequired: true };
+  if (action === "status") return { startedAt, requestCount, lastAction, windows: await listAbletonWindows(), auth: { ...authRuntime, source: auth.source } };
   if (action === "window_status") return { windows: await listAbletonWindows() };
   if (action === "focus_window") return focusWindow();
   if (action === "click_coordinates") return clickCoordinates(payload);
@@ -358,6 +361,10 @@ const server = http.createServer((req, res) => {
   }
   if (req.method !== "POST" || req.url !== "/ableton-ui-driver") {
     jsonResponse(res, 404, { ok: false, error: "Not found." });
+    return;
+  }
+  if (!isAuthorizedUiDriverRequest(req.headers.authorization, auth.token)) {
+    jsonResponse(res, 401, uiDriverUnauthorizedResponse());
     return;
   }
   const chunks: Buffer[] = [];
@@ -392,5 +399,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, host, () => {
-  console.error(`Ableton UI driver listening on ${host}:${port}`);
+  console.error(`Ableton UI driver listening on ${host}:${port} with bearer-token auth`);
 });
