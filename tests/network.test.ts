@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { assertAllowedSampleUrl, fetchAllowedPluginUrl, fetchAllowedSampleUrl, readJsonBounded } from "../src/network.js";
+import { assertAllowedSampleUrl, fetchAllowedPluginUrl, fetchAllowedSampleUrl, readJsonBounded, readResponseBufferBounded } from "../src/network.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -21,6 +21,14 @@ describe("network sample URL policy", () => {
   it("rejects oversized remote JSON responses", async () => {
     const response = new Response(JSON.stringify({ payload: "x".repeat(128) }));
     await expect(readJsonBounded(response, 32)).rejects.toThrow(/size limit/i);
+  });
+
+  it("rejects oversized remote binary responses before staging downloads", async () => {
+    const declaredTooLarge = new Response(null, { headers: { "content-length": "64" } });
+    await expect(readResponseBufferBounded(declaredTooLarge, 32, "fixture download")).rejects.toThrow(/exceeding/i);
+
+    const streamedTooLarge = new Response("x".repeat(64));
+    await expect(readResponseBufferBounded(streamedTooLarge, 32, "fixture download")).rejects.toThrow(/exceeded/i);
   });
 
   it("rejects sample redirects even when the redirect target is approved", async () => {

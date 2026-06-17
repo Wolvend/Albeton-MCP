@@ -131,6 +131,45 @@ export async function fetchAllowedSampleUrl(input: string, init: RequestInit = {
   return response;
 }
 
+export async function readResponseBufferBounded(response: Response, maxBytes: number, label = "remote response") {
+  if (!Number.isInteger(maxBytes) || maxBytes <= 0) {
+    throw new AbletonMcpError("Invalid remote response size limit.", "REMOTE_SIZE_LIMIT_INVALID");
+  }
+  const contentLength = response.headers.get("content-length");
+  if (contentLength) {
+    const declared = Number(contentLength);
+    if (Number.isFinite(declared) && declared > maxBytes) {
+      throw new AbletonMcpError(
+        `${label} declared ${declared} bytes, exceeding the ${maxBytes} byte limit.`,
+        "REMOTE_RESPONSE_TOO_LARGE",
+        ["Choose a smaller file or stage the source manually after review."]
+      );
+    }
+  }
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new AbletonMcpError(`${label} did not include a readable body.`, "REMOTE_BODY_MISSING");
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new AbletonMcpError(
+        `${label} exceeded the ${maxBytes} byte limit.`,
+        "REMOTE_RESPONSE_TOO_LARGE",
+        ["Choose a smaller file or stage the source manually after review."]
+      );
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+}
+
 export async function readJsonBounded(response: Response, maxBytes = 512_000) {
   const reader = response.body?.getReader();
   if (!reader) {

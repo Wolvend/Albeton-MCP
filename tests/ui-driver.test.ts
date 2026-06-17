@@ -1,4 +1,7 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { LOCAL_PATHS } from "../src/config.js";
 import { getUiDriverRuntimeState, uiDriverAction } from "../src/ui-driver.js";
 import { getSafeUiActions, planSafeUiActionSequence } from "../scripts/ui-safe-actions.js";
 
@@ -14,6 +17,12 @@ describe("Ableton UI driver contract", () => {
 
   it("rejects unsafe UI action identifiers before network I/O", async () => {
     await expect(uiDriverAction("click;unsafe")).rejects.toThrow(/allowlist/i);
+  });
+
+  it("keeps the standalone UI driver explicitly loopback-only", async () => {
+    const source = await fs.readFile(path.join(LOCAL_PATHS.projectRoot, "scripts", "ableton-ui-driver.ts"), "utf8");
+    expect(source).toContain("isLoopbackRemote");
+    expect(source).toContain("Ableton UI driver accepts loopback requests only.");
   });
 });
 

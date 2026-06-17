@@ -45,6 +45,10 @@ function jsonResponse(res: http.ServerResponse, statusCode: number, body: unknow
   res.end(text);
 }
 
+function isLoopbackRemote(remoteAddress: string | undefined) {
+  return remoteAddress === "127.0.0.1" || remoteAddress === "::1" || remoteAddress === "::ffff:127.0.0.1";
+}
+
 function parseJson(text: string): DriverRequest {
   const parsed = JSON.parse(text) as DriverRequest;
   if (!parsed || typeof parsed !== "object") throw new Error("Request body must be a JSON object.");
@@ -348,6 +352,10 @@ async function dispatch(action: string, payload: Record<string, unknown>) {
 }
 
 const server = http.createServer((req, res) => {
+  if (!isLoopbackRemote(req.socket.remoteAddress)) {
+    jsonResponse(res, 403, { ok: false, error: "Ableton UI driver accepts loopback requests only." });
+    return;
+  }
   if (req.method !== "POST" || req.url !== "/ableton-ui-driver") {
     jsonResponse(res, 404, { ok: false, error: "Not found." });
     return;

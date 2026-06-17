@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
-import { fetchAllowedPluginUrl, assertAllowedPluginUrl } from "./network.js";
+import { fetchAllowedPluginUrl, assertAllowedPluginUrl, readResponseBufferBounded } from "./network.js";
 import { redactPath, resolveSafePath } from "./security.js";
 
 const pluginCatalog = [
@@ -40,6 +40,7 @@ const pluginCatalog = [
 ] as const;
 
 const executableExtensions = new Set([".exe", ".msi", ".dmg", ".pkg", ".app", ".bat", ".cmd", ".ps1", ".sh"]);
+const MAX_PLUGIN_PACKAGE_BYTES = 512 * 1024 * 1024;
 
 function safePackageName(value: string) {
   const cleaned = value.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^_+/, "");
@@ -99,7 +100,7 @@ export async function downloadPluginPackage(url: string, destinationName: string
   await resolveSafePath(target, { mustExist: false, forWrite: true });
   const response = await fetchAllowedPluginUrl(url, { signal: AbortSignal.timeout(120_000) });
   if (!response.ok || !response.body) throw new AbletonMcpError(`Plugin/package download failed with HTTP ${response.status}.`, "PLUGIN_DOWNLOAD_ERROR");
-  const bytes = Buffer.from(await response.arrayBuffer());
+  const bytes = await readResponseBufferBounded(response, MAX_PLUGIN_PACKAGE_BYTES, "Plugin/package download");
   await fs.writeFile(target, bytes, { flag: "wx" });
   const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
   await fs.writeFile(`${target}.metadata.json`, JSON.stringify({

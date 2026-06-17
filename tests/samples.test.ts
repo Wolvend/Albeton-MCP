@@ -135,4 +135,22 @@ describe("sample license policy", () => {
       dry_run: true
     })).rejects.toThrow(/does not match source policy/i);
   });
+
+  it("rejects non-HTTPS and credentialed source URLs in dry-run sample plans", async () => {
+    await expect(planFreeSampleDownload({
+      source: "freesound",
+      url: "http://freesound.org/example.wav",
+      destinationName: "bad.wav",
+      metadata: { license: "CC0" },
+      dry_run: true
+    })).rejects.toThrow(/HTTPS/i);
+
+    await expect(planFreeSampleDownload({
+      source: "internet_archive",
+      url: "https://user:pass@archive.org/download/example/file.wav",
+      destinationName: "bad.wav",
+      metadata: { license: "CC0" },
+      dry_run: true
+    })).rejects.toThrow(/credentials/i);
+  });
 });

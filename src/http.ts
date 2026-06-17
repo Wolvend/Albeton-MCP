@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import crypto from "node:crypto";
 import http from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { StreamableHTTPServerTransportOptions } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -30,6 +31,9 @@ function getHost() {
 
 function getBearerToken() {
   const token = process.env.ABLETON_MCP_HTTP_TOKEN?.trim() ?? "";
+  if (token && token.length < 16) {
+    throw new Error("ABLETON_MCP_HTTP_TOKEN must be at least 16 characters when configured.");
+  }
   if (!LOCAL_HOSTS.has(host) && token.length < 16) {
     throw new Error("ABLETON_MCP_HTTP_TOKEN with at least 16 characters is required when remote HTTP is enabled.");
   }
@@ -39,7 +43,9 @@ function getBearerToken() {
 function isAuthorized(req: http.IncomingMessage) {
   if (!httpToken) return true;
   const header = req.headers.authorization ?? "";
-  return header === `Bearer ${httpToken}`;
+  const expected = Buffer.from(`Bearer ${httpToken}`);
+  const actual = Buffer.from(Array.isArray(header) ? header.join(",") : header);
+  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
 async function readJsonBody(req: http.IncomingMessage) {

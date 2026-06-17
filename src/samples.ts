@@ -4,7 +4,7 @@ import path from "node:path";
 import { FLAGS, LOCAL_PATHS } from "./config.js";
 import { AbletonMcpError, requireFlag } from "./errors.js";
 import { analyzeAudioFile } from "./analysis.js";
-import { fetchAllowedSampleUrl } from "./network.js";
+import { fetchAllowedSampleUrl, readResponseBufferBounded } from "./network.js";
 import { readJsonBounded } from "./network.js";
 import { isImportTarget, redactPath, resolveSafePath } from "./security.js";
 
@@ -14,6 +14,7 @@ const ATTRIBUTION_SKIP_DIRS = new Set(["online-treasure-trove", "renders", "plug
 const IA_AUDIO_EXTENSIONS = new Set([".wav", ".aif", ".aiff", ".flac", ".mp3", ".m4a", ".ogg", ".opus"]);
 const MAX_IA_AUDIO_FILES = 100;
 const MAX_UNIVERSAL_SOURCE_RESULTS = 50;
+const MAX_SAMPLE_DOWNLOAD_BYTES = 512 * 1024 * 1024;
 
 export const FREE_SAMPLE_SOURCE_IDS = [
   "freesound",
@@ -486,6 +487,12 @@ function assertSourceUrlMatchesPolicy(source: FreeSampleSourceId, input: string)
   } catch {
     throw new AbletonMcpError("Invalid sample source URL.", "INVALID_URL");
   }
+  if (parsed.protocol !== "https:") {
+    throw new AbletonMcpError("Only HTTPS sample source URLs are accepted.", "URL_SCHEME_REJECTED");
+  }
+  if (parsed.username || parsed.password) {
+    throw new AbletonMcpError("Sample source URLs with embedded credentials are rejected.", "URL_CREDENTIALS_REJECTED");
+  }
   const host = parsed.hostname.toLowerCase();
   const allowed = policy.approvedHosts.some((approved) => host === approved || host.endsWith(`.${approved}`));
   if (!allowed) {
@@ -805,7 +812,7 @@ export async function downloadSample(url: string, destinationName: string, metad
   await resolveSafePath(target, { mustExist: false, forWrite: true });
   const response = await fetchAllowedSampleUrl(safeUrl, { signal: AbortSignal.timeout(60_000) });
   if (!response.ok || !response.body) throw new AbletonMcpError(`Download failed with HTTP ${response.status}.`, "DOWNLOAD_ERROR");
-  const bytes = Buffer.from(await response.arrayBuffer());
+  const bytes = await readResponseBufferBounded(response, MAX_SAMPLE_DOWNLOAD_BYTES, "Sample download");
   await fs.writeFile(target, bytes, { flag: "wx" });
   const checksum = crypto.createHash("sha256").update(bytes).digest("hex");
   const attribution = {
