@@ -115,7 +115,7 @@ async function main() {
   const options = parseOptions();
   await fs.mkdir(options.outDir, { recursive: true });
 
-  const token = options.withToken ? crypto.randomBytes(24).toString("base64url") : "replace-with-ABLETON_MCP_HTTP_TOKEN";
+  const token = options.withToken ? crypto.randomBytes(24).toString("base64url") : "replace-with-32-plus-random-ABLETON_MCP_HTTP_TOKEN";
   const launchCmd = path.join(PROJECT_ROOT, "launch.cmd");
   const wslProject = `/mnt/c/${slashPath(PROJECT_ROOT).replace(/^C:\//i, "")}`;
   const remoteUrl = `http://${options.tailscaleHost}:${options.httpPort}/mcp`;

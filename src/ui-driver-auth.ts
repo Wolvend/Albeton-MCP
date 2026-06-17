@@ -8,6 +8,7 @@ import { redactPath } from "./security.js";
 export const UI_DRIVER_TOKEN_ENV = "ABLETON_MCP_UI_DRIVER_TOKEN";
 export const UI_DRIVER_TOKEN_BYTES = 32;
 export const MIN_UI_DRIVER_TOKEN_LENGTH = 32;
+export const MAX_UI_DRIVER_TOKEN_FILE_BYTES = 4096;
 
 export type UiDriverTokenRecord = {
   token: string;
@@ -51,9 +52,30 @@ export function readUiDriverTokenFromEnv() {
   return token ? validateUiDriverToken(token) : null;
 }
 
+function uiDriverTokenFileError(tokenFile: string) {
+  return new AbletonMcpError(
+    `Unable to read Ableton UI driver token file: ${redactPath(tokenFile)}`,
+    "UI_DRIVER_TOKEN_FILE_INVALID",
+    ["Restart .\\launch.ps1 ui-driver to regenerate the local UI driver token file.", "Remove a stale diagnostics/runtime/ui-driver/session-token.json file and retry."]
+  );
+}
+
+async function assertWritableTokenFilePath(tokenFile: string) {
+  try {
+    const stat = await fs.lstat(tokenFile);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw uiDriverTokenFileError(tokenFile);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+}
+
 export async function writeGeneratedUiDriverTokenFile(token: string, tokenFile = getUiDriverTokenFilePath()) {
   const record: UiDriverTokenRecord = { token: validateUiDriverToken(token) };
   await fs.mkdir(path.dirname(tokenFile), { recursive: true });
+  await assertWritableTokenFilePath(tokenFile);
   await fs.writeFile(tokenFile, `${JSON.stringify(record, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   try {
     await fs.chmod(tokenFile, 0o600);
@@ -64,16 +86,26 @@ export async function writeGeneratedUiDriverTokenFile(token: string, tokenFile =
 }
 
 export async function readUiDriverTokenFile(tokenFile = getUiDriverTokenFilePath()) {
+  let stat;
   try {
-    const parsed = JSON.parse(await fs.readFile(tokenFile, "utf8")) as Partial<UiDriverTokenRecord>;
-    return typeof parsed.token === "string" ? validateUiDriverToken(parsed.token) : null;
+    stat = await fs.lstat(tokenFile);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    throw new AbletonMcpError(
-      `Unable to read Ableton UI driver token file: ${redactPath(tokenFile)}`,
-      "UI_DRIVER_TOKEN_FILE_INVALID",
-      ["Restart .\\launch.ps1 ui-driver to regenerate the local UI driver token file.", "Remove a stale diagnostics/runtime/ui-driver/session-token.json file and retry."]
-    );
+    throw uiDriverTokenFileError(tokenFile);
+  }
+
+  try {
+    if (stat.isSymbolicLink() || !stat.isFile() || stat.size > MAX_UI_DRIVER_TOKEN_FILE_BYTES) {
+      throw uiDriverTokenFileError(tokenFile);
+    }
+    const parsed = JSON.parse(await fs.readFile(tokenFile, "utf8")) as Partial<UiDriverTokenRecord>;
+    if (typeof parsed.token !== "string") {
+      throw uiDriverTokenFileError(tokenFile);
+    }
+    return validateUiDriverToken(parsed.token);
+  } catch (error) {
+    if (error instanceof AbletonMcpError) throw error;
+    throw uiDriverTokenFileError(tokenFile);
   }
 }
 

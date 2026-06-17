@@ -76,7 +76,7 @@ Do not expose `17366` publicly. Keep it bound to `127.0.0.1` unless you have a s
 For private-network devices, remote HTTP is opt-in only:
 
 ```powershell
-.\launch.ps1 docker -RemoteHttp -HttpToken "<at least 16 random characters>"
+.\launch.ps1 docker -RemoteHttp -HttpToken "<at least 32 random characters>"
 ```
 
 The launcher sets `ABLETON_MCP_HTTP_ALLOW_REMOTE=1` and binds HTTP to `0.0.0.0` only for that process. Remote clients must send `Authorization: Bearer <ABLETON_MCP_HTTP_TOKEN>`.

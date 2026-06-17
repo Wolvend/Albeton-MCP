@@ -84,7 +84,7 @@ Recommended local sequence:
 | `-StartLive` | `--start-live` | For `live-ready` only: explicitly start Ableton Live, then re-check readiness. |
 | `-OpenBridge` | `--open-bridge` | For `live-ready` only: explicitly open the installed bridge preset, then re-check readiness. |
 | `-RemoteHttp` | `--remote-http` | Bind HTTP to `0.0.0.0`; valid only for `http`/`docker` and requires a token. |
-| `-HttpToken <token>` | `--http-token=<token>` | Set an HTTP bearer token for this process. Minimum 16 characters. |
+| `-HttpToken <token>` | `--http-token=<token>` | Set an HTTP bearer token for this process. Minimum 32 characters. |
 
 ## Defaults
 

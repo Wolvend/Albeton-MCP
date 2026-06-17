@@ -715,7 +715,7 @@ function clientConnectionProfiles() {
         ABLETON_MCP_HTTP_ALLOW_REMOTE: "1",
         ABLETON_MCP_HTTP_HOST: "0.0.0.0 or a specific private interface IP",
         ABLETON_MCP_TAILSCALE_HOST: tailscaleHost,
-        ABLETON_MCP_HTTP_TOKEN: "required bearer token, at least 16 characters"
+        ABLETON_MCP_HTTP_TOKEN: "required bearer token, at least 32 characters"
       },
       preferredTailscaleUrl: `http://${tailscaleHost}:${port}/mcp`,
       candidateUrls: addresses.map((item) => ({ ...item, url: `http://${item.address}:${port}/mcp` })),

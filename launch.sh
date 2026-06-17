@@ -133,8 +133,8 @@ if [[ "$REMOTE_HTTP" == "1" ]]; then
     printf '%s\n' '--remote-http is only valid with http or docker mode.' >&2
     exit 2
   fi
-  if [[ -z "${ABLETON_MCP_HTTP_TOKEN:-}" || ${#ABLETON_MCP_HTTP_TOKEN} -lt 16 ]]; then
-    printf '%s\n' 'Remote HTTP requires --http-token=<token> or ABLETON_MCP_HTTP_TOKEN with at least 16 characters.' >&2
+  if [[ -z "${ABLETON_MCP_HTTP_TOKEN:-}" || ${#ABLETON_MCP_HTTP_TOKEN} -lt 32 ]]; then
+    printf '%s\n' 'Remote HTTP requires --http-token=<token> or ABLETON_MCP_HTTP_TOKEN with at least 32 characters.' >&2
     exit 2
   fi
   export ABLETON_MCP_HTTP_ALLOW_REMOTE=1
@@ -183,7 +183,7 @@ Options:
   --start-live         For live-ready only: explicitly start Ableton Live, then re-check readiness.
   --open-bridge        For live-ready only: explicitly open the installed bridge preset, then re-check readiness.
   --remote-http        For http/docker only: bind 0.0.0.0; requires token.
-  --http-token=<token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 16 chars.
+  --http-token=<token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 32 chars.
 
 Safe defaults:
   Writes, UI control, downloads, and remote HTTP are off unless explicitly enabled.

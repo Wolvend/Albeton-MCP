@@ -369,15 +369,24 @@ const server = http.createServer((req, res) => {
   }
   const chunks: Buffer[] = [];
   let bytes = 0;
+  let requestTooLarge = false;
   req.on("data", (chunk: Buffer) => {
+    if (requestTooLarge) return;
     bytes += chunk.length;
     if (bytes > MAX_REQUEST_BYTES) {
-      req.destroy(new Error("Request too large."));
+      requestTooLarge = true;
+      chunks.length = 0;
+      jsonResponse(res, 413, {
+        ok: false,
+        code: "UI_DRIVER_REQUEST_TOO_LARGE",
+        error: "Ableton UI driver request body exceeds the 64 KiB limit."
+      });
       return;
     }
     chunks.push(chunk);
   });
   req.on("end", () => {
+    if (requestTooLarge || res.writableEnded) return;
     void (async () => {
       const started = Date.now();
       let id: string | undefined;

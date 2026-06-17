@@ -70,7 +70,7 @@ Options:
   -StartLive         For live-ready only: explicitly start Ableton Live, then re-check readiness.
   -OpenBridge        For live-ready only: explicitly open the installed bridge preset, then re-check readiness.
   -RemoteHttp        For http/docker only: bind 0.0.0.0; requires -HttpToken or env token.
-  -HttpToken <token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 16 chars.
+  -HttpToken <token> Set ABLETON_MCP_HTTP_TOKEN for this process. Minimum 32 chars.
 
 Safe defaults:
   Writes, UI control, downloads, and remote HTTP are off unless explicitly enabled.
@@ -128,8 +128,8 @@ if ($RemoteHttp) {
     throw "-RemoteHttp is only valid with http or docker mode."
   }
   $token = $env:ABLETON_MCP_HTTP_TOKEN
-  if ([string]::IsNullOrWhiteSpace($token) -or $token.Length -lt 16) {
-    throw "Remote HTTP requires -HttpToken or ABLETON_MCP_HTTP_TOKEN with at least 16 characters."
+  if ([string]::IsNullOrWhiteSpace($token) -or $token.Length -lt 32) {
+    throw "Remote HTTP requires -HttpToken or ABLETON_MCP_HTTP_TOKEN with at least 32 characters."
   }
   $env:ABLETON_MCP_HTTP_ALLOW_REMOTE = "1"
   $env:ABLETON_MCP_HTTP_HOST = "0.0.0.0"

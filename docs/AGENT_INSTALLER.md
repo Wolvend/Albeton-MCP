@@ -199,7 +199,7 @@ openclaw mcp doctor ableton-mcp --probe
 If the client is on another private device, use remote HTTP only with a bearer token:
 
 ```powershell
-.\launch.ps1 docker -RemoteHttp -HttpToken "<at least 16 random characters>"
+.\launch.ps1 docker -RemoteHttp -HttpToken "<at least 32 random characters>"
 ```
 
 Remote clients must send:
@@ -364,7 +364,7 @@ The bridge is required for real live reads and write-gated Ableton actions. With
 | `BRIDGE_UNREACHABLE` | Max for Live bridge is not loaded or not listening | Run `npm run bridge:install`, load bridge device in Ableton, rerun live smoke. |
 | Docker client cannot connect | Host HTTP server is not running or wrong URL | Run `.\launch.ps1 docker -SkipSetup` and use `http://127.0.0.1:17366/mcp`. |
 | Remote client gets 401 | Missing bearer token | Send `Authorization: Bearer <token>`. |
-| UI tools fail | UI control is disabled by default | Start `.\launch.ps1 ui-driver` only after user opts in. |
+| UI tools fail | UI control is disabled by default | Start `.\launch.ps1 ui-driver` only after user opts in. If token auth fails, restart the UI driver or remove stale ignored runtime state at `diagnostics/runtime/ui-driver/session-token.json`. |
 | Downloads fail | Downloads are disabled by default | Enable `ABLETON_MCP_ENABLE_DOWNLOADS=1` only for approved licensed downloads. |
 | Write tool returns dry-run | Safe default | Enable `ABLETON_MCP_ENABLE_WRITE=1` and pass `dry_run=false` only after exact approval. |
 

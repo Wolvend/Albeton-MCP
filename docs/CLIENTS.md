@@ -163,7 +163,7 @@ For another device on a private network, use Streamable HTTP. Keep this behind T
 Required environment:
 
 ```powershell
-.\launch.ps1 docker -RemoteHttp -HttpToken "<at least 16 random characters>"
+.\launch.ps1 docker -RemoteHttp -HttpToken "<at least 32 random characters>"
 ```
 
 Remote clients must send:

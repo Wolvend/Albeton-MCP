@@ -54,7 +54,7 @@ First setup installs dependencies if needed, builds `dist`, installs the Max for
 | --- | --- | --- |
 | Regular MCP | `.\launch.ps1 stdio` | Local stdio MCP for Codex, Claude Desktop, Cursor, and similar clients. |
 | Docker/HTTP MCP | `.\launch.ps1 docker` | Streamable HTTP MCP on `http://127.0.0.1:17366/mcp`. |
-| Private remote HTTP | `.\launch.ps1 docker -RemoteHttp -HttpToken "<token>"` | Private-network/Tailscale use only. Never expose publicly. |
+| Private remote HTTP | `.\launch.ps1 docker -RemoteHttp -HttpToken "<32+ random chars>"` | Private-network/Tailscale use only. Never expose publicly. |
 | Setup | `.\launch.ps1 setup` | Build, install bridge files, and generate client configs. |
 | Verify | `.\launch.ps1 verify` | Build and run the MCP verifier. |
 | Full check | `.\launch.ps1 check` | Build, lint, tests, doctor, release check, sweeps, verifier, and audit. |
@@ -63,7 +63,7 @@ First setup installs dependencies if needed, builds `dist`, installs the Max for
 | Live smoke | `.\launch.ps1 live-smoke -SkipSetup` | Read-only/dry-run bridge confidence report. |
 | Concept demo | `.\launch.ps1 concept-demo -SkipSetup` | No-write concept-to-arrangement MCP workflow. |
 | Producer demo | `.\launch.ps1 producer-demo -SkipSetup` | No-write producer-facade MCP workflow with session, blueprint, palette, execution plan, and score. |
-| UI driver | `.\launch.ps1 ui-driver` | Optional foreground Ableton UI control lane. |
+| UI driver | `.\launch.ps1 ui-driver` | Optional foreground Ableton UI control lane with loopback bearer-token auth. |
 
 ## Architecture
 
